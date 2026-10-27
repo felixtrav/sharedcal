@@ -1,0 +1,36 @@
+# SharedCal with ClamAV virus scanning of uploads. Files stay "pending"
+# (visible only to their uploader) until clamd reports them clean.
+# clamd needs ~1.5 GB RAM for its signature database and a few minutes on
+# first start to download it.
+services:
+  sharedcal:
+    image: ghcr.io/felixtrav/sharedcal:1
+    restart: unless-stopped
+    depends_on:
+      clamav:
+        condition: service_healthy
+    ports: ["8080:8080"]
+    volumes: ["./data:/data"]
+    environment:
+      APP_URL: https://cal.example.com
+      OIDC_ISSUER: https://id.example.com
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_ADMIN_GROUPS: calendar-admins
+      OIDC_WRITER_GROUPS: calendar-writers
+      CLAMAV_ADDR: clamav:3310
+
+  clamav:
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    volumes: ["clamdb:/var/lib/clamav"]
+    # Do not publish 3310: clamd has no authentication.
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5m
+      retries: 5
+
+volumes:
+  clamdb:

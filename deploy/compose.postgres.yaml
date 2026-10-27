@@ -1,0 +1,43 @@
+# SharedCal on PostgreSQL. Attachments, themes and the logo still live in the
+# /data volume, so it is mounted here too.
+#
+#   echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)" >> .env
+#   docker compose -f compose.postgres.yaml up -d
+services:
+  sharedcal:
+    image: ghcr.io/felixtrav/sharedcal:1
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports: ["8080:8080"]
+    volumes: ["./data:/data"]
+    environment:
+      APP_URL: https://cal.example.com
+      DB_DRIVER: postgres
+      DB_DSN: postgres://sharedcal:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/sharedcal?sslmode=disable
+      OIDC_ISSUER: https://id.example.com
+      OIDC_CLIENT_ID: ${OIDC_CLIENT_ID}
+      OIDC_CLIENT_SECRET: ${OIDC_CLIENT_SECRET}
+      OIDC_ADMIN_GROUPS: calendar-admins
+      OIDC_WRITER_GROUPS: calendar-writers
+      # Attachments are still backed up by `sharedcal backup`; the database
+      # itself is dumped by the pg_dump command shown in docs/operations.md.
+      BACKUP_SCHEDULE: "0 3 * * *"
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sharedcal
+      POSTGRES_USER: sharedcal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sharedcal -d sharedcal"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:

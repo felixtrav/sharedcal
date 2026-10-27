@@ -1,0 +1,15 @@
+DROP TABLE IF EXISTS "settings";
+DROP TABLE IF EXISTS "feed_tokens";
+DROP TABLE IF EXISTS "change_log";
+DROP TABLE IF EXISTS "activity";
+DROP TABLE IF EXISTS "notifications";
+DROP TABLE IF EXISTS "suggestions";
+DROP TABLE IF EXISTS "attachments";
+DROP TABLE IF EXISTS "comments";
+DROP TABLE IF EXISTS "event_tags";
+DROP TABLE IF EXISTS "tags";
+DROP TABLE IF EXISTS "event_overrides";
+DROP TABLE IF EXISTS "events";
+DROP TABLE IF EXISTS "sessions";
+DROP TABLE IF EXISTS "user_preferences";
+DROP TABLE IF EXISTS "users";

@@ -1,0 +1,291 @@
+// Hand-written types mirroring docs/api.md. Once the backend publishes
+// `openapi.json`, run `npm run gen:api` and reconcile against src/api/schema.d.ts.
+
+export type UUID = string
+/** RFC 3339 instant in UTC, e.g. `2026-10-30T23:00:00Z`. */
+export type Instant = string
+
+export type UserRef = { id: UUID; name: string; avatarUrl: string }
+
+export type Role = 'viewer' | 'writer' | 'admin'
+
+export type Permissions = {
+  edit: boolean
+  delete: boolean
+  suggest: boolean
+  comment: boolean
+  attach: boolean
+  review: boolean
+}
+
+export type EventStatus = 'confirmed' | 'tentative'
+
+export type CalEvent = {
+  id: UUID
+  title: string
+  description: string
+  location: string
+  start: string
+  end: string
+  startUtc: Instant
+  endUtc: Instant
+  timeZone: string
+  allDay: boolean
+  rrule: string
+  exdates: Instant[]
+  status: EventStatus
+  tags: UUID[]
+  owner: UserRef
+  version: number
+  permissions: Permissions
+  counts: { comments: number; openSuggestions: number; attachments: number }
+  createdAt: Instant
+  updatedAt: Instant
+  occurrence?: Instant | null
+  overridden?: boolean
+  deletedAt?: Instant
+}
+
+export type Override = {
+  id: UUID
+  recurrenceId: Instant
+  cancelled: boolean
+  title?: string
+  description?: string
+  location?: string
+  start?: string
+  end?: string
+  startUtc?: Instant
+  endUtc?: Instant
+  allDay?: boolean
+  status?: string
+}
+
+export type ScanStatus = 'pending' | 'clean' | 'infected' | 'skipped'
+
+export type Attachment = {
+  id: UUID
+  eventId: UUID
+  commentId: UUID | null
+  filename: string
+  contentType: string
+  size: number
+  width: number | null
+  height: number | null
+  isImage: boolean
+  url: string
+  thumbUrl: string | null
+  scanStatus: ScanStatus
+  uploader: UserRef
+  createdAt: Instant
+  permissions: { delete: boolean }
+}
+
+export type EventDetail = CalEvent & {
+  overrides: Override[]
+  attachments: Attachment[]
+}
+
+export type Comment = {
+  id: UUID
+  eventId: UUID
+  parentId: UUID | null
+  author: UserRef
+  body: string
+  mentions: UUID[]
+  createdAt: Instant
+  editedAt: Instant | null
+  deleted: boolean
+  attachments: Attachment[]
+  permissions: { edit: boolean; delete: boolean; attach: boolean }
+}
+
+export const SUGGESTION_FIELDS = ['title', 'description', 'location', 'start', 'end', 'timeZone', 'allDay', 'rrule', 'status', 'tags'] as const
+export type SuggestionField = (typeof SUGGESTION_FIELDS)[number]
+
+export type SuggestionChange = {
+  base: unknown
+  proposed: unknown
+  current: unknown
+  conflict: boolean
+}
+
+export type SuggestionStatus = 'open' | 'accepted' | 'partially_accepted' | 'rejected' | 'withdrawn' | 'closed'
+
+export type Suggestion = {
+  id: UUID
+  eventId: UUID
+  author: UserRef
+  kind: 'edit' | 'delete'
+  baseVersion: number
+  changes: Partial<Record<SuggestionField, SuggestionChange>>
+  status: SuggestionStatus
+  reviewer: UserRef | null
+  reviewNote: string
+  acceptedFields: SuggestionField[]
+  createdAt: Instant
+  resolvedAt: Instant | null
+  permissions: { review: boolean; withdraw: boolean }
+}
+
+export const TAG_SLOTS = ['tag-1', 'tag-2', 'tag-3', 'tag-4', 'tag-5', 'tag-6', 'tag-7', 'tag-8'] as const
+export type TagSlot = (typeof TAG_SLOTS)[number]
+
+export type Tag = {
+  id: UUID
+  name: string
+  colorSlot: TagSlot
+  sortOrder: number
+}
+
+export type NotificationKind = 'suggestion.created' | 'suggestion.resolved' | 'comment.reply' | 'comment.mention'
+
+export type Notification = {
+  id: UUID
+  kind: NotificationKind
+  subjectType: 'suggestion' | 'comment'
+  subjectId: UUID
+  eventId: UUID | null
+  eventTitle: string
+  actor: UserRef | null
+  readAt: Instant | null
+  createdAt: Instant
+}
+
+export type ActivityItem = {
+  id: UUID
+  actor: UserRef | null
+  action: string
+  subjectType: string
+  subjectId: UUID
+  eventId: UUID | null
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+  createdAt: Instant
+}
+
+export type CalendarView = 'month' | 'week' | 'day' | 'agenda'
+export const CALENDAR_VIEWS: readonly CalendarView[] = ['month', 'week', 'day', 'agenda']
+
+export type ColorMode = 'light' | 'dark' | 'system'
+
+export type Preferences = {
+  themeId: string
+  colorMode: ColorMode
+  timeZone: string
+  weekStart: 0 | 1 | 2 | 3 | 4 | 5 | 6
+  clock24h: boolean
+  defaultView: CalendarView
+  density: 'comfortable' | 'compact'
+}
+
+export type ThemeTokens = Record<string, string>
+
+export type Theme = {
+  id: string
+  name: string
+  author: string
+  builtin: boolean
+  modes: { light: ThemeTokens; dark: ThemeTokens }
+}
+
+export type Me = {
+  user: UserRef & { email: string; role: Role }
+  preferences: Preferences
+  csrfToken: string
+  permissions: {
+    createEvent: boolean
+    attachToComments: boolean
+    admin: boolean
+  }
+  instance: {
+    calendarName: string
+    defaultTimeZone: string
+    accentColor: string
+    hasLogo: boolean
+    logoUrl: string
+    limits: { maxSize: number; maxPerEvent: number; maxPerComment: number }
+  }
+}
+
+export type FeedTokenStatus = {
+  exists: boolean
+  createdAt: Instant | null
+  lastUsedAt: Instant | null
+}
+
+export type AdminUser = UserRef & {
+  email: string
+  role: Role
+  roleSource: 'idp' | 'manual'
+  active: boolean
+  groups: string[]
+  lastLoginAt: Instant | null
+  sessionCount: number
+  /** Personal data erased by an admin; the row only remains for history. */
+  erased: boolean
+}
+
+export type EraseResult = {
+  eventsTransferred: number
+  commentsRemoved: number
+  attachmentsRemoved: number
+  suggestionsRemoved: number
+}
+
+export type TrashedAttachment = Attachment & {
+  eventTitle: string
+  deletedAt: Instant
+}
+
+export type Session = {
+  id: string
+  createdAt: Instant
+  lastSeenAt: Instant
+  expiresAt: Instant
+  ip: string
+  userAgent: string
+  current: boolean
+}
+
+export type Settings = {
+  calendarName: string
+  defaultTimeZone: string
+  defaultRole: Role
+  accentColor: string
+  enabledThemes: string[]
+  attachmentMaxSize: number
+  attachmentMaxPerEvent: number
+  attachmentMaxPerComment: number
+  attachmentQuota: number
+  storageUsed: number
+}
+
+/** Body for POST /api/events and (as a partial) PATCH /api/events/{id}. */
+export type EventWrite = {
+  title: string
+  start: string
+  end: string
+  timeZone: string
+  allDay: boolean
+  rrule?: string
+  location?: string
+  description?: string
+  tags?: UUID[]
+  status?: EventStatus
+  /** Admins only: hand the event to another writer or admin. */
+  ownerId?: UUID
+}
+
+export type EditScope = 'this' | 'following' | 'all'
+
+export type PresenceViewer = UserRef & { state: 'viewing' | 'editing' }
+
+/** Message envelope sent on /api/stream. */
+export type StreamMessage<T = unknown> = {
+  seq?: number
+  type: string
+  id?: string
+  version?: number
+  payload: T
+}

@@ -1,0 +1,4574 @@
+{
+  "components": {
+    "schemas": {
+      "AcceptInput": {
+        "additionalProperties": false,
+        "properties": {
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "type": "array"
+          },
+          "resolutions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "AcceptResult": {
+        "additionalProperties": false,
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/EventDTO"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/SuggestionDTO"
+          }
+        },
+        "required": [
+          "suggestion",
+          "event"
+        ],
+        "type": "object"
+      },
+      "ActivityBody": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityDTO"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "ActivityDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "actor": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "after": {},
+          "before": {},
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "eventId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subjectType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "actor",
+          "action",
+          "subjectType",
+          "subjectId",
+          "eventId",
+          "before",
+          "after",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "AdminUser": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "avatarUrl": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "erased": {
+            "type": "boolean"
+          },
+          "groups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "lastLoginAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "viewer",
+              "writer",
+              "admin"
+            ],
+            "type": "string"
+          },
+          "roleSource": {
+            "enum": [
+              "idp",
+              "manual"
+            ],
+            "type": "string"
+          },
+          "sessionCount": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "email",
+          "role",
+          "roleSource",
+          "active",
+          "groups",
+          "lastLoginAt",
+          "sessionCount",
+          "erased",
+          "id",
+          "name",
+          "avatarUrl"
+        ],
+        "type": "object"
+      },
+      "AttachmentDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "commentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "eventOwnerId": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "height": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "isImage": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/AttachmentDTOPermissionsStruct"
+          },
+          "scanStatus": {
+            "enum": [
+              "pending",
+              "clean",
+              "infected",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "thumbUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uploader": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "eventId",
+          "commentId",
+          "filename",
+          "contentType",
+          "size",
+          "width",
+          "height",
+          "isImage",
+          "url",
+          "thumbUrl",
+          "scanStatus",
+          "uploader",
+          "eventOwnerId",
+          "createdAt",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "AttachmentDTOPermissionsStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "delete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "delete"
+        ],
+        "type": "object"
+      },
+      "AttachmentTrashBody": {
+        "additionalProperties": false,
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/TrashedAttachment"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "attachments"
+        ],
+        "type": "object"
+      },
+      "CommentDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/AttachmentDTO"
+            },
+            "type": "array"
+          },
+          "author": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "body": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "editedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mentions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/CommentPermissions"
+          }
+        },
+        "required": [
+          "id",
+          "eventId",
+          "parentId",
+          "author",
+          "body",
+          "mentions",
+          "createdAt",
+          "editedAt",
+          "deleted",
+          "attachments",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "CommentInput": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 10000,
+            "type": "string"
+          },
+          "mentions": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
+          "parentId": {
+            "maxLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "type": "object"
+      },
+      "CommentPermissions": {
+        "additionalProperties": false,
+        "properties": {
+          "attach": {
+            "type": "boolean"
+          },
+          "delete": {
+            "type": "boolean"
+          },
+          "edit": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "delete",
+          "attach"
+        ],
+        "type": "object"
+      },
+      "CommentsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "comments": {
+            "items": {
+              "$ref": "#/components/schemas/CommentDTO"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "comments"
+        ],
+        "type": "object"
+      },
+      "DirectoryBody": {
+        "additionalProperties": false,
+        "properties": {
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/UserRef"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "users"
+        ],
+        "type": "object"
+      },
+      "EraseResult": {
+        "additionalProperties": false,
+        "properties": {
+          "attachmentsRemoved": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "commentsRemoved": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "eventsTransferred": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "suggestionsRemoved": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "eventsTransferred",
+          "commentsRemoved",
+          "attachmentsRemoved",
+          "suggestionsRemoved"
+        ],
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "location": {
+            "description": "Where the error occurred, e.g. 'body.items[3].tags' or 'path.thing-id'",
+            "type": "string"
+          },
+          "message": {
+            "description": "Error message text",
+            "type": "string"
+          },
+          "value": {
+            "description": "The value at the given location"
+          }
+        },
+        "type": "object"
+      },
+      "EventCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "attachments": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "comments": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "openSuggestions": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "comments",
+          "openSuggestions",
+          "attachments"
+        ],
+        "type": "object"
+      },
+      "EventDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/EventCounts"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "deletedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          },
+          "endUtc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "exdates": {
+            "items": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "occurrence": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "overridden": {
+            "type": "boolean"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          },
+          "rrule": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "startUtc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "confirmed",
+              "tentative"
+            ],
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "location",
+          "start",
+          "end",
+          "startUtc",
+          "endUtc",
+          "timeZone",
+          "allDay",
+          "rrule",
+          "exdates",
+          "status",
+          "tags",
+          "owner",
+          "version",
+          "permissions",
+          "counts",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "EventDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/AttachmentDTO"
+            },
+            "type": "array"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/EventCounts"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "deletedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          },
+          "endUtc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "exdates": {
+            "items": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "occurrence": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "overridden": {
+            "type": "boolean"
+          },
+          "overrides": {
+            "items": {
+              "$ref": "#/components/schemas/OverrideDTO"
+            },
+            "type": "array"
+          },
+          "owner": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/Permissions"
+          },
+          "rrule": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "startUtc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "confirmed",
+              "tentative"
+            ],
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "version": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "overrides",
+          "attachments",
+          "id",
+          "title",
+          "description",
+          "location",
+          "start",
+          "end",
+          "startUtc",
+          "endUtc",
+          "timeZone",
+          "allDay",
+          "rrule",
+          "exdates",
+          "status",
+          "tags",
+          "owner",
+          "version",
+          "permissions",
+          "counts",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object"
+      },
+      "EventInput": {
+        "additionalProperties": false,
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "description": {
+            "maxLength": 20000,
+            "type": "string"
+          },
+          "end": {
+            "maxLength": 40,
+            "type": "string"
+          },
+          "location": {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "ownerId": {
+            "description": "Admins only: transfer ownership",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "rrule": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "start": {
+            "maxLength": 40,
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "confirmed",
+              "tentative"
+            ],
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
+          "timeZone": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "EventsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/EventDTO"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "type": "object"
+      },
+      "FeedStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "exists": {
+            "type": "boolean"
+          },
+          "lastUsedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "exists",
+          "createdAt",
+          "lastUsedAt"
+        ],
+        "type": "object"
+      },
+      "FeedURL": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "FieldChange": {
+        "additionalProperties": false,
+        "properties": {
+          "base": {},
+          "conflict": {
+            "type": "boolean"
+          },
+          "current": {},
+          "proposed": {}
+        },
+        "required": [
+          "base",
+          "proposed",
+          "current",
+          "conflict"
+        ],
+        "type": "object"
+      },
+      "HistoryBody": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ActivityDTO"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
+      "InboxBody": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationDTO"
+            },
+            "type": "array"
+          },
+          "unread": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "unread"
+        ],
+        "type": "object"
+      },
+      "MeBody": {
+        "additionalProperties": false,
+        "properties": {
+          "csrfToken": {
+            "type": "string"
+          },
+          "instance": {
+            "$ref": "#/components/schemas/PublicSettings"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/MeBodyPermissionsStruct"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/Preferences"
+          },
+          "user": {
+            "$ref": "#/components/schemas/MeBodyUserStruct"
+          }
+        },
+        "required": [
+          "user",
+          "preferences",
+          "csrfToken",
+          "permissions",
+          "instance"
+        ],
+        "type": "object"
+      },
+      "MeBodyPermissionsStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "admin": {
+            "type": "boolean"
+          },
+          "attachToComments": {
+            "type": "boolean"
+          },
+          "createEvent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "createEvent",
+          "attachToComments",
+          "admin"
+        ],
+        "type": "object"
+      },
+      "MeBodyUserStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "viewer",
+              "writer",
+              "admin"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "role",
+          "id",
+          "name",
+          "avatarUrl"
+        ],
+        "type": "object"
+      },
+      "MovedBody": {
+        "additionalProperties": false,
+        "properties": {
+          "moved": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "moved"
+        ],
+        "type": "object"
+      },
+      "NotificationDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "eventId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "eventTitle": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "suggestion.created",
+              "suggestion.resolved",
+              "comment.reply",
+              "comment.mention"
+            ],
+            "type": "string"
+          },
+          "readAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subjectId": {
+            "type": "string"
+          },
+          "subjectType": {
+            "enum": [
+              "suggestion",
+              "comment"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "subjectType",
+          "subjectId",
+          "eventId",
+          "eventTitle",
+          "actor",
+          "readAt",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "OverrideDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "cancelled": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          },
+          "endUtc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "location": {
+            "type": "string"
+          },
+          "recurrenceId": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "startUtc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "recurrenceId",
+          "cancelled"
+        ],
+        "type": "object"
+      },
+      "Permissions": {
+        "additionalProperties": false,
+        "properties": {
+          "attach": {
+            "type": "boolean"
+          },
+          "comment": {
+            "type": "boolean"
+          },
+          "delete": {
+            "type": "boolean"
+          },
+          "edit": {
+            "type": "boolean"
+          },
+          "review": {
+            "type": "boolean"
+          },
+          "suggest": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "delete",
+          "suggest",
+          "comment",
+          "attach",
+          "review"
+        ],
+        "type": "object"
+      },
+      "Preferences": {
+        "additionalProperties": false,
+        "properties": {
+          "clock24h": {
+            "type": "boolean"
+          },
+          "colorMode": {
+            "enum": [
+              "light",
+              "dark",
+              "system"
+            ],
+            "type": "string"
+          },
+          "defaultView": {
+            "enum": [
+              "month",
+              "week",
+              "day",
+              "agenda"
+            ],
+            "type": "string"
+          },
+          "density": {
+            "enum": [
+              "comfortable",
+              "compact"
+            ],
+            "type": "string"
+          },
+          "themeId": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "timeZone": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "weekStart": {
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "themeId",
+          "colorMode",
+          "timeZone",
+          "weekStart",
+          "clock24h",
+          "defaultView",
+          "density"
+        ],
+        "type": "object"
+      },
+      "PresenceInBody": {
+        "additionalProperties": false,
+        "properties": {
+          "eventId": {
+            "maxLength": 36,
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "viewing",
+              "editing",
+              "left"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventId",
+          "state"
+        ],
+        "type": "object"
+      },
+      "Problem": {
+        "additionalProperties": false,
+        "properties": {
+          "current": {},
+          "detail": {
+            "description": "A human-readable explanation specific to this occurrence of the problem.",
+            "examples": [
+              "Property foo is required but is missing."
+            ],
+            "type": "string"
+          },
+          "errors": {
+            "description": "Optional list of individual error details",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            },
+            "type": "array"
+          },
+          "instance": {
+            "description": "A URI reference that identifies the specific occurrence of the problem.",
+            "examples": [
+              "https://example.com/error-log/abc123"
+            ],
+            "format": "uri",
+            "type": "string"
+          },
+          "status": {
+            "description": "HTTP status code",
+            "examples": [
+              400
+            ],
+            "format": "int64",
+            "type": "integer"
+          },
+          "suggest": {
+            "type": "boolean"
+          },
+          "title": {
+            "description": "A short, human-readable summary of the problem type. This value should not change between occurrences of the error.",
+            "examples": [
+              "Bad Request"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "default": "about:blank",
+            "description": "A URI reference to human-readable documentation for the error.",
+            "examples": [
+              "https://example.com/errors/example"
+            ],
+            "format": "uri",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PublicSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "accentColor": {
+            "type": "string"
+          },
+          "calendarName": {
+            "type": "string"
+          },
+          "defaultTimeZone": {
+            "type": "string"
+          },
+          "hasLogo": {
+            "type": "boolean"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/UploadLimits"
+          },
+          "logoUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "calendarName",
+          "defaultTimeZone",
+          "accentColor",
+          "hasLogo",
+          "logoUrl",
+          "limits"
+        ],
+        "type": "object"
+      },
+      "ReadInBody": {
+        "additionalProperties": false,
+        "properties": {
+          "all": {
+            "type": "boolean"
+          },
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "RejectInBody": {
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "maxLength": 2000,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ReorderInBody": {
+        "additionalProperties": false,
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "type": "array"
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "type": "object"
+      },
+      "SessionInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "ip": {
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "userAgent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "createdAt",
+          "lastSeenAt",
+          "expiresAt",
+          "ip",
+          "userAgent",
+          "current"
+        ],
+        "type": "object"
+      },
+      "SessionsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "sessions": {
+            "items": {
+              "$ref": "#/components/schemas/SessionInfo"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "sessions"
+        ],
+        "type": "object"
+      },
+      "Settings": {
+        "additionalProperties": false,
+        "properties": {
+          "accentColor": {
+            "maxLength": 7,
+            "type": "string"
+          },
+          "attachmentMaxPerComment": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "attachmentMaxPerEvent": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "attachmentMaxSize": {
+            "format": "int64",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "attachmentQuota": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "calendarName": {
+            "maxLength": 100,
+            "type": "string"
+          },
+          "defaultRole": {
+            "enum": [
+              "viewer",
+              "writer",
+              "admin"
+            ],
+            "type": "string"
+          },
+          "defaultTimeZone": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "enabledThemes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "type": "array"
+          },
+          "storageUsed": {
+            "format": "int64",
+            "readOnly": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "calendarName",
+          "defaultTimeZone",
+          "defaultRole",
+          "accentColor",
+          "enabledThemes",
+          "attachmentMaxSize",
+          "attachmentMaxPerEvent",
+          "attachmentMaxPerComment",
+          "attachmentQuota",
+          "storageUsed"
+        ],
+        "type": "object"
+      },
+      "SuggestionDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "acceptedFields": {
+            "items": {
+              "enum": [
+                "title",
+                "description",
+                "location",
+                "start",
+                "end",
+                "timeZone",
+                "allDay",
+                "rrule",
+                "status",
+                "tags"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "author": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "baseVersion": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "changes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/FieldChange"
+            },
+            "type": "object"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "eventOwnerId": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "edit",
+              "delete"
+            ],
+            "type": "string"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/SuggestionPermissions"
+          },
+          "resolvedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewNote": {
+            "type": "string"
+          },
+          "reviewer": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "accepted",
+              "partially_accepted",
+              "rejected",
+              "withdrawn",
+              "closed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "eventId",
+          "author",
+          "kind",
+          "baseVersion",
+          "changes",
+          "status",
+          "reviewer",
+          "reviewNote",
+          "acceptedFields",
+          "createdAt",
+          "resolvedAt",
+          "eventOwnerId",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "SuggestionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "baseVersion": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "changes": {
+            "$ref": "#/components/schemas/EventInput"
+          },
+          "kind": {
+            "enum": [
+              "edit",
+              "delete"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "baseVersion"
+        ],
+        "type": "object"
+      },
+      "SuggestionPermissions": {
+        "additionalProperties": false,
+        "properties": {
+          "review": {
+            "type": "boolean"
+          },
+          "withdraw": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "review",
+          "withdraw"
+        ],
+        "type": "object"
+      },
+      "SuggestionsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionDTO"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "suggestions"
+        ],
+        "type": "object"
+      },
+      "TagDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "colorSlot": {
+            "enum": [
+              "tag-1",
+              "tag-2",
+              "tag-3",
+              "tag-4",
+              "tag-5",
+              "tag-6",
+              "tag-7",
+              "tag-8"
+            ],
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "colorSlot",
+          "sortOrder"
+        ],
+        "type": "object"
+      },
+      "TagInput": {
+        "additionalProperties": false,
+        "properties": {
+          "colorSlot": {
+            "enum": [
+              "tag-1",
+              "tag-2",
+              "tag-3",
+              "tag-4",
+              "tag-5",
+              "tag-6",
+              "tag-7",
+              "tag-8"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TagsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "tags": {
+            "items": {
+              "$ref": "#/components/schemas/TagDTO"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "tags"
+        ],
+        "type": "object"
+      },
+      "Theme": {
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "builtin": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "id": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "modes": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "author",
+          "builtin",
+          "modes"
+        ],
+        "type": "object"
+      },
+      "ThemesBody": {
+        "additionalProperties": false,
+        "properties": {
+          "themes": {
+            "items": {
+              "$ref": "#/components/schemas/Theme"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "themes"
+        ],
+        "type": "object"
+      },
+      "TransferInBody": {
+        "additionalProperties": false,
+        "properties": {
+          "toUserId": {
+            "maxLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "toUserId"
+        ],
+        "type": "object"
+      },
+      "TrashedAttachment": {
+        "additionalProperties": false,
+        "properties": {
+          "commentId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "deletedAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "eventOwnerId": {
+            "type": "string"
+          },
+          "eventTitle": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "height": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "isImage": {
+            "type": "boolean"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/TrashedAttachmentPermissionsStruct"
+          },
+          "scanStatus": {
+            "enum": [
+              "pending",
+              "clean",
+              "infected",
+              "skipped"
+            ],
+            "type": "string"
+          },
+          "size": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "thumbUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uploader": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "format": "int64",
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "eventTitle",
+          "deletedAt",
+          "id",
+          "eventId",
+          "commentId",
+          "filename",
+          "contentType",
+          "size",
+          "width",
+          "height",
+          "isImage",
+          "url",
+          "thumbUrl",
+          "scanStatus",
+          "uploader",
+          "eventOwnerId",
+          "createdAt",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "TrashedAttachmentPermissionsStruct": {
+        "additionalProperties": false,
+        "properties": {
+          "delete": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "delete"
+        ],
+        "type": "object"
+      },
+      "UnreadBody": {
+        "additionalProperties": false,
+        "properties": {
+          "unread": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unread"
+        ],
+        "type": "object"
+      },
+      "UploadLimits": {
+        "additionalProperties": false,
+        "properties": {
+          "maxPerComment": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxPerEvent": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "maxSize": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "maxSize",
+          "maxPerEvent",
+          "maxPerComment"
+        ],
+        "type": "object"
+      },
+      "UserPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "role": {
+            "enum": [
+              "viewer",
+              "writer",
+              "admin"
+            ],
+            "type": "string"
+          },
+          "roleSource": {
+            "enum": [
+              "idp",
+              "manual"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UserRef": {
+        "additionalProperties": false,
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "avatarUrl"
+        ],
+        "type": "object"
+      },
+      "UsersBody": {
+        "additionalProperties": false,
+        "properties": {
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/AdminUser"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "users"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "description": "Session cookie (prefixed __Host- over HTTPS).",
+        "in": "cookie",
+        "name": "sharedcal_session",
+        "type": "apiKey"
+      }
+    }
+  },
+  "info": {
+    "description": "REST API of SharedCal. Authenticate with the session cookie; send X-CSRF-Token on every non-GET request.",
+    "license": {
+      "name": "MIT"
+    },
+    "title": "SharedCal API",
+    "version": "dev"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/activity": {
+      "get": {
+        "operationId": "listActivity",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "actor",
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "action",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "subjectType",
+            "schema": {
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "eventId",
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "before",
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Audit log (own activity unless admin)",
+        "tags": [
+          "activity"
+        ]
+      }
+    },
+    "/api/attachments/{id}": {
+      "delete": {
+        "operationId": "deleteAttachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Remove an attachment",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/api/attachments/{id}/content": {
+      "get": {
+        "operationId": "attachmentContent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "File bytes"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Download",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/api/attachments/{id}/restore": {
+      "post": {
+        "operationId": "restoreAttachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Restore a removed attachment (admins)",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/api/attachments/{id}/thumb": {
+      "get": {
+        "operationId": "attachmentThumb",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "contentMediaType": "application/octet-stream",
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "File bytes"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Image thumbnail",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/api/comments/{id}": {
+      "delete": {
+        "operationId": "deleteComment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Delete a comment",
+        "tags": [
+          "comments"
+        ]
+      },
+      "patch": {
+        "operationId": "updateComment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Edit own comment",
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/comments/{id}/attachments": {
+      "post": {
+        "operationId": "uploadCommentAttachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "contentMediaType": "application/octet-stream",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentDTO"
+                }
+              }
+            },
+            "description": "Attachment"
+          },
+          "413": {
+            "description": "Too large"
+          },
+          "415": {
+            "description": "File type refused"
+          },
+          "422": {
+            "description": "Invalid file"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Upload a file to own comment",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/api/events": {
+      "get": {
+        "operationId": "listEvents",
+        "parameters": [
+          {
+            "description": "Range start (inclusive), RFC 3339",
+            "explode": false,
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "description": "Range start (inclusive), RFC 3339",
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Range end (exclusive), RFC 3339",
+            "explode": false,
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "description": "Range end (exclusive), RFC 3339",
+              "format": "date-time",
+              "type": "string"
+            }
+          },
+          {
+            "explode": true,
+            "in": "query",
+            "name": "tag",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 50,
+              "type": "array"
+            }
+          },
+          {
+            "explode": true,
+            "in": "query",
+            "name": "owner",
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 50,
+              "type": "array"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "maxLength": 200,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Occurrences in a range, recurrences expanded",
+        "tags": [
+          "events"
+        ]
+      },
+      "post": {
+        "operationId": "createEvent",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDTO"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Create an event",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/events/{id}": {
+      "delete": {
+        "operationId": "deleteEvent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Event version, e.g. 4 or \"4\"",
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "description": "Event version, e.g. 4 or \"4\"",
+              "maxLength": 40,
+              "type": "string"
+            }
+          },
+          {
+            "description": "For recurring events",
+            "explode": false,
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "description": "For recurring events",
+              "enum": [
+                "this",
+                "following",
+                "all"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Original start (RECURRENCE-ID) of the occurrence, RFC 3339",
+            "explode": false,
+            "in": "query",
+            "name": "occurrence",
+            "schema": {
+              "description": "Original start (RECURRENCE-ID) of the occurrence, RFC 3339",
+              "maxLength": 40,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Soft-delete an event or occurrences",
+        "tags": [
+          "events"
+        ]
+      },
+      "get": {
+        "operationId": "getEvent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "One event with overrides and attachments",
+        "tags": [
+          "events"
+        ]
+      },
+      "patch": {
+        "operationId": "updateEvent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Event version, e.g. 4 or \"4\"",
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "description": "Event version, e.g. 4 or \"4\"",
+              "maxLength": 40,
+              "type": "string"
+            }
+          },
+          {
+            "description": "For recurring events",
+            "explode": false,
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "description": "For recurring events",
+              "enum": [
+                "this",
+                "following",
+                "all"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Original start (RECURRENCE-ID) of the occurrence, RFC 3339",
+            "explode": false,
+            "in": "query",
+            "name": "occurrence",
+            "schema": {
+              "description": "Original start (RECURRENCE-ID) of the occurrence, RFC 3339",
+              "maxLength": 40,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Update an event (requires If-Match)",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/events/{id}/attachments": {
+      "post": {
+        "operationId": "uploadEventAttachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "contentMediaType": "application/octet-stream",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentDTO"
+                }
+              }
+            },
+            "description": "Attachment"
+          },
+          "413": {
+            "description": "Too large"
+          },
+          "415": {
+            "description": "File type refused"
+          },
+          "422": {
+            "description": "Invalid file"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Upload a file to an event",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/api/events/{id}/comments": {
+      "get": {
+        "operationId": "listComments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Comments on an event",
+        "tags": [
+          "comments"
+        ]
+      },
+      "post": {
+        "operationId": "createComment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentDTO"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Add a comment or reply",
+        "tags": [
+          "comments"
+        ]
+      }
+    },
+    "/api/events/{id}/history": {
+      "get": {
+        "operationId": "eventHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Activity for one event",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/events/{id}/restore": {
+      "post": {
+        "operationId": "restoreEvent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Restore from trash",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/events/{id}/suggestions": {
+      "get": {
+        "operationId": "listSuggestions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "default": "open",
+              "enum": [
+                "open",
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Suggestions on an event",
+        "tags": [
+          "suggestions"
+        ]
+      },
+      "post": {
+        "operationId": "createSuggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionDTO"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Propose an edit or deletion",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/inbox": {
+      "get": {
+        "operationId": "listInbox",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "unread",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "before",
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "format": "int64",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Inbox items, newest first",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/api/inbox/read": {
+      "post": {
+        "operationId": "markInboxRead",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadInBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Mark items read",
+        "tags": [
+          "inbox"
+        ]
+      }
+    },
+    "/api/me": {
+      "get": {
+        "operationId": "getMe",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Current user, preferences and CSRF token",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/me/feed-token": {
+      "delete": {
+        "operationId": "revokeFeedToken",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Revoke the personal ICS feed",
+        "tags": [
+          "me"
+        ]
+      },
+      "get": {
+        "operationId": "getFeedToken",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedStatus"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Personal ICS feed status",
+        "tags": [
+          "me"
+        ]
+      },
+      "post": {
+        "operationId": "rotateFeedToken",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedURL"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Create or rotate the personal ICS feed URL (shown once)",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/me/preferences": {
+      "put": {
+        "operationId": "putPreferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Update preferences",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/api/presence": {
+      "post": {
+        "operationId": "presence",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PresenceInBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Viewing/editing heartbeat",
+        "tags": [
+          "realtime"
+        ]
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "getSettings",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settings"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Instance settings (admins)",
+        "tags": [
+          "settings"
+        ]
+      },
+      "put": {
+        "operationId": "putSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Settings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settings"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Update instance settings",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/settings/logo": {
+      "delete": {
+        "operationId": "deleteLogo",
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Remove the logo",
+        "tags": [
+          "settings"
+        ]
+      },
+      "post": {
+        "operationId": "uploadLogo",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "contentMediaType": "application/octet-stream",
+                    "format": "binary",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Logo URL"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Upload the branding logo",
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/stream": {
+      "get": {
+        "operationId": "stream",
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "text/event-stream"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Server-Sent Events change stream",
+        "tags": [
+          "realtime"
+        ]
+      }
+    },
+    "/api/suggestions/{id}/accept": {
+      "post": {
+        "operationId": "acceptSuggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Accept all or selected fields",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/suggestions/{id}/reject": {
+      "post": {
+        "operationId": "rejectSuggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectInBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Reject with an optional note",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/suggestions/{id}/withdraw": {
+      "post": {
+        "operationId": "withdrawSuggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Withdraw own suggestion",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "operationId": "listTags",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "All tags",
+        "tags": [
+          "tags"
+        ]
+      },
+      "post": {
+        "operationId": "createTag",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagDTO"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Create a tag",
+        "tags": [
+          "tags"
+        ]
+      }
+    },
+    "/api/tags/reorder": {
+      "post": {
+        "operationId": "reorderTags",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReorderInBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Set tag order",
+        "tags": [
+          "tags"
+        ]
+      }
+    },
+    "/api/tags/{id}": {
+      "delete": {
+        "operationId": "deleteTag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Delete a tag",
+        "tags": [
+          "tags"
+        ]
+      },
+      "patch": {
+        "operationId": "updateTag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Rename or recolor",
+        "tags": [
+          "tags"
+        ]
+      }
+    },
+    "/api/themes": {
+      "get": {
+        "operationId": "listThemes",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "all",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ThemesBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Enabled themes (all installed for admins with all=true)",
+        "tags": [
+          "themes"
+        ]
+      },
+      "post": {
+        "operationId": "installTheme",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Theme"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Theme"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Upload a theme",
+        "tags": [
+          "themes"
+        ]
+      }
+    },
+    "/api/themes/{id}": {
+      "delete": {
+        "operationId": "removeTheme",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Remove an uploaded theme",
+        "tags": [
+          "themes"
+        ]
+      }
+    },
+    "/api/trash": {
+      "get": {
+        "operationId": "listTrash",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Deleted events (admins)",
+        "tags": [
+          "events"
+        ]
+      }
+    },
+    "/api/trash/attachments": {
+      "get": {
+        "operationId": "listAttachmentTrash",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentTrashBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Removed attachments that can still be restored (admins)",
+        "tags": [
+          "attachments"
+        ]
+      }
+    },
+    "/api/users": {
+      "get": {
+        "operationId": "listUsers",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsersBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "All users (admins)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/directory": {
+      "get": {
+        "operationId": "userDirectory",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectoryBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Active users (for mentions and filters)",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/{id}": {
+      "delete": {
+        "operationId": "eraseUser",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Required when the user owns live events: who receives them",
+            "explode": false,
+            "in": "query",
+            "name": "transferTo",
+            "schema": {
+              "description": "Required when the user owns live events: who receives them",
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EraseResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Erase a user's personal data (admins)",
+        "tags": [
+          "users"
+        ]
+      },
+      "patch": {
+        "operationId": "updateUser",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminUser"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Change role, role source or active",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/{id}/sessions": {
+      "delete": {
+        "operationId": "revokeSessions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          },
+          {
+            "explode": false,
+            "in": "query",
+            "name": "id",
+            "schema": {
+              "maxLength": 16,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Revoke one or all sessions",
+        "tags": [
+          "users"
+        ]
+      },
+      "get": {
+        "operationId": "listSessions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "A user's sessions",
+        "tags": [
+          "users"
+        ]
+      }
+    },
+    "/api/users/{id}/transfer": {
+      "post": {
+        "operationId": "transferOwnership",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferInBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MovedBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Move all of a user's events to another user",
+        "tags": [
+          "users"
+        ]
+      }
+    }
+  }
+}

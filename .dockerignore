@@ -1,0 +1,33 @@
+# Keep the build context small and free of secrets and host artifacts.
+.git
+.github
+.devcontainer
+.vscode
+.idea
+**/.DS_Store
+**/*.db
+**/*.db-wal
+**/*.db-shm
+data/
+backups/
+*.zip
+.env
+.env.*
+coverage*
+*.out
+dist/
+bin/
+
+# web: node_modules and dist are rebuilt inside the image
+web/node_modules
+web/dist
+web/playwright-report
+web/test-results
+web/.vite
+
+# not needed in the image build
+docs/
+deploy/
+tools/atlasloader/
+*.md
+!web/**/*.md

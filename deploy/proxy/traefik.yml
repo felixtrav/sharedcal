@@ -1,0 +1,66 @@
+# Traefik in front of SharedCal, as a file-provider dynamic configuration.
+# Traefik streams responses (it does not buffer SSE) and sets X-Forwarded-*
+# by default; the static configuration below the line shows the matching
+# entry points and certificate resolver. Set TRUSTED_PROXIES on SharedCal to
+# Traefik's address range.
+#
+# Equivalent Docker labels on the sharedcal service:
+#   traefik.enable=true
+#   traefik.http.routers.sharedcal.rule=Host(`cal.example.com`)
+#   traefik.http.routers.sharedcal.entrypoints=websecure
+#   traefik.http.routers.sharedcal.tls.certresolver=letsencrypt
+#   traefik.http.routers.sharedcal.middlewares=sharedcal-body
+#   traefik.http.middlewares.sharedcal-body.buffering.maxRequestBodyBytes=31457280
+#   traefik.http.services.sharedcal.loadbalancer.server.port=8080
+#   traefik.http.services.sharedcal.loadbalancer.responseforwarding.flushinterval=-1
+#
+# Note: Traefik's request size limit comes from the buffering middleware,
+# which only buffers *request* bodies (uploads); responses, including
+# /api/stream, are never buffered by it.
+
+http:
+  routers:
+    sharedcal:
+      rule: Host(`cal.example.com`)
+      entryPoints: [websecure]
+      tls:
+        certResolver: letsencrypt
+      middlewares: [sharedcal-body]
+      service: sharedcal
+
+  middlewares:
+    sharedcal-body:
+      buffering:
+        # >= ATTACHMENT_MAX_SIZE (25 MB) plus multipart overhead
+        maxRequestBodyBytes: 31457280
+        memRequestBodyBytes: 2097152
+
+  services:
+    sharedcal:
+      loadBalancer:
+        servers:
+          - url: http://sharedcal:8080
+        responseForwarding:
+          # -1 flushes immediately: required for Server-Sent Events.
+          flushInterval: "-1"
+
+# --- static configuration (traefik.yml / CLI flags), for reference ---------
+# entryPoints:
+#   web:
+#     address: ":80"
+#     http:
+#       redirections:
+#         entryPoint: { to: websecure, scheme: https }
+#   websecure:
+#     address: ":443"
+#     transport:
+#       respondingTimeouts:
+#         readTimeout: 0   # long-lived SSE connections; 0 disables the timeout
+# certificatesResolvers:
+#   letsencrypt:
+#     acme:
+#       email: admin@example.com
+#       storage: /letsencrypt/acme.json
+#       tlsChallenge: {}
+# providers:
+#   file: { filename: /etc/traefik/dynamic/sharedcal.yml }

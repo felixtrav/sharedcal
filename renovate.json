@@ -1,0 +1,77 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    "docker:pinDigests",
+    ":semanticCommits",
+    ":dependencyDashboard"
+  ],
+  "enabledManagers": ["gomod", "npm", "dockerfile", "docker-compose", "github-actions", "custom.regex"],
+  "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"],
+  "schedule": ["before 6am on monday"],
+  "timezone": "UTC",
+  "prConcurrentLimit": 10,
+  "minimumReleaseAge": "3 days",
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "minimumReleaseAge": null,
+    "schedule": ["at any time"]
+  },
+  "packageRules": [
+    {
+      "description": "Group Go module updates (except major versions)",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "Go modules"
+    },
+    {
+      "description": "Group npm updates (except major versions)",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "npm packages"
+    },
+    {
+      "description": "Group GitHub Actions; keep them pinned to full commit SHAs",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "pinDigests": true
+    },
+    {
+      "description": "Base images: tag + digest pinned, grouped",
+      "matchManagers": ["dockerfile", "custom.regex"],
+      "groupName": "Base images",
+      "pinDigests": true
+    },
+    {
+      "description": "The Go toolchain in go.mod and the golang image move together",
+      "matchPackageNames": ["go", "golang", "docker.io/library/golang"],
+      "groupName": "Go toolchain"
+    },
+    {
+      "description": "Compose examples reference the public image and moving tags; do not pin them",
+      "matchManagers": ["docker-compose"],
+      "pinDigests": false
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Base images declared as ARG defaults in deploy/Dockerfile",
+      "managerFilePatterns": ["/^deploy/Dockerfile$/"],
+      "matchStrings": [
+        "ARG [A-Z_]+_IMAGE=(?<depName>[^:@\\s]+):(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})"
+      ],
+      "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Tool versions run with `go run` in CI and the Makefile",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/", "/^Makefile$/"],
+      "matchStrings": [
+        "go run (?<depName>[^@\\s]+?)(?:/cmd/[^@\\s]+)?@(?<currentValue>v[0-9][^\\s]*)"
+      ],
+      "datasourceTemplate": "go"
+    }
+  ]
+}

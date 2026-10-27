@@ -1,0 +1,27 @@
+# Caddy in front of SharedCal. Caddy obtains and renews the TLS certificate
+# automatically and sets X-Forwarded-For/-Proto/-Host itself.
+# Set TRUSTED_PROXIES on SharedCal to the address Caddy connects from
+# (e.g. the Docker network's CIDR, 172.16.0.0/12) so those headers are trusted.
+
+cal.example.com {
+	encode zstd gzip
+
+	# Uploads: at least ATTACHMENT_MAX_SIZE (25 MB by default) plus multipart overhead.
+	request_body {
+		max_size 30MB
+	}
+
+	# Live updates: flush every SSE message immediately. (Caddy already does
+	# this for text/event-stream responses; being explicit costs nothing.)
+	# Caddy has no upstream read timeout by default, so the stream stays open;
+	# the server sends a heartbeat every 25 s.
+	handle /api/stream {
+		reverse_proxy sharedcal:8080 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		reverse_proxy sharedcal:8080
+	}
+}
