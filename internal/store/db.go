@@ -18,7 +18,9 @@ import (
 	migratemysql "github.com/golang-migrate/migrate/v4/database/mysql"
 	migratepgx "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	_ "github.com/jackc/pgx/v5/stdlib" // registers the "pgx" database/sql driver
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/stdlib"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -78,7 +80,11 @@ func Open(driver, dsn string) (*DB, error) {
 	case SQLite:
 		return openSQLite(dsn)
 	case Postgres:
-		g, err := gorm.Open(postgres.Open(dsn), gormConfig())
+		conn, err := openPostgres(dsn)
+		if err != nil {
+			return nil, fmt.Errorf("open postgres: %w", err)
+		}
+		g, err := gorm.Open(postgres.New(postgres.Config{Conn: conn}), gormConfig())
 		if err != nil {
 			return nil, fmt.Errorf("open postgres: %w", err)
 		}
@@ -97,6 +103,21 @@ func Open(driver, dsn string) (*DB, error) {
 		return &DB{W: g, R: g, Dialect: MySQL}, nil
 	}
 	return nil, fmt.Errorf("unsupported database driver %q", driver)
+}
+
+// openPostgres opens a pgx pool whose sessions run in UTC and whose
+// timestamptz values scan as UTC. pgx otherwise returns them in time.Local,
+// so the API would emit offsets that depend on the server's TZ.
+func openPostgres(dsn string) (*sql.DB, error) {
+	cfg, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
+	}
+	cfg.RuntimeParams["timezone"] = "UTC"
+	return stdlib.OpenDB(*cfg, stdlib.OptionAfterConnect(func(_ context.Context, c *pgx.Conn) error {
+		c.TypeMap().RegisterType(&pgtype.Type{Name: "timestamptz", OID: pgtype.TimestamptzOID, Codec: &pgtype.TimestamptzCodec{ScanLocation: time.UTC}})
+		return nil
+	})), nil
 }
 
 func tunePool(g *gorm.DB, n int) error {

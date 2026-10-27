@@ -80,8 +80,10 @@ func TestTimeRoundTripAndOrdering(t *testing.T) {
 	if len(got) != 2 || !got[0].StartAt.Equal(ts.Add(-90*time.Minute)) || !got[1].StartAt.Equal(ts) {
 		t.Fatalf("range query wrong: %+v", got)
 	}
-	if got[1].StartAt.Location() != time.UTC && got[1].StartAt.UTC() != got[1].StartAt {
-		t.Fatalf("time not UTC: %v", got[1].StartAt)
+	// Not just a zero offset: the location must be time.UTC, or JSON and
+	// iCalendar output would depend on the server's TZ.
+	if loc := got[1].StartAt.Location(); loc != time.UTC {
+		t.Fatalf("time not in time.UTC: %v (location %q)", got[1].StartAt, loc)
 	}
 }
 

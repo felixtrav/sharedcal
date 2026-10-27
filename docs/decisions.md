@@ -25,6 +25,7 @@ Choices made where the spec is silent, newest at the bottom of each section.
 - **`activity` has only `created_at`**: it is append-only, so `updated_at` would always equal it.
 - **MySQL tables use `utf8mb4_bin`.** Case-insensitive collation would make OIDC subjects that differ only in case collide (and match each other in lookups). Tag-name uniqueness is case-insensitive and is enforced by the application instead.
 - **Mentions are stored as notification rows** (`kind = comment.mention`), not a separate column; the comment DTO's `mentions` list is read from them.
+- **Times read back from the database are always in `time.UTC`.** MySQL gets `loc=UTC` in its DSN; PostgreSQL connections set the session time zone to UTC and register a `timestamptz` codec that scans into UTC, because pgx otherwise returns `time.Local` and API output would carry the server's offset.
 - **Event times are truncated to whole seconds** (calendar granularity; keeps text-encoded SQLite timestamps comparable).
 
 ## Behavior
