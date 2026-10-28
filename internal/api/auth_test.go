@@ -155,7 +155,7 @@ func TestSecurityHeaders(t *testing.T) {
 		resp := bob.do("GET", path, nil)
 		h := resp.Header
 		csp := h.Get("Content-Security-Policy")
-		if !strings.Contains(csp, "script-src 'self'") || !strings.Contains(csp, "frame-ancestors 'none'") || strings.Contains(csp, "unsafe-eval") {
+		if !strings.Contains(csp, "script-src 'self'") || !strings.Contains(csp, "frame-ancestors 'none'") || strings.Contains(csp, "unsafe-eval") || strings.Contains(csp, " https:") {
 			t.Errorf("%s CSP: %q", path, csp)
 		}
 		if h.Get("X-Content-Type-Options") != "nosniff" || h.Get("Referrer-Policy") != "same-origin" {
@@ -181,5 +181,18 @@ func TestRateLimitWrites(t *testing.T) {
 	}
 	if !got429 {
 		t.Fatal("write burst was never rate limited")
+	}
+}
+
+func TestCallbackRateLimited(t *testing.T) {
+	t.Parallel()
+	e := newEnv(t, options{})
+	bob := e.login(t, "bob")
+	var last int
+	for range 15 {
+		last = bob.status("GET", "/auth/callback", nil)
+	}
+	if last != 429 {
+		t.Fatalf("callback not rate limited, last status %d", last)
 	}
 }

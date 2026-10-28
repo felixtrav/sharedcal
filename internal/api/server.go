@@ -40,8 +40,10 @@ type Deps struct {
 	SPA            fs.FS
 	TrustedProxies []netip.Prefix
 	MaxUpload      int64
-	Version        string
-	Registry       prometheus.Registerer
+	// ImgSources are origins (besides this one) allowed to serve images.
+	ImgSources []string
+	Version    string
+	Registry   prometheus.Registerer
 }
 
 // Server is the HTTP handler.
@@ -53,7 +55,7 @@ type Server struct {
 	clientIP func(*http.Request) string
 	actors   *actorCache
 
-	writeLimit, uploadLimit, presenceLimit, authLimit *limiter
+	writeLimit, uploadLimit, presenceLimit, authLimit, callbackLimit *limiter
 
 	ready atomic.Bool
 }
@@ -67,6 +69,7 @@ func New(d Deps) *Server {
 		uploadLimit:   newLimiter(20, 10),
 		presenceLimit: newLimiter(30, 10),
 		authLimit:     newLimiter(60, 30),
+		callbackLimit: newLimiter(10, 10),
 	}
 	s.actors = newActorCache(d.DB, 10*time.Second)
 	s.stream = &realtime.Stream{
@@ -85,7 +88,7 @@ func New(d Deps) *Server {
 	r.Use(s.recoverer)
 	r.Use(requestLogger(d.Log))
 	r.Use(m.middleware)
-	r.Use(securityHeaders(d.Auth.Secure()))
+	r.Use(securityHeaders(d.Auth.Secure(), d.ImgSources))
 	r.Use(d.Auth.Authenticate)
 	r.Use(s.rateLimit)
 	s.router = r
@@ -137,7 +140,7 @@ func (s *Server) SetReady(v bool) { s.ready.Store(v) }
 
 // RunBackground runs limiter housekeeping until ctx ends.
 func (s *Server) RunBackground(ctx context.Context) {
-	for _, l := range []*limiter{s.writeLimit, s.uploadLimit, s.presenceLimit, s.authLimit} {
+	for _, l := range []*limiter{s.writeLimit, s.uploadLimit, s.presenceLimit, s.authLimit, s.callbackLimit} {
 		go l.run(ctx)
 	}
 }

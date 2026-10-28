@@ -136,6 +136,7 @@ Kubernetes secrets. Setting both forms is an error.
 | `SESSION_IDLE_TTL` | `168h` | Session ends after this much inactivity. |
 | `SESSION_MAX_TTL` | `720h` | Absolute session lifetime. Must be ≥ `SESSION_IDLE_TTL`. |
 | `TRUSTED_PROXIES` | empty | Comma-separated IPs/CIDRs whose `X-Forwarded-*` headers are trusted (your reverse proxy). |
+| `CSP_IMG_SOURCES` | empty | Extra `https://` origins allowed to serve images (e.g. an avatar CDN). The OIDC issuer's origin is always allowed, so IdP avatars work by default. |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error`. |
 | `LOG_FORMAT` | `json` | `json` or `text`. |
 | `METRICS_ADDR` | empty (off) | `host:port` for Prometheus `/metrics`, e.g. `127.0.0.1:9090`. Keep it private. |

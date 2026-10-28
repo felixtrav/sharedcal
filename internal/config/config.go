@@ -54,6 +54,8 @@ type Config struct {
 	SessionMaxTTL  time.Duration
 
 	TrustedProxies []netip.Prefix
+	// ImgSources are extra origins the CSP allows images from (IdP avatars).
+	ImgSources []string
 
 	LogLevel  string
 	LogFormat string
@@ -155,6 +157,18 @@ func LoadFrom(getenv Getenv) (*Config, error) {
 			continue
 		}
 		c.TrustedProxies = append(c.TrustedProxies, pfx)
+	}
+
+	if iss, err := url.Parse(c.OIDCIssuer); err == nil && iss.Scheme == "https" && iss.Host != "" {
+		c.ImgSources = append(c.ImgSources, "https://"+iss.Host)
+	}
+	for _, o := range p.list("CSP_IMG_SOURCES") {
+		u, err := url.Parse(o)
+		if err != nil || u.Scheme != "https" || u.Host == "" || u.Path != "" || u.RawQuery != "" || strings.ContainsAny(o, " ;,'") {
+			p.errf("CSP_IMG_SOURCES: %q must be an https origin like https://cdn.example.com", o)
+			continue
+		}
+		c.ImgSources = append(c.ImgSources, "https://"+u.Host)
 	}
 
 	c.LogLevel = strings.ToLower(p.str("LOG_LEVEL", "info"))

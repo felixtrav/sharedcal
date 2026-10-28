@@ -173,6 +173,9 @@ func serve(ctx context.Context) error {
 		}
 		defer svc.Wait()
 
+		if cfg.Secure() && len(cfg.TrustedProxies) == 0 {
+			log.Warn("APP_URL is https but TRUSTED_PROXIES is empty: all clients will appear to share the proxy's IP, so rate limits are shared and client IPs are wrong")
+		}
 		clientIP := api.ClientIP(cfg.TrustedProxies)
 		authSvc, err := auth.New(auth.Config{
 			AppURL: cfg.AppURL, Issuer: cfg.OIDCIssuer, ClientID: cfg.OIDCClientID, ClientSecret: cfg.OIDCClientSecret,
@@ -188,7 +191,7 @@ func serve(ctx context.Context) error {
 
 		srv := api.New(api.Deps{
 			Domain: svc, Auth: authSvc, DB: db, Broker: broker, Presence: presence, Log: log,
-			SPA: web.Dist(), TrustedProxies: cfg.TrustedProxies, MaxUpload: cfg.AttachmentMaxSize,
+			SPA: web.Dist(), TrustedProxies: cfg.TrustedProxies, MaxUpload: cfg.AttachmentMaxSize, ImgSources: cfg.ImgSources,
 			Version: version, Registry: reg,
 		})
 		bgCtx, cancelBG := context.WithCancel(ctx)

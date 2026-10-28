@@ -60,9 +60,11 @@ func ClientIP(trusted []netip.Prefix) func(*http.Request) string {
 }
 
 // securityHeaders sets the headers every response carries.
-func securityHeaders(secure bool) func(http.Handler) http.Handler {
-	const csp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
-		"img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self'; " +
+// imgSources are extra origins allowed to serve images (avatars from the
+// identity provider); everything else must be same-origin.
+func securityHeaders(secure bool, imgSources []string) func(http.Handler) http.Handler {
+	csp := "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
+		"img-src 'self' data: blob:" + joinSources(imgSources) + "; font-src 'self' data:; connect-src 'self'; " +
 		"object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +81,14 @@ func securityHeaders(secure bool) func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+func joinSources(src []string) string {
+	var b strings.Builder
+	for _, o := range src {
+		b.WriteString(" " + o)
+	}
+	return b.String()
 }
 
 // requestLogger logs one structured line per request. Secrets in paths
@@ -233,6 +243,12 @@ func (s *Server) rateLimit(next http.Handler) http.Handler {
 					_, _ = w.Write([]byte(`<!doctype html><meta charset="utf-8"><title>Slow down · SharedCal</title><body style="font:16px system-ui;max-width:32rem;margin:15vh auto;padding:0 1.5rem"><h1>Too many sign-in attempts</h1><p>Please wait a minute, then <a href="/auth/login">try again</a>.</p>`))
 					return
 				}
+				tooMany(w, retry)
+				return
+			}
+		}
+		if r.URL.Path == "/auth/callback" {
+			if ok, retry := s.callbackLimit.allow(s.clientIP(r)); !ok {
 				tooMany(w, retry)
 				return
 			}
