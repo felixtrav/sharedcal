@@ -77,13 +77,25 @@ jobs:
           [ -f web/dist/index.html ] || echo '<!doctype html><title>SharedCal</title>' > web/dist/index.html
       - name: go vet
         if: matrix.db == 'sqlite'
-        run: go vet $(go list ./... | grep -v /node_modules/)
+        run: |
+          set -o pipefail
+          pkgs=$(go list ./... | grep -v /node_modules/)
+          mapfile -t pkgs <<< "$pkgs"
+          go vet "${pkgs[@]}"
       - name: go test (race)
         if: matrix.db == 'sqlite'
-        run: go test -race -count=1 $(go list ./... | grep -v /node_modules/)
+        run: |
+          set -o pipefail
+          pkgs=$(go list ./... | grep -v /node_modules/)
+          mapfile -t pkgs <<< "$pkgs"
+          go test -race -count=1 "${pkgs[@]}"
       - name: go test
         if: matrix.db != 'sqlite'
-        run: go test -count=1 $(go list ./... | grep -v /node_modules/)
+        run: |
+          set -o pipefail
+          pkgs=$(go list ./... | grep -v /node_modules/)
+          mapfile -t pkgs <<< "$pkgs"
+          go test -count=1 "${pkgs[@]}"
 
   go-lint:
     name: Go lint and vulnerabilities
@@ -104,11 +116,22 @@ jobs:
           mkdir -p web/dist
           [ -f web/dist/index.html ] || echo '<!doctype html><title>SharedCal</title>' > web/dist/index.html
       - name: gofmt
-        run: test -z "$(gofmt -l $(git ls-files '*.go'))" || { gofmt -l $(git ls-files '*.go'); exit 1; }
+        run: |
+          mapfile -t files < <(git ls-files '*.go')
+          unformatted=$(gofmt -l "${files[@]}")
+          [ -z "$unformatted" ] || { echo "$unformatted"; exit 1; }
       - name: staticcheck
-        run: go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 $(go list ./... | grep -v /node_modules/)
+        run: |
+          set -o pipefail
+          pkgs=$(go list ./... | grep -v /node_modules/)
+          mapfile -t pkgs <<< "$pkgs"
+          go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 "${pkgs[@]}"
       - name: govulncheck
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 $(go list ./... | grep -v /node_modules/)
+        run: |
+          set -o pipefail
+          pkgs=$(go list ./... | grep -v /node_modules/)
+          mapfile -t pkgs <<< "$pkgs"
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 "${pkgs[@]}"
 
   web:
     name: Web
