@@ -138,6 +138,52 @@ jobs:
       - name: Bundle size budget
         run: npm run check:size
 
+  pre-commit:
+    name: Pre-commit hooks and secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # gitleaks scans the full history
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.13"
+      - name: Web dependencies
+        # The prettier, eslint and tsc hooks run from web/node_modules.
+        working-directory: web
+        run: npm ci
+      - name: Web placeholder
+        # web/embed.go embeds web/dist; go vet and staticcheck need the file.
+        run: |
+          mkdir -p web/dist
+          [ -f web/dist/index.html ] || echo '<!doctype html><title>SharedCal</title>' > web/dist/index.html
+      - name: gitleaks (full history)
+        # The gitleaks hook only scans staged changes, so it finds nothing
+        # under --all-files; scan every commit here instead.
+        run: go run github.com/zricethezav/gitleaks/v8@v8.30.1 git --redact --verbose
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-py3.13-${{ hashFiles('.pre-commit-config.yaml') }}
+      - name: pre-commit
+        env:
+          SKIP: gitleaks
+        run: |
+          python -m pip install pre-commit==4.7.0
+          pre-commit run --all-files --show-diff-on-failure --color=always
+
   e2e:
     name: End-to-end (Playwright)
     runs-on: ubuntu-latest

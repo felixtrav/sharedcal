@@ -78,8 +78,9 @@ test a fresh, migrated database:
 
 CI runs the Go suite on **SQLite (with `-race`), PostgreSQL 16, MySQL 8.4 and
 MariaDB 10.11**, as well as the web checks (audit, lint, typecheck, Vitest
-including the theme contrast check, build, bundle size budget), Playwright and
-a multi-arch image build. All of it must be green before merging.
+including the theme contrast check, build, bundle size budget), every
+pre-commit hook plus a gitleaks scan of the full history, Playwright and a
+multi-arch image build. All of it must be green before merging.
 
 ## Adding a migration
 
