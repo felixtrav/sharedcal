@@ -189,6 +189,8 @@ so it can start at the same time as PocketID.
 
 - On each sign-in the role is computed from the `OIDC_ROLE_CLAIM` claim. The
   **highest** matching role wins, and group names match case-insensitively.
+  Only groups listed in `OIDC_*_GROUPS` are stored; other IdP groups are
+  discarded at sign-in.
 - No match: the user gets `DEFAULT_ROLE`, or is refused if
   `ALLOW_UNMAPPED_USERS=false`.
 - **Role source:** a user's role is either `idp` (recomputed at every login) or

@@ -67,7 +67,7 @@ func (s *Service) Provision(ctx context.Context, id auth.Identity) (*store.User,
 	if id.Issuer == "" || id.Subject == "" {
 		return nil, auth.ErrLoginRefused
 	}
-	groupsJSON, _ := json.Marshal(id.Groups)
+	groupsJSON, _ := json.Marshal(s.Opts.Roles.Mapped(id.Groups))
 	bootstrap := s.isBootstrap(id)
 	mapped, _, allowed := s.Opts.Roles.Resolve(id.Groups)
 

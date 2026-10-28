@@ -51,6 +51,24 @@ func (m RoleMapping) Resolve(groups []string) (role authz.Role, matched, ok bool
 	return def, false, true
 }
 
+// Mapped returns the groups that appear in any of the role lists
+// (case-insensitive), so unrelated IdP groups are not stored.
+func (m RoleMapping) Mapped(groups []string) []string {
+	known := map[string]bool{}
+	for _, list := range [][]string{m.AdminGroups, m.WriterGroups, m.ViewerGroups} {
+		for _, g := range list {
+			known[strings.ToLower(strings.TrimSpace(g))] = true
+		}
+	}
+	out := []string{}
+	for _, g := range groups {
+		if known[strings.ToLower(strings.TrimSpace(g))] {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
 // GroupsFromClaim extracts a list of group names from a raw claim value,
 // accepting an array of strings or a single (comma-separated) string.
 func GroupsFromClaim(v any) []string {

@@ -41,6 +41,16 @@ func TestRoleMappingResolve(t *testing.T) {
 	}
 }
 
+func TestMappedDropsUnrelatedGroups(t *testing.T) {
+	m := RoleMapping{AdminGroups: []string{"Cal-Admins"}, ViewerGroups: []string{" cal-viewers"}}
+	if g := m.Mapped([]string{"cal-admins", "family", "CAL-VIEWERS", "vpn-users"}); strings.Join(g, ",") != "cal-admins,CAL-VIEWERS" {
+		t.Errorf("mapped: %v", g)
+	}
+	if g := m.Mapped(nil); g == nil || len(g) != 0 {
+		t.Errorf("no groups must store an empty list, got %#v", g)
+	}
+}
+
 func TestGroupsFromClaim(t *testing.T) {
 	if g := GroupsFromClaim([]any{"a", 1, " b ", ""}); strings.Join(g, ",") != "a,b" {
 		t.Errorf("array: %v", g)
