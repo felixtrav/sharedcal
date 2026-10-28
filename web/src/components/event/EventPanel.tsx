@@ -56,11 +56,7 @@ export function EventPanel(props: Props) {
         <>
           <PanelHeader headingRef={headingRef} title={t('event.newTitle')} onClose={props.onClose} />
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-6">
-            <EventForm
-              mode={{ kind: 'create', draft: props.mode.draft }}
-              fmt={props.fmt}
-              onDone={(ev) => (ev ? props.onCreated(ev) : props.onClose())}
-            />
+            <EventForm mode={{ kind: 'create', draft: props.mode.draft }} fmt={props.fmt} onDone={(ev) => (ev ? props.onCreated(ev) : props.onClose())} />
           </div>
         </>
       ) : (
@@ -174,12 +170,7 @@ function ViewPanel({
 
   return (
     <>
-      <PanelHeader
-        headingRef={headingRef}
-        title={event.title || t('event.untitled')}
-        onClose={onClose}
-        extra={<PresenceAvatars eventId={event.id} />}
-      />
+      <PanelHeader headingRef={headingRef} title={event.title || t('event.untitled')} onClose={onClose} extra={<PresenceAvatars eventId={event.id} />} />
       <Tabs value={tab} onValueChange={(v) => onTab(v as PanelTab)} className="flex min-h-0 flex-1 flex-col">
         <div className="px-5">
           <TabsList className="w-full">

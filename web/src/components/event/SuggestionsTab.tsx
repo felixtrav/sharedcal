@@ -270,7 +270,14 @@ function SuggestionReview({
             if (!ch) return null
             const isConflict = ch.conflict && s.status === 'open'
             return (
-              <li key={f} className={cn('rounded-lg border border-border p-3', isConflict && 'border-destructive/50', missing.includes(f) && 'ring-2 ring-destructive/50')}>
+              <li
+                key={f}
+                className={cn(
+                  'rounded-lg border border-border p-3',
+                  isConflict && 'border-destructive/50',
+                  missing.includes(f) && 'ring-2 ring-destructive/50',
+                )}
+              >
                 <div className="flex items-center gap-2">
                   {canReview ? (
                     <Checkbox

@@ -1,14 +1,6 @@
 import type { TFunction } from 'i18next'
 import type { CalEvent } from '@/api/types'
-import {
-  addDays,
-  dateInZone,
-  formatDateMedium,
-  formatPlainDate,
-  formatTimeShort,
-  formatWeekday,
-  type FormatOptions,
-} from './time'
+import { addDays, dateInZone, formatDateMedium, formatPlainDate, formatTimeShort, formatWeekday, type FormatOptions } from './time'
 
 type Timing = Pick<CalEvent, 'allDay' | 'start' | 'end' | 'startUtc' | 'endUtc'>
 
@@ -54,11 +46,7 @@ function eventWhenUnsafe(ev: Timing, o: FormatOptions, t: TFunction): string {
 
 /** Screen-reader label for an event chip. */
 export function eventAriaLabel(ev: CalEvent, o: FormatOptions, t: TFunction): string {
-  const parts = [
-    ev.title || t('event.untitled'),
-    eventWhen(ev, o, t),
-    t('event.ownedBy', { name: ev.owner.name }),
-  ]
+  const parts = [ev.title || t('event.untitled'), eventWhen(ev, o, t), t('event.ownedBy', { name: ev.owner.name })]
   if (ev.status === 'tentative') parts.push(t('event.status.tentative'))
   if (ev.rrule || ev.occurrence) parts.push(t('event.recurring'))
   if (ev.counts.openSuggestions > 0 && ev.permissions.review) {

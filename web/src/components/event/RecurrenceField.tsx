@@ -94,12 +94,7 @@ export function RecurrenceField({
             <label htmlFor={`${id}-freq`} className="sr-only">
               {t('recurrence.frequency')}
             </label>
-            <NativeSelect
-              id={`${id}-freq`}
-              value={rule.freq}
-              onChange={(e) => update({ freq: e.target.value as Freq })}
-              className="w-auto"
-            >
+            <NativeSelect id={`${id}-freq`} value={rule.freq} onChange={(e) => update({ freq: e.target.value as Freq })} className="w-auto">
               {(['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'] as const).map((f) => (
                 <option key={f} value={f}>
                   {t(`recurrence.units.${f.toLowerCase()}`, { count: rule.interval })}

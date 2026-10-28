@@ -27,7 +27,10 @@ export function ActivityList({ items, fmt, showEventLinks }: { items: ActivityIt
         const title = (it.after?.title ?? it.before?.title) as string | undefined
         return (
           <li key={it.id} className="relative">
-            <span className="absolute -start-[1.6875rem] top-1 flex size-3 items-center justify-center rounded-full border-2 border-card bg-muted-foreground/60" aria-hidden />
+            <span
+              className="absolute -start-[1.6875rem] top-1 flex size-3 items-center justify-center rounded-full border-2 border-card bg-muted-foreground/60"
+              aria-hidden
+            />
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
               {it.actor ? <UserAvatar name={it.actor.name} src={it.actor.avatarUrl} className="size-5" /> : null}
               <span className="font-medium">{it.actor?.name ?? t('activity.system')}</span>

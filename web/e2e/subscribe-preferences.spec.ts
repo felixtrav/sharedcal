@@ -57,6 +57,14 @@ test('preferences save immediately and change how the calendar renders', async (
   await expect(page.getByText('13:00').first()).toBeVisible()
 
   // Restore defaults for other tests.
-  await api(page, 'PUT', '/api/me/preferences', { themeId: 'default', colorMode: 'system', timeZone: '', weekStart: 1, clock24h: false, defaultView: 'month', density: 'comfortable' })
+  await api(page, 'PUT', '/api/me/preferences', {
+    themeId: 'default',
+    colorMode: 'system',
+    timeZone: '',
+    weekStart: 1,
+    clock24h: false,
+    defaultView: 'month',
+    density: 'comfortable',
+  })
   await context.close()
 })

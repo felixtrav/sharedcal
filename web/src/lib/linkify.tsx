@@ -25,13 +25,7 @@ export function splitLinks(text: string): Piece[] {
 export function Linkified({ text }: { text: string }): ReactNode {
   return splitLinks(text).map((p, i) =>
     p.type === 'link' ? (
-      <a
-        key={i}
-        href={p.href}
-        target="_blank"
-        rel="noopener noreferrer nofollow"
-        className="text-primary underline underline-offset-2 break-all"
-      >
+      <a key={i} href={p.href} target="_blank" rel="noopener noreferrer nofollow" className="text-primary underline underline-offset-2 break-all">
         {p.value}
       </a>
     ) : (

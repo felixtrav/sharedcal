@@ -127,9 +127,21 @@ describe('applyStreamMessage', () => {
     qc.setQueryData<EventDetail>(keys.event('ev1'), makeDetail())
     qc.setQueryData(keys.comments('ev1'), { comments: [makeComment()] })
     const att = {
-      id: 'a1', eventId: 'ev1', commentId: null, filename: 'flyer.pdf', contentType: 'application/pdf', size: 10,
-      width: null, height: null, isImage: false, url: '/x', thumbUrl: null, scanStatus: 'pending' as const,
-      uploader: { id: 'u', name: 'U', avatarUrl: '' }, createdAt: '2026-10-01T00:00:00Z', permissions: { delete: true },
+      id: 'a1',
+      eventId: 'ev1',
+      commentId: null,
+      filename: 'flyer.pdf',
+      contentType: 'application/pdf',
+      size: 10,
+      width: null,
+      height: null,
+      isImage: false,
+      url: '/x',
+      thumbUrl: null,
+      scanStatus: 'pending' as const,
+      uploader: { id: 'u', name: 'U', avatarUrl: '' },
+      createdAt: '2026-10-01T00:00:00Z',
+      permissions: { delete: true },
     }
     applyStreamMessage(qc, 'attachment.added', att)
     applyStreamMessage(qc, 'attachment.scanned', { ...att, scanStatus: 'clean' })
@@ -162,8 +174,15 @@ describe('applyStreamMessage', () => {
   it('prepends inbox items and updates the badge', () => {
     qc.setQueryData(keys.inbox, { items: [] as Notification[], unread: 0 })
     const item: Notification = {
-      id: 'n1', kind: 'comment.mention', subjectType: 'comment', subjectId: 'c1', eventId: 'ev1', eventTitle: 'X',
-      actor: null, readAt: null, createdAt: '2026-10-01T00:00:00Z',
+      id: 'n1',
+      kind: 'comment.mention',
+      subjectType: 'comment',
+      subjectId: 'c1',
+      eventId: 'ev1',
+      eventTitle: 'X',
+      actor: null,
+      readAt: null,
+      createdAt: '2026-10-01T00:00:00Z',
     }
     applyStreamMessage(qc, 'inbox.item', { item, unread: 3 })
     expect(qc.getQueryData(keys.inbox)).toEqual({ items: [item], unread: 3 })
@@ -181,7 +200,13 @@ describe('applyStreamMessage', () => {
     applyStreamMessage(
       qc,
       'presence',
-      { eventId: 'ev1', viewers: [{ id: 'me', name: 'Me', avatarUrl: '', state: 'viewing' }, { id: 'd', name: 'Dana', avatarUrl: '', state: 'editing' }] },
+      {
+        eventId: 'ev1',
+        viewers: [
+          { id: 'me', name: 'Me', avatarUrl: '', state: 'viewing' },
+          { id: 'd', name: 'Dana', avatarUrl: '', state: 'editing' },
+        ],
+      },
       { meId: 'me', onPresence },
     )
     expect(onPresence).toHaveBeenCalledWith('ev1', [{ id: 'd', name: 'Dana', avatarUrl: '', state: 'editing' }])

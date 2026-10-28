@@ -26,7 +26,11 @@ export function TagPicker({ value, onChange, labelledBy }: { value: string[]; on
             )}
             style={on ? { background: `var(--${tag.colorSlot})`, color: `var(--${tag.colorSlot}-foreground)` } : undefined}
           >
-            {on ? <CheckIcon className="size-3" aria-hidden /> : <span className="size-2.5 rounded-full" style={{ background: `var(--${tag.colorSlot})` }} aria-hidden />}
+            {on ? (
+              <CheckIcon className="size-3" aria-hidden />
+            ) : (
+              <span className="size-2.5 rounded-full" style={{ background: `var(--${tag.colorSlot})` }} aria-hidden />
+            )}
             {tag.name}
             {on && idx === 0 && value.length > 1 ? <span className="sr-only">{t('event.primaryTag')}</span> : null}
           </button>

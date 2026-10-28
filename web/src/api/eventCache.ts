@@ -19,16 +19,10 @@ export function restoreSnapshot(qc: QueryClient, snap: CacheSnapshot) {
   for (const [key, data] of snap) if (data !== undefined) qc.setQueryData(key, data)
 }
 
-const sameOccurrence = (a: CalEvent, id: string, occurrence: string | null | undefined) =>
-  a.id === id && (occurrence ? a.occurrence === occurrence : true)
+const sameOccurrence = (a: CalEvent, id: string, occurrence: string | null | undefined) => a.id === id && (occurrence ? a.occurrence === occurrence : true)
 
 /** Optimistically patch an event (or one occurrence) in every cached range and the detail. */
-export function patchEventInCache(
-  qc: QueryClient,
-  id: string,
-  occurrence: string | null | undefined,
-  patch: Partial<CalEvent>,
-) {
+export function patchEventInCache(qc: QueryClient, id: string, occurrence: string | null | undefined, patch: Partial<CalEvent>) {
   for (const q of qc.getQueryCache().findAll({ queryKey: keys.eventsAll })) {
     const data = q.state.data as EventsData | undefined
     if (!data?.events.some((x) => sameOccurrence(x, id, occurrence))) continue

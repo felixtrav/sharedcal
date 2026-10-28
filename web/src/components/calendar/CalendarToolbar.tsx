@@ -86,10 +86,7 @@ export const CalendarToolbar = forwardRef<HTMLInputElement, Props>(function Cale
   )
 })
 
-const SearchBox = forwardRef<HTMLInputElement, { value: string; onChange: (q: string) => void }>(function SearchBox(
-  { value, onChange },
-  ref,
-) {
+const SearchBox = forwardRef<HTMLInputElement, { value: string; onChange: (q: string) => void }>(function SearchBox({ value, onChange }, ref) {
   const { t } = useTranslation()
   const [text, setText] = useState(value)
   const [prevValue, setPrevValue] = useState(value)

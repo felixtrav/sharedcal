@@ -42,8 +42,7 @@ describe('event form model', () => {
   it('validates like the server', () => {
     const ok = formFromEvent(makeEvent())
     expect(eventFormSchema.safeParse(ok).success).toBe(true)
-    const issues = (v: Partial<typeof ok>) =>
-      eventFormSchema.safeParse({ ...ok, ...v }).error?.issues.map((i) => i.message) ?? []
+    const issues = (v: Partial<typeof ok>) => eventFormSchema.safeParse({ ...ok, ...v }).error?.issues.map((i) => i.message) ?? []
     expect(issues({ title: '  ' })).toContain('validation.titleRequired')
     expect(issues({ title: 'x'.repeat(201) })).toContain('validation.titleTooLong')
     expect(issues({ endTime: '18:00' })).toContain('validation.endBeforeStart')

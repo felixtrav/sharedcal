@@ -37,7 +37,10 @@ export function ActivityPage() {
 
   return (
     <Page>
-      <PageHeader title={me.permissions.admin ? t('activity.title') : t('activity.myTitle')} description={me.permissions.admin ? t('activity.description') : t('activity.myDescription')} />
+      <PageHeader
+        title={me.permissions.admin ? t('activity.title') : t('activity.myTitle')}
+        description={me.permissions.admin ? t('activity.description') : t('activity.myDescription')}
+      />
       <form
         className="mb-6 grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-3"
         onSubmit={(e) => {

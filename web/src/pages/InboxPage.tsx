@@ -119,14 +119,26 @@ export function InboxPage() {
               const Icon = ICONS[n.kind] ?? InboxIcon
               const unread = !n.readAt
               return (
-                <li key={n.id} className={cn('group flex items-center gap-2 rounded-xl border border-transparent pe-2 transition-colors hover:bg-accent', unread && 'border-border bg-card')}>
+                <li
+                  key={n.id}
+                  className={cn(
+                    'group flex items-center gap-2 rounded-xl border border-transparent pe-2 transition-colors hover:bg-accent',
+                    unread && 'border-border bg-card',
+                  )}
+                >
                   <button
                     type="button"
                     onClick={() => open(n)}
                     className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-3 text-start outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   >
                     <span className="relative">
-                      {n.actor ? <UserAvatar name={n.actor.name} src={n.actor.avatarUrl} className="size-9" /> : <span className="flex size-9 items-center justify-center rounded-full bg-muted"><Icon className="size-4" aria-hidden /></span>}
+                      {n.actor ? (
+                        <UserAvatar name={n.actor.name} src={n.actor.avatarUrl} className="size-9" />
+                      ) : (
+                        <span className="flex size-9 items-center justify-center rounded-full bg-muted">
+                          <Icon className="size-4" aria-hidden />
+                        </span>
+                      )}
                       <span className="absolute -end-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-card ring-1 ring-border">
                         <Icon className="size-3 text-muted-foreground" aria-hidden />
                       </span>

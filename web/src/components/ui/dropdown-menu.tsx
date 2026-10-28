@@ -25,11 +25,7 @@ export function DropdownMenuContent({ className, sideOffset = 6, ...props }: Rea
 const itemClass =
   "relative flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 text-sm outline-none select-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0 [&_svg:not([class*='text-'])]:text-muted-foreground"
 
-export function DropdownMenuItem({
-  className,
-  destructive,
-  ...props
-}: React.ComponentProps<typeof M.Item> & { destructive?: boolean }) {
+export function DropdownMenuItem({ className, destructive, ...props }: React.ComponentProps<typeof M.Item> & { destructive?: boolean }) {
   return <M.Item className={cn(itemClass, destructive && 'text-destructive focus:text-destructive', className)} {...props} />
 }
 

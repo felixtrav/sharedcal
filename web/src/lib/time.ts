@@ -169,7 +169,11 @@ export function formatWeekday(ms: number, o: FormatOptions) {
 }
 
 /** A calendar date (YYYY-MM-DD) formatted without zone shifts. */
-export function formatPlainDate(date: string, opts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }, locale?: string) {
+export function formatPlainDate(
+  date: string,
+  opts: Intl.DateTimeFormatOptions = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' },
+  locale?: string,
+) {
   const [y, m, d] = date.split('-').map(Number)
   return new Intl.DateTimeFormat(locale, { ...opts, timeZone: 'UTC' }).format(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1))
 }

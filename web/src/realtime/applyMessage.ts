@@ -1,16 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { RangeParams } from '@/api/endpoints'
 import { keys } from '@/api/keys'
-import type {
-  Attachment,
-  CalEvent,
-  Comment,
-  EventDetail,
-  Notification,
-  PresenceViewer,
-  Suggestion,
-  Tag,
-} from '@/api/types'
+import type { Attachment, CalEvent, Comment, EventDetail, Notification, PresenceViewer, Suggestion, Tag } from '@/api/types'
 
 type EventsData = { events: CalEvent[] }
 type CommentsData = { comments: Comment[] }
@@ -120,8 +111,7 @@ function applyEventDeleted(qc: QueryClient, id: string, ctx: ApplyContext) {
 }
 
 function bumpCount(qc: QueryClient, eventId: string, field: keyof CalEvent['counts'], delta: number) {
-  const fix = (ev: CalEvent): CalEvent =>
-    ev.id === eventId ? { ...ev, counts: { ...ev.counts, [field]: Math.max(0, ev.counts[field] + delta) } } : ev
+  const fix = (ev: CalEvent): CalEvent => (ev.id === eventId ? { ...ev, counts: { ...ev.counts, [field]: Math.max(0, ev.counts[field] + delta) } } : ev)
   for (const q of eventRangeQueries(qc)) {
     const data = q.state.data as EventsData | undefined
     if (!data || !data.events.some((x) => x.id === eventId)) continue
@@ -196,9 +186,7 @@ function applyAttachmentRemoved(qc: QueryClient, p: { id: string; eventId: strin
   const data = qc.getQueryData<CommentsData>(key)
   if (!data) return
   qc.setQueryData<CommentsData>(key, {
-    comments: data.comments.map((c) =>
-      c.id === p.commentId ? { ...c, attachments: c.attachments.filter((x) => x.id !== p.id) } : c,
-    ),
+    comments: data.comments.map((c) => (c.id === p.commentId ? { ...c, attachments: c.attachments.filter((x) => x.id !== p.id) } : c)),
   })
 }
 
@@ -263,7 +251,10 @@ export function applyStreamMessage(qc: QueryClient, type: string, payload: unkno
       return
     case 'presence': {
       const p = payload as { eventId: string; viewers: PresenceViewer[] }
-      ctx.onPresence?.(p.eventId, p.viewers.filter((v) => v.id !== ctx.meId))
+      ctx.onPresence?.(
+        p.eventId,
+        p.viewers.filter((v) => v.id !== ctx.meId),
+      )
       return
     }
     case 'settings.changed':
@@ -298,4 +289,3 @@ export const STREAM_TYPES = [
   'settings.changed',
   'resync',
 ] as const
-

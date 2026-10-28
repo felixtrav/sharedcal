@@ -105,10 +105,7 @@ export async function createEvent(page: Page, title: string, date = midWeekDate(
 }
 
 /** A valid 8×8 PNG for upload tests (the server re-encodes it). */
-export const TINY_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAGElEQVR4nGJhqGCQY8CCWMAkFjg4JQADAFSvAj003n0VAAAAAElFTkSuQmCC',
-  'base64',
-)
+export const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAGElEQVR4nGJhqGCQY8CCWMAkFjg4JQADAFSvAj003n0VAAAAAElFTkSuQmCC', 'base64')
 
 export type ApiRangeEvent = { id: string; title: string; occurrence?: string | null; version: number }
 

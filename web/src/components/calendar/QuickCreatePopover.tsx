@@ -60,11 +60,7 @@ export function QuickCreatePopover({
       }}
     >
       <PopoverAnchor asChild>
-        <span
-          aria-hidden
-          className="pointer-events-none fixed size-0"
-          style={{ left: slot?.x ?? 0, top: slot?.y ?? 0 }}
-        />
+        <span aria-hidden className="pointer-events-none fixed size-0" style={{ left: slot?.x ?? 0, top: slot?.y ?? 0 }} />
       </PopoverAnchor>
       <PopoverContent
         className="w-80"

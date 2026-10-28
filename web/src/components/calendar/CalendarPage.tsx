@@ -51,8 +51,7 @@ const FC_VIEW: Record<CalendarView, string> = {
   day: 'timeGridDay',
   agenda: 'agenda',
 }
-const fromFcView = (type: string): CalendarView =>
-  (Object.entries(FC_VIEW).find(([, v]) => v === type)?.[0] as CalendarView | undefined) ?? 'month'
+const fromFcView = (type: string): CalendarView => (Object.entries(FC_VIEW).find(([, v]) => v === type)?.[0] as CalendarView | undefined) ?? 'month'
 
 const plugins = [dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]
 
@@ -136,9 +135,7 @@ export function CalendarPage() {
 
   // --- Panel -----------------------------------------------------------------
 
-  const panel: PanelMode | null = search.event
-    ? { kind: 'view', id: search.event, occurrence: search.occurrence ?? null }
-    : draft
+  const panel: PanelMode | null = search.event ? { kind: 'view', id: search.event, occurrence: search.occurrence ?? null } : draft
 
   const closePanel = () => {
     setDraft(null)
@@ -285,12 +282,7 @@ export function CalendarPage() {
     }
 
     const snap = snapshotEvent(qc, ev.id)
-    patchEventInCache(
-      qc,
-      ev.id,
-      recurring ? ev.occurrence : null,
-      allDay ? { start, end, allDay: true } : { startUtc: start, endUtc: end, allDay: false },
-    )
+    patchEventInCache(qc, ev.id, recurring ? ev.occurrence : null, allDay ? { start, end, allDay: true } : { startUtc: start, endUtc: end, allDay: false })
     markOwnWrite(ev.id)
     try {
       const updated = await endpoints.updateEvent(ev.id, ev.version, body, scope ? { scope, occurrence: ev.occurrence } : undefined)
@@ -359,9 +351,7 @@ export function CalendarPage() {
           <Button
             variant="ghost"
             size="xs"
-            onClick={() =>
-              void navigate({ search: (prev) => ({ ...prev, q: undefined, tags: undefined, owners: undefined }), replace: true })
-            }
+            onClick={() => void navigate({ search: (prev) => ({ ...prev, q: undefined, tags: undefined, owners: undefined }), replace: true })}
           >
             <XIcon aria-hidden />
             {t('calendar.clearAll')}
@@ -370,7 +360,10 @@ export function CalendarPage() {
       ) : null}
 
       {eventsQ.isError ? (
-        <div role="alert" className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-2 text-sm sm:mx-6">
+        <div
+          role="alert"
+          className="mx-4 mb-2 flex items-center justify-between gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-2 text-sm sm:mx-6"
+        >
           <span>{t('calendar.loadFailed')}</span>
           <Button size="xs" variant="outline" onClick={() => void eventsQ.refetch()}>
             {t('common.retry')}
@@ -426,9 +419,7 @@ export function CalendarPage() {
 
       <QuickCreatePopover
         slot={slot}
-        whenText={
-          slot ? eventWhen({ allDay: slot.allDay, start: slot.start, end: slot.end, startUtc: slot.start, endUtc: slot.end }, fmt, t) : ''
-        }
+        whenText={slot ? eventWhen({ allDay: slot.allDay, start: slot.start, end: slot.end, startUtc: slot.start, endUtc: slot.end }, fmt, t) : ''}
         pending={creating}
         onClose={closeSlot}
         onCreate={(title) => void quickCreate(title)}
@@ -448,11 +439,7 @@ export function CalendarPage() {
           ghost
             ? t('calendar.suggestMoveBody', {
                 name: ghost.ev.owner.name,
-                when: eventWhen(
-                  { allDay: ghost.allDay, start: ghost.start, end: ghost.end, startUtc: ghost.start, endUtc: ghost.end },
-                  fmt,
-                  t,
-                ),
+                when: eventWhen({ allDay: ghost.allDay, start: ghost.start, end: ghost.end, startUtc: ghost.start, endUtc: ghost.end }, fmt, t),
               })
             : undefined
         }
@@ -464,19 +451,19 @@ export function CalendarPage() {
 
       {panel ? (
         <Suspense fallback={<PanelFallback />}>
-        <EventPanel
-          key={panel.kind === 'view' ? `${panel.id}|${panel.occurrence ?? ''}` : 'new'}
-          mode={panel}
-          tab={search.tab ?? 'details'}
-          onTab={(tab) => void navigate({ search: (prev) => ({ ...prev, tab: tab === 'details' ? undefined : tab }), replace: true })}
-          onClose={closePanel}
-          onCreated={(ev: CalEvent) => {
-            setDraft(null)
-            void navigate({ search: (prev) => ({ ...prev, event: ev.id, occurrence: undefined, tab: undefined }) })
-          }}
-          fmt={fmt}
-          scopePrompt={scopePrompt.ask}
-        />
+          <EventPanel
+            key={panel.kind === 'view' ? `${panel.id}|${panel.occurrence ?? ''}` : 'new'}
+            mode={panel}
+            tab={search.tab ?? 'details'}
+            onTab={(tab) => void navigate({ search: (prev) => ({ ...prev, tab: tab === 'details' ? undefined : tab }), replace: true })}
+            onClose={closePanel}
+            onCreated={(ev: CalEvent) => {
+              setDraft(null)
+              void navigate({ search: (prev) => ({ ...prev, event: ev.id, occurrence: undefined, tab: undefined }) })
+            }}
+            fmt={fmt}
+            scopePrompt={scopePrompt.ask}
+          />
         </Suspense>
       ) : null}
     </div>
@@ -485,7 +472,10 @@ export function CalendarPage() {
 
 function PanelFallback() {
   return (
-    <aside className="sc-panel-enter fixed inset-y-0 end-0 z-50 flex w-full flex-col gap-3 border-s border-border bg-card p-5 shadow-2xl md:w-(--panel-width)" aria-busy="true">
+    <aside
+      className="sc-panel-enter fixed inset-y-0 end-0 z-50 flex w-full flex-col gap-3 border-s border-border bg-card p-5 shadow-2xl md:w-(--panel-width)"
+      aria-busy="true"
+    >
       <div className="h-7 w-2/3 animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
       <div className="h-9 w-full animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
       <div className="h-40 w-full animate-pulse rounded-md bg-muted motion-reduce:animate-none" />
@@ -516,4 +506,3 @@ async function savePreferredView(qc: ReturnType<typeof useQueryClient>, me: Me, 
     /* non-critical; the URL still carries the view */
   }
 }
-

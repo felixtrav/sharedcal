@@ -14,7 +14,11 @@ export function describeRule(rule: RecurrenceRule, t: TFunction, locale?: string
   if (rule.freq === 'WEEKLY' && rule.byDay.length) {
     const ordered = WEEKDAYS.filter((d) => rule.byDay.includes(d))
     const isWeekdays = ordered.join() === 'MO,TU,WE,TH,FR'
-    text += ' ' + (isWeekdays ? t('recurrence.onWeekdays') : t('recurrence.onDays', { days: new Intl.ListFormat(locale, { type: 'conjunction' }).format(ordered.map((d) => weekdayName(d, 'long', locale))) }))
+    text +=
+      ' ' +
+      (isWeekdays
+        ? t('recurrence.onWeekdays')
+        : t('recurrence.onDays', { days: new Intl.ListFormat(locale, { type: 'conjunction' }).format(ordered.map((d) => weekdayName(d, 'long', locale))) }))
   }
   if (rule.freq === 'MONTHLY') {
     if (rule.monthlyMode === 'nth' && rule.nth && rule.nthWeekday) {
@@ -24,7 +28,8 @@ export function describeRule(rule: RecurrenceRule, t: TFunction, locale?: string
     }
   }
   if (rule.end.type === 'count') text += ', ' + t('recurrence.times', { count: rule.end.count })
-  if (rule.end.type === 'until') text += ', ' + t('recurrence.until', { date: formatPlainDate(rule.end.until, { month: 'short', day: 'numeric', year: 'numeric' }, locale) })
+  if (rule.end.type === 'until')
+    text += ', ' + t('recurrence.until', { date: formatPlainDate(rule.end.until, { month: 'short', day: 'numeric', year: 'numeric' }, locale) })
   return text
 }
 

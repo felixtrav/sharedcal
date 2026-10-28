@@ -229,13 +229,25 @@ export function EventForm({
           control={control}
           name="rrule"
           render={({ field }) => (
-            <RecurrenceField id="ev-rrule" value={field.value} onChange={field.onChange} startDate={startDate || addDays(new Date().toISOString().slice(0, 10), 0)} allDay={allDay} />
+            <RecurrenceField
+              id="ev-rrule"
+              value={field.value}
+              onChange={field.onChange}
+              startDate={startDate || addDays(new Date().toISOString().slice(0, 10), 0)}
+              allDay={allDay}
+            />
           )}
         />
       </Field>
 
       <Field id="ev-location" label={t('event.fields.location')} error={msg(errors.location?.message)} hint={t('event.locationHint')}>
-        <Input id="ev-location" maxLength={1000} autoComplete="off" aria-describedby={describedBy('ev-location', errors.location?.message, true)} {...register('location')} />
+        <Input
+          id="ev-location"
+          maxLength={1000}
+          autoComplete="off"
+          aria-describedby={describedBy('ev-location', errors.location?.message, true)}
+          {...register('location')}
+        />
       </Field>
 
       <div className="grid gap-1.5">
@@ -270,7 +282,11 @@ export function EventForm({
         <span id="ev-tags-label" className="text-sm font-medium">
           {t('event.fields.tags')}
         </span>
-        <Controller control={control} name="tags" render={({ field }) => <TagPicker value={field.value} onChange={field.onChange} labelledBy="ev-tags-label" />} />
+        <Controller
+          control={control}
+          name="tags"
+          render={({ field }) => <TagPicker value={field.value} onChange={field.onChange} labelledBy="ev-tags-label" />}
+        />
       </div>
 
       <div className="grid gap-1.5">

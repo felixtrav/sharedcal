@@ -39,12 +39,8 @@ function RailLink({ item, expanded }: { item: NavItem; expanded: boolean }) {
           )}
         >
           <Icon className="size-5 shrink-0" aria-hidden />
-          <span className={cn('truncate transition-opacity duration-150', expanded ? 'opacity-100' : 'pointer-events-none w-0 opacity-0')}>
-            {label}
-          </span>
-          {item.badge === 'inbox' && unread > 0 ? (
-            <InboxBadge className={cn('absolute', expanded ? 'end-2' : 'end-0.5 top-0.5')} />
-          ) : null}
+          <span className={cn('truncate transition-opacity duration-150', expanded ? 'opacity-100' : 'pointer-events-none w-0 opacity-0')}>{label}</span>
+          {item.badge === 'inbox' && unread > 0 ? <InboxBadge className={cn('absolute', expanded ? 'end-2' : 'end-0.5 top-0.5')} /> : null}
         </Link>
       </Tooltip>
     </li>
@@ -85,7 +81,11 @@ export function NavRail({ pinned, onTogglePin }: { pinned: boolean; onTogglePin:
       )}
     >
       <div className="flex h-10 items-center gap-3 px-3">
-        <Link to="/" className="flex min-w-0 items-center gap-3 rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50" aria-label={expanded ? undefined : name}>
+        <Link
+          to="/"
+          className="flex min-w-0 items-center gap-3 rounded-lg outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+          aria-label={expanded ? undefined : name}
+        >
           {me.instance.hasLogo && me.instance.logoUrl ? (
             <img src={me.instance.logoUrl} alt="" className="size-8 shrink-0 rounded-lg object-contain" />
           ) : (

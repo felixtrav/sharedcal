@@ -28,10 +28,7 @@ export function tagColorVars(ev: Pick<CalEvent, 'tags'>, tagsById: Map<string, T
     : { color: 'var(--primary)', contrastColor: 'var(--primary-foreground)' }
 }
 
-export function toEventInput(
-  ev: CalEvent,
-  ctx: { tagsById: Map<string, Tag>; glowing: ReadonlySet<string>; fmt: FormatOptions; t: TFunction },
-): EventInput {
+export function toEventInput(ev: CalEvent, ctx: { tagsById: Map<string, Tag>; glowing: ReadonlySet<string>; fmt: FormatOptions; t: TFunction }): EventInput {
   const canMove = ev.permissions.edit || ev.permissions.suggest
   const label = eventAriaLabel(ev, ctx.fmt, ctx.t)
   return {

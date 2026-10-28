@@ -33,7 +33,11 @@ export function FieldValue({ field, value, fmt, startDate }: { field: Suggestion
     case 'status':
       return <span>{t(`event.status.${String(value)}`, { defaultValue: String(value) })}</span>
     case 'tags':
-      return Array.isArray(value) && value.length ? <TagChips ids={value as string[]} /> : <span className="text-muted-foreground italic">{t('common.none')}</span>
+      return Array.isArray(value) && value.length ? (
+        <TagChips ids={value as string[]} />
+      ) : (
+        <span className="text-muted-foreground italic">{t('common.none')}</span>
+      )
     case 'rrule':
       return <span>{describeRRule(String(value), startDate ?? new Date().toISOString().slice(0, 10), t)}</span>
     case 'timeZone':

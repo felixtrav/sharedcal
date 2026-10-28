@@ -32,15 +32,16 @@ export function ConfirmDialog({
         <A.Content className="fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border border-border bg-popover p-6 text-popover-foreground shadow-xl data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95">
           <div className="flex flex-col gap-2">
             <A.Title className="text-lg font-semibold">{title}</A.Title>
-            {description ? <A.Description className="text-sm text-muted-foreground">{description}</A.Description> : <A.Description className="sr-only">{title}</A.Description>}
+            {description ? (
+              <A.Description className="text-sm text-muted-foreground">{description}</A.Description>
+            ) : (
+              <A.Description className="sr-only">{title}</A.Description>
+            )}
           </div>
           {children}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <A.Cancel className={buttonVariants({ variant: 'outline' })}>{t('common.cancel')}</A.Cancel>
-            <A.Action
-              className={cn(buttonVariants({ variant: destructive ? 'destructive' : 'default' }))}
-              onClick={onConfirm}
-            >
+            <A.Action className={cn(buttonVariants({ variant: destructive ? 'destructive' : 'default' }))} onClick={onConfirm}>
               {confirmLabel}
             </A.Action>
           </div>

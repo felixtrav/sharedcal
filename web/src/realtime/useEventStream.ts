@@ -29,8 +29,7 @@ export function useEventStream(meId: string | undefined) {
       isOwnWrite,
       onRemoteChange: glow,
       onEventDeleted: (id: string) => deletedEventsStore.set((prev) => new Set(prev).add(id)),
-      onPresence: (eventId: string, viewers: PresenceViewer[]) =>
-        presenceStore.set((prev) => ({ ...prev, [eventId]: viewers })),
+      onPresence: (eventId: string, viewers: PresenceViewer[]) => presenceStore.set((prev) => ({ ...prev, [eventId]: viewers })),
     }
 
     const handle = (type: string) => (e: MessageEvent<string>) => {

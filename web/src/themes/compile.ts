@@ -148,8 +148,7 @@ export function compileMode(tokens: ThemeTokens, mode: Mode, accent?: string): C
     '--popover': popover,
     '--popover-foreground': tk('popover-foreground') ?? foreground,
     '--primary': primary,
-    '--primary-foreground':
-      (!accentOverride && tk('primary-foreground')) || readableOn(primary, [background, foreground]),
+    '--primary-foreground': (!accentOverride && tk('primary-foreground')) || readableOn(primary, [background, foreground]),
     '--secondary': secondary,
     '--secondary-foreground': tk('secondary-foreground') ?? foreground,
     '--muted': muted,
@@ -196,11 +195,7 @@ export const CONTRAST_PAIRS: [string, string, string][] = [
   ['muted-foreground/muted', '--muted-foreground', '--muted'],
   ['accent', '--accent-foreground', '--accent'],
   ['destructive', '--destructive-foreground', '--destructive'],
-  ...Array.from({ length: 8 }, (_, i): [string, string, string] => [
-    `tag-${i + 1}`,
-    `--tag-${i + 1}-foreground`,
-    `--tag-${i + 1}`,
-  ]),
+  ...Array.from({ length: 8 }, (_, i): [string, string, string] => [`tag-${i + 1}`, `--tag-${i + 1}-foreground`, `--tag-${i + 1}`]),
 ]
 
 export function contrastReport(vars: CompiledVars) {

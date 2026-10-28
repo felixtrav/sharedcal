@@ -7,12 +7,7 @@ export const PopoverTrigger = PopoverPrimitive.Trigger
 export const PopoverAnchor = PopoverPrimitive.Anchor
 export const PopoverClose = PopoverPrimitive.Close
 
-export function PopoverContent({
-  className,
-  align = 'center',
-  sideOffset = 6,
-  ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+export function PopoverContent({ className, align = 'center', sideOffset = 6, ...props }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Content

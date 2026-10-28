@@ -65,9 +65,7 @@ export function Attachments({ event }: { event: EventDetail }) {
       <AttachmentItems attachments={event.attachments} />
       <UploadList items={uploads.items} onCancel={uploads.cancel} />
       {canAttach && event.attachments.length === 0 && uploads.items.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">
-          {t('attachments.dropHint')}
-        </p>
+        <p className="rounded-lg border border-dashed border-border px-4 py-5 text-center text-sm text-muted-foreground">{t('attachments.dropHint')}</p>
       ) : null}
     </section>
   )

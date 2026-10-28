@@ -90,7 +90,12 @@ export function PreferencesPage() {
           </span>
           <div role="radiogroup" aria-labelledby="pref-theme-label" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {themes.map((th) => (
-              <ThemeCard key={th.id} theme={th} selected={prefs.themeId === th.id || (!prefs.themeId && th.id === 'default')} onSelect={() => void save({ themeId: th.id })} />
+              <ThemeCard
+                key={th.id}
+                theme={th}
+                selected={prefs.themeId === th.id || (!prefs.themeId && th.id === 'default')}
+                onSelect={() => void save({ themeId: th.id })}
+              />
             ))}
           </div>
         </div>

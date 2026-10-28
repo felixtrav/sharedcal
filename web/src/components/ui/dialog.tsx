@@ -8,12 +8,7 @@ export const Dialog = DialogPrimitive.Root
 export const DialogTrigger = DialogPrimitive.Trigger
 export const DialogClose = DialogPrimitive.Close
 
-export function DialogContent({
-  className,
-  children,
-  hideClose,
-  ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content> & { hideClose?: boolean }) {
+export function DialogContent({ className, children, hideClose, ...props }: React.ComponentProps<typeof DialogPrimitive.Content> & { hideClose?: boolean }) {
   const { t } = useTranslation()
   return (
     <DialogPrimitive.Portal>

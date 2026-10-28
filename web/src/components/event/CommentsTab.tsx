@@ -145,7 +145,10 @@ function CommentItem({
   const [editing, setEditing] = useState(false)
   const [replying, setReplying] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const uploads = useUploads(comment.permissions.attach ? { kind: 'comment', commentId: comment.id, eventId: comment.eventId } : null, comment.attachments.length)
+  const uploads = useUploads(
+    comment.permissions.attach ? { kind: 'comment', commentId: comment.id, eventId: comment.eventId } : null,
+    comment.attachments.length,
+  )
   const fileInput = useRef<HTMLInputElement>(null)
   const started = useRef(false)
 

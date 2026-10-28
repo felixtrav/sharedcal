@@ -179,10 +179,22 @@ function SettingsForm({ initial }: { initial: Settings }) {
             />
           </Field>
           <Field id="set-perevent" label={t('settings.maxPerEvent')} error={errors.attachmentMaxPerEvent}>
-            <Input id="set-perevent" type="number" min={0} value={s.attachmentMaxPerEvent} onChange={(e) => set('attachmentMaxPerEvent', Math.max(0, Number(e.target.value)))} />
+            <Input
+              id="set-perevent"
+              type="number"
+              min={0}
+              value={s.attachmentMaxPerEvent}
+              onChange={(e) => set('attachmentMaxPerEvent', Math.max(0, Number(e.target.value)))}
+            />
           </Field>
           <Field id="set-percomment" label={t('settings.maxPerComment')} error={errors.attachmentMaxPerComment}>
-            <Input id="set-percomment" type="number" min={0} value={s.attachmentMaxPerComment} onChange={(e) => set('attachmentMaxPerComment', Math.max(0, Number(e.target.value)))} />
+            <Input
+              id="set-percomment"
+              type="number"
+              min={0}
+              value={s.attachmentMaxPerComment}
+              onChange={(e) => set('attachmentMaxPerComment', Math.max(0, Number(e.target.value)))}
+            />
           </Field>
         </div>
         <div className="grid gap-2">
@@ -245,7 +257,11 @@ function LogoField({ hasLogo, logoUrl }: { hasLogo: boolean; logoUrl: string }) 
       <span className="text-sm font-medium">{t('settings.logo')}</span>
       <div className="flex items-center gap-3">
         <div className="flex size-14 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-          {hasLogo && logoUrl ? <img src={logoUrl} alt={t('settings.currentLogo')} className="size-full object-contain" /> : <ImageUpIcon className="size-5 text-muted-foreground" aria-hidden />}
+          {hasLogo && logoUrl ? (
+            <img src={logoUrl} alt={t('settings.currentLogo')} className="size-full object-contain" />
+          ) : (
+            <ImageUpIcon className="size-5 text-muted-foreground" aria-hidden />
+          )}
         </div>
         <Button type="button" variant="outline" size="sm" disabled={progress !== null} onClick={() => input.current?.click()}>
           <UploadIcon aria-hidden />
@@ -272,7 +288,14 @@ function LogoField({ hasLogo, logoUrl }: { hasLogo: boolean; logoUrl: string }) 
         />
       </div>
       {progress !== null ? <Progress value={progress} label={t('settings.uploadingLogo')} /> : null}
-      <ConfirmDialog open={confirm} onOpenChange={setConfirm} title={t('settings.removeLogo')} confirmLabel={t('settings.removeLogo')} destructive onConfirm={() => void remove()} />
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        title={t('settings.removeLogo')}
+        confirmLabel={t('settings.removeLogo')}
+        destructive
+        onConfirm={() => void remove()}
+      />
     </div>
   )
 }

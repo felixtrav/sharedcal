@@ -9,17 +9,7 @@ export function initials(name: string) {
 }
 
 /** User avatar with initials fallback. Decorative unless `label` is given. */
-export function UserAvatar({
-  name,
-  src,
-  className,
-  label,
-}: {
-  name: string
-  src?: string | null
-  className?: string
-  label?: string
-}) {
+export function UserAvatar({ name, src, className, label }: { name: string; src?: string | null; className?: string; label?: string }) {
   return (
     <AvatarPrimitive.Root
       className={cn('relative inline-flex size-8 shrink-0 overflow-hidden rounded-full bg-muted select-none', className)}

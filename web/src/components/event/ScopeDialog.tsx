@@ -86,9 +86,7 @@ function ScopeDialogView({
               />
               <span>
                 {o.label}
-                {o.value === 'this' && pending?.disableThis ? (
-                  <span className="block text-xs text-muted-foreground">{t('scope.thisUnavailable')}</span>
-                ) : null}
+                {o.value === 'this' && pending?.disableThis ? <span className="block text-xs text-muted-foreground">{t('scope.thisUnavailable')}</span> : null}
               </span>
             </label>
           ))}

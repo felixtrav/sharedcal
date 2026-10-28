@@ -181,15 +181,32 @@ export function TagsPage() {
             >
               <GripVerticalIcon className="size-4 cursor-grab text-muted-foreground" aria-hidden />
               <TagName tag={tag} onSave={(n) => void patch(tag, { name: n })} />
-              <SlotPicker value={tag.colorSlot} onChange={(s) => void patch(tag, { colorSlot: s })} label={t('tags.colorFor', { name: tag.name })} name={`slot-${tag.id}`} />
+              <SlotPicker
+                value={tag.colorSlot}
+                onChange={(s) => void patch(tag, { colorSlot: s })}
+                label={t('tags.colorFor', { name: tag.name })}
+                name={`slot-${tag.id}`}
+              />
               <div className="ms-auto flex items-center gap-1">
                 <Button variant="ghost" size="icon-xs" disabled={i === 0} onClick={() => move(i, -1)} aria-label={t('tags.moveUp', { name: tag.name })}>
                   <ArrowUpIcon />
                 </Button>
-                <Button variant="ghost" size="icon-xs" disabled={i === tags.length - 1} onClick={() => move(i, 1)} aria-label={t('tags.moveDown', { name: tag.name })}>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  disabled={i === tags.length - 1}
+                  onClick={() => move(i, 1)}
+                  aria-label={t('tags.moveDown', { name: tag.name })}
+                >
                   <ArrowDownIcon />
                 </Button>
-                <Button variant="ghost" size="icon-xs" className="hover:text-destructive" onClick={() => setDeleting(tag)} aria-label={t('tags.delete', { name: tag.name })}>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  className="hover:text-destructive"
+                  onClick={() => setDeleting(tag)}
+                  aria-label={t('tags.delete', { name: tag.name })}
+                >
                   <Trash2Icon />
                 </Button>
               </div>

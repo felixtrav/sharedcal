@@ -11,9 +11,7 @@ export function PresenceAvatars({ eventId }: { eventId: string }) {
   const all = useStore(presenceStore)
   const viewers = all[eventId] ?? []
   if (!viewers.length) return null
-  const summary = viewers
-    .map((v) => (v.state === 'editing' ? t('presence.editing', { name: v.name }) : t('presence.viewing', { name: v.name })))
-    .join(', ')
+  const summary = viewers.map((v) => (v.state === 'editing' ? t('presence.editing', { name: v.name }) : t('presence.viewing', { name: v.name }))).join(', ')
   return (
     <div className="flex items-center gap-2" role="status" aria-live="polite">
       <span className="sr-only">{summary}</span>

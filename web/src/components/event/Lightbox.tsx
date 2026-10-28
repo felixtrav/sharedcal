@@ -20,8 +20,7 @@ export default function Lightbox({
   if (!img) return null
   const prev = () => onIndex((index - 1 + images.length) % images.length)
   const next = () => onIndex((index + 1) % images.length)
-  const btn =
-    'rounded-full bg-black/50 p-2 text-white hover:bg-black/70 focus-visible:ring-[3px] focus-visible:ring-white/70 focus-visible:outline-none'
+  const btn = 'rounded-full bg-black/50 p-2 text-white hover:bg-black/70 focus-visible:ring-[3px] focus-visible:ring-white/70 focus-visible:outline-none'
 
   return (
     <D.Root open onOpenChange={(o) => !o && onClose()}>

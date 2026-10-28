@@ -25,7 +25,4 @@ export type ResponseContract = [
 ]
 
 // Requests: what the UI sends must be accepted by the server.
-export type RequestContract = [
-  Assert<Extends<T.EventWrite, S['EventInput']>>,
-  Assert<Extends<T.Preferences, S['Preferences']>>,
-]
+export type RequestContract = [Assert<Extends<T.EventWrite, S['EventInput']>>, Assert<Extends<T.Preferences, S['Preferences']>>]

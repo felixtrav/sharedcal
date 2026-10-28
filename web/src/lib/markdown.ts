@@ -10,9 +10,33 @@ import { Marked, type Tokens } from 'marked'
  */
 
 const ALLOWED_TAGS = [
-  'p', 'br', 'strong', 'em', 'del', 's', 'code', 'pre', 'blockquote',
-  'ul', 'ol', 'li', 'a', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr',
-  'table', 'thead', 'tbody', 'tr', 'th', 'td', 'input',
+  'p',
+  'br',
+  'strong',
+  'em',
+  'del',
+  's',
+  'code',
+  'pre',
+  'blockquote',
+  'ul',
+  'ol',
+  'li',
+  'a',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'hr',
+  'table',
+  'thead',
+  'tbody',
+  'tr',
+  'th',
+  'td',
+  'input',
 ]
 const ALLOWED_ATTR = ['href', 'title', 'start', 'align', 'type', 'checked', 'disabled']
 const SAFE_URL = /^(?:https?:|mailto:)/i
