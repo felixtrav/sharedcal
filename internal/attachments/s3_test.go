@@ -10,31 +10,72 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/johannesboyne/gofakes3"
 	"github.com/johannesboyne/gofakes3/backend/s3mem"
+	"github.com/minio/minio-go/v7"
 )
 
-// fakeS3 starts an in-memory S3 server with one bucket and returns a store
-// for it plus the backend, so tests can check the stored objects directly.
-func fakeS3(t *testing.T, prefix string) (*S3Store, *s3mem.Backend) {
+// testS3 returns a store for a fresh bucket. By default the bucket lives in
+// an in-memory gofakes3 server; set SHAREDCAL_TEST_S3_ENDPOINT (plus
+// optionally SHAREDCAL_TEST_S3_ACCESS_KEY / _SECRET_KEY / _REGION) to run the
+// same tests against a real S3-compatible server such as MinIO or MiniStack.
+func testS3(t *testing.T, prefix string) *S3Store {
 	t.Helper()
-	backend := s3mem.New()
-	if err := backend.CreateBucket("sharedcal"); err != nil {
-		t.Fatal(err)
+	endpoint := os.Getenv("SHAREDCAL_TEST_S3_ENDPOINT")
+	access, secret, region := envOr("SHAREDCAL_TEST_S3_ACCESS_KEY", "test"), envOr("SHAREDCAL_TEST_S3_SECRET_KEY", "testtesttest"), envOr("SHAREDCAL_TEST_S3_REGION", "us-east-1")
+	if endpoint == "" {
+		srv := httptest.NewServer(gofakes3.New(s3mem.New()).Server())
+		t.Cleanup(srv.Close)
+		endpoint = srv.URL
 	}
-	srv := httptest.NewServer(gofakes3.New(backend).Server())
-	t.Cleanup(srv.Close)
-	u, _ := url.Parse(srv.URL)
-	s, err := NewS3Store(S3Config{Endpoint: u, Bucket: "sharedcal", Region: "us-east-1", Prefix: prefix,
-		AccessKey: "test", SecretKey: "testtesttest", PathStyle: true, TempDir: t.TempDir()})
+	u, err := url.Parse(endpoint)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return s, backend
+	bucket := "sharedcal-test-" + strings.ToLower(hex.EncodeToString([]byte(t.Name()))[:12]) + "-" + strconv.FormatInt(time.Now().UnixNano()%1e9, 36)
+	s, err := NewS3Store(S3Config{Endpoint: u, Bucket: bucket, Region: region, Prefix: prefix,
+		AccessKey: access, SecretKey: secret, PathStyle: true, TempDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	if err := s.c.MakeBucket(ctx, bucket, minio.MakeBucketOptions{Region: region}); err != nil {
+		t.Fatalf("create bucket: %v", err)
+	}
+	t.Cleanup(func() {
+		for obj := range s.c.ListObjects(ctx, bucket, minio.ListObjectsOptions{Recursive: true}) {
+			_ = s.c.RemoveObject(ctx, bucket, obj.Key, minio.RemoveObjectOptions{})
+		}
+		_ = s.c.RemoveBucket(ctx, bucket)
+	})
+	return s
+}
+
+func envOr(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
+}
+
+// objectSize returns the size of the raw object name in the store's bucket,
+// or -1 if it does not exist.
+func objectSize(t *testing.T, s *S3Store, name string) int64 {
+	t.Helper()
+	info, err := s.c.StatObject(context.Background(), s.bucket, name, minio.StatObjectOptions{})
+	if isNoSuchKey(err) {
+		return -1
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return info.Size
 }
 
 func keyOf(b []byte) string {
@@ -47,11 +88,11 @@ type streamOnly struct{ io.Reader }
 
 func TestS3StoreRoundTrip(t *testing.T) {
 	ctx := context.Background()
-	s, backend := fakeS3(t, "/cal/blobs/")
+	s := testS3(t, "/cal/blobs/")
 	if err := s.Check(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if s.String() != "s3://sharedcal/cal/blobs" {
+	if s.String() != "s3://"+s.bucket+"/cal/blobs" {
 		t.Errorf("String() = %q", s.String())
 	}
 	body := []byte("hello from a bucket")
@@ -62,9 +103,8 @@ func TestS3StoreRoundTrip(t *testing.T) {
 			t.Fatalf("%s put: %v", name, err)
 		}
 	}
-	obj, err := backend.HeadObject("sharedcal", "cal/blobs/"+key)
-	if err != nil || obj.Size != int64(len(body)) {
-		t.Fatalf("object not stored under the prefix: %v %+v", err, obj)
+	if n := objectSize(t, s, "cal/blobs/"+key); n != int64(len(body)) {
+		t.Fatalf("object not stored under the prefix (size %d)", n)
 	}
 
 	rc, size, err := s.Open(ctx, key)
@@ -90,7 +130,7 @@ func TestS3StoreRoundTrip(t *testing.T) {
 
 func TestS3StorePutExistingSkipsUpload(t *testing.T) {
 	ctx := context.Background()
-	s, _ := fakeS3(t, "")
+	s := testS3(t, "")
 	body := []byte("stored once")
 	key := keyOf(body)
 	if err := s.Put(ctx, key, bytes.NewReader(body)); err != nil {
@@ -111,7 +151,7 @@ func (r iotest) Read([]byte) (int, error) {
 
 func TestS3StoreRejectsMismatchedContent(t *testing.T) {
 	ctx := context.Background()
-	s, backend := fakeS3(t, "")
+	s := testS3(t, "")
 	key := keyOf([]byte("the real content"))
 	for name, r := range map[string]io.Reader{
 		"seekable": strings.NewReader("something else"),
@@ -121,7 +161,7 @@ func TestS3StoreRejectsMismatchedContent(t *testing.T) {
 			t.Fatalf("%s: want hash mismatch, got %v", name, err)
 		}
 	}
-	if _, err := backend.HeadObject("sharedcal", key); err == nil {
+	if objectSize(t, s, key) != -1 {
 		t.Fatal("mismatched content reached the bucket")
 	}
 	if err := s.Put(ctx, "../../etc/passwd", strings.NewReader("x")); !errors.Is(err, ErrInvalidKey) {
@@ -136,7 +176,7 @@ func TestS3StoreRejectsMismatchedContent(t *testing.T) {
 // return the right bytes.
 func TestS3StoreServesRanges(t *testing.T) {
 	ctx := context.Background()
-	s, _ := fakeS3(t, "")
+	s := testS3(t, "")
 	body := bytes.Repeat([]byte("0123456789"), 1000)
 	key := keyOf(body)
 	if err := s.Put(ctx, key, bytes.NewReader(body)); err != nil {
@@ -157,8 +197,8 @@ func TestS3StoreServesRanges(t *testing.T) {
 }
 
 func TestS3StoreCheckMissingBucket(t *testing.T) {
-	s, _ := fakeS3(t, "")
-	s.bucket = "missing"
+	s := testS3(t, "")
+	s.bucket = "sharedcal-test-does-not-exist"
 	if err := s.Check(context.Background()); err == nil || !strings.Contains(err.Error(), "does not exist") {
 		t.Fatalf("want missing-bucket error, got %v", err)
 	}
@@ -167,7 +207,7 @@ func TestS3StoreCheckMissingBucket(t *testing.T) {
 // The upload pipeline works unchanged on top of S3.
 func TestPipelineOnS3(t *testing.T) {
 	ctx := context.Background()
-	s, _ := fakeS3(t, "")
+	s := testS3(t, "")
 	p := &Pipeline{Store: s, MaxSize: 1 << 20, TempDir: t.TempDir()}
 	res, err := p.Process(ctx, "notes.txt", strings.NewReader("meeting notes\n"))
 	if err != nil {

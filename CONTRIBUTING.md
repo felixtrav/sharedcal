@@ -76,6 +76,20 @@ test a fresh, migrated database:
   per test, so the user needs `CREATE DATABASE` rights. Without a DSN,
   testcontainers starts a container.
 
+The S3 blob store tests run against an in-memory fake (gofakes3). To run them
+against a real S3-compatible server, set `SHAREDCAL_TEST_S3_ENDPOINT` (e.g.
+`http://127.0.0.1:4566` for MiniStack or `http://127.0.0.1:9000` for MinIO),
+plus `SHAREDCAL_TEST_S3_ACCESS_KEY`, `SHAREDCAL_TEST_S3_SECRET_KEY` and
+`SHAREDCAL_TEST_S3_REGION` if the defaults (`test`, `testtesttest`,
+`us-east-1`) don't fit. Each test creates its own bucket and deletes it
+afterwards. Real servers differ from the fake and from each other (error
+codes, ranged reads, signed uploads), so run them against the server you
+deploy on before relying on it:
+
+```sh
+SHAREDCAL_TEST_S3_ENDPOINT=http://127.0.0.1:4566 go test ./internal/attachments -run S3
+```
+
 CI runs the Go suite on **SQLite (with `-race`), PostgreSQL 16, MySQL 8.4 and
 MariaDB 10.11**, as well as the web checks (audit, lint, typecheck, Vitest
 including the theme contrast check, build, bundle size budget), every
