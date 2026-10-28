@@ -1,0 +1,95 @@
+# Checks that run on every commit. Setup (once per clone):
+#   pipx install pre-commit && pre-commit install
+# Run everything by hand:  pre-commit run --all-files
+# Every tool here is free and open source. Go, Node (web/node_modules) and
+# Python must be available; the dev container provides them.
+
+# Generated files are left alone by formatters (secret scans still cover them).
+exclude: ^web/(src/api/schema\.d\.ts|openapi\.json)$
+
+repos:
+  # ---- Secrets and repository hygiene ---------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-yaml
+      - id: check-json
+        exclude: ^web/tsconfig.*\.json$ # JSON with comments
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  # ---- CI, container and Python ---------------------------------------------
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/AleksaC/hadolint-py
+    rev: v2.15.1
+    hooks:
+      - id: hadolint
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  # ---- Go and web: the same tools and versions CI uses ----------------------
+  - repo: local
+    hooks:
+      - id: gofmt
+        name: gofmt
+        entry: gofmt -l -w
+        language: system
+        types: [go]
+      - id: go-mod-tidy
+        name: go mod tidy (both modules)
+        entry: bash -c 'go mod tidy -diff && cd tools/atlasloader && go mod tidy -diff'
+        language: system
+        files: (^|/)go\.(mod|sum)$
+        pass_filenames: false
+      - id: go-vet
+        name: go vet
+        entry: bash -c 'go vet $(go list ./... | grep -v /node_modules/)'
+        language: system
+        types: [go]
+        pass_filenames: false
+      - id: staticcheck
+        name: staticcheck
+        entry: bash -c 'go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 $(go list ./... | grep -v /node_modules/)'
+        language: system
+        types: [go]
+        pass_filenames: false
+      - id: prettier
+        name: prettier (web)
+        entry: bash -c 'cd web && npx --no-install prettier --write --ignore-unknown "${@#web/}"' --
+        language: system
+        files: ^web/.*\.(ts|tsx|js|mjs|css|html|json)$
+      - id: eslint
+        name: eslint (web)
+        entry: bash -c 'cd web && npx --no-install eslint --max-warnings=0 --no-warn-ignored "${@#web/}"' --
+        language: system
+        files: ^web/.*\.(ts|tsx|js|mjs)$
+      - id: tsc
+        name: tsc (web)
+        entry: bash -c 'cd web && npm run -s typecheck'
+        language: system
+        files: ^web/.*\.(ts|tsx)$
+        pass_filenames: false

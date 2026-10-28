@@ -42,6 +42,19 @@ make dev        # mock OIDC + Go server + Vite; open http://localhost:5173
 You need Go (the version in `go.mod`) and Node.js 22+. Docker is only needed
 for `make test-all-dbs` and `make image`.
 
+Install the commit hooks once per clone (they need Python for `pipx`):
+
+```sh
+pipx install pre-commit
+pre-commit install
+```
+
+`.pre-commit-config.yaml` scans staged changes for secrets (gitleaks, private
+keys, files over 1 MB), formats Go, web (Prettier), Python (ruff) and
+whitespace, and lints Go (`go vet`, staticcheck), web (ESLint, `tsc`), the
+Dockerfile (hadolint) and the CI workflow (actionlint). Run every hook over
+the whole tree with `pre-commit run --all-files`.
+
 ## Tests
 
 | Command | Runs |
@@ -49,6 +62,7 @@ for `make test-all-dbs` and `make image`.
 | `make test` | `go test -race ./...` on SQLite, plus Vitest |
 | `make test-all-dbs` | the Go suite on SQLite, PostgreSQL 16 and MySQL 8.4 |
 | `make lint` | gofmt, `go vet`, staticcheck, eslint, `tsc` |
+| `pre-commit run --all-files` | every commit hook, including the secret scan |
 | `make vuln` | govulncheck, `npm audit` |
 | `cd web && npm run test:e2e` | Playwright against the mock OIDC provider |
 

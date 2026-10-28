@@ -7,7 +7,8 @@
     ":semanticCommits",
     ":dependencyDashboard"
   ],
-  "enabledManagers": ["gomod", "npm", "dockerfile", "docker-compose", "github-actions", "custom.regex"],
+  "enabledManagers": ["gomod", "npm", "dockerfile", "docker-compose", "github-actions", "pre-commit", "custom.regex"],
+  "pre-commit": { "enabled": true },
   "postUpdateOptions": ["gomodTidy", "gomodUpdateImportPaths"],
   "schedule": ["before 6am on monday"],
   "timezone": "UTC",
@@ -38,6 +39,11 @@
       "pinDigests": true
     },
     {
+      "description": "Group pre-commit hook updates",
+      "matchManagers": ["pre-commit"],
+      "groupName": "pre-commit hooks"
+    },
+    {
       "description": "Base images: tag + digest pinned, grouped",
       "matchManagers": ["dockerfile", "custom.regex"],
       "groupName": "Base images",
@@ -66,8 +72,8 @@
     },
     {
       "customType": "regex",
-      "description": "Tool versions run with `go run` in CI and the Makefile",
-      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/", "/^Makefile$/"],
+      "description": "Tool versions run with `go run` in CI, pre-commit and the Makefile",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/", "/^\\.pre-commit-config\\.yaml$/", "/^Makefile$/"],
       "matchStrings": [
         "go run (?<depName>[^@\\s]+?)(?:/cmd/[^@\\s]+)?@(?<currentValue>v[0-9][^\\s]*)"
       ],
