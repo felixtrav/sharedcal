@@ -61,7 +61,7 @@ func TestRunIncrementalAndPrune(t *testing.T) {
 	}
 
 	setClock(t, time.Date(2026, 10, 1, 3, 0, 0, 0, time.UTC))
-	first, err := Run(ctx, db, dataDir, outDir, nil)
+	first, err := Run(ctx, db, dataDir, outDir, Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestRunIncrementalAndPrune(t *testing.T) {
 	// Second run: blob A is unchanged and should be hard-linked; B is new.
 	writeFile(t, filepath.Join(dataDir, "attachments", blobB), "blob b")
 	setClock(t, time.Date(2026, 10, 2, 3, 0, 0, 0, time.UTC))
-	second, err := Run(ctx, db, dataDir, outDir, nil)
+	second, err := Run(ctx, db, dataDir, outDir, Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestRunIncrementalAndPrune(t *testing.T) {
 	}
 
 	// Same-second run gets a suffix and still sorts newest.
-	third, err := Run(ctx, db, dataDir, outDir, nil)
+	third, err := Run(ctx, db, dataDir, outDir, Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestRunIncrementalAndPrune(t *testing.T) {
 
 func TestRunWithoutAttachments(t *testing.T) {
 	db := storetest.Open(t)
-	p, err := Run(context.Background(), db, t.TempDir(), t.TempDir(), nil)
+	p, err := Run(context.Background(), db, t.TempDir(), t.TempDir(), Options{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,14 +157,34 @@ func TestRunWithoutAttachments(t *testing.T) {
 	}
 }
 
+func TestRunWithExternalAttachments(t *testing.T) {
+	dataDir := t.TempDir()
+	writeFile(t, filepath.Join(dataDir, "attachments", "ab", strings.Repeat("ab", 32)), "stale local blob")
+	writeFile(t, filepath.Join(dataDir, "themes", "nord.json"), `{"id":"nord"}`)
+	p, err := Run(context.Background(), nil, dataDir, t.TempDir(), Options{ExternalAttachments: "s3://cal/blobs"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(p, "attachments")); !os.IsNotExist(err) {
+		t.Fatal("attachments must be left out when they live in a bucket")
+	}
+	if _, err := os.Stat(filepath.Join(p, "themes", "nord.json")); err != nil {
+		t.Fatalf("themes still belong in the backup: %v", err)
+	}
+	b, _ := os.ReadFile(filepath.Join(p, ManifestFile))
+	if !strings.Contains(string(b), "stored in s3://cal/blobs") {
+		t.Fatalf("manifest does not explain the missing attachments: %s", b)
+	}
+}
+
 func TestRefuseNestedOutput(t *testing.T) {
 	dataDir := t.TempDir()
-	_, err := Run(context.Background(), nil, dataDir, filepath.Join(dataDir, "attachments", "bk"), nil)
+	_, err := Run(context.Background(), nil, dataDir, filepath.Join(dataDir, "attachments", "bk"), Options{}, nil)
 	if err == nil {
 		t.Fatal("expected error for output inside attachments")
 	}
 	// /data/backups (sibling of attachments) is fine.
-	if _, err := Run(context.Background(), nil, dataDir, filepath.Join(dataDir, "backups"), nil); err != nil {
+	if _, err := Run(context.Background(), nil, dataDir, filepath.Join(dataDir, "backups"), Options{}, nil); err != nil {
 		t.Fatal(err)
 	}
 }

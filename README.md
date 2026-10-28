@@ -40,6 +40,7 @@ PostgreSQL or MySQL/MariaDB work as drop-in alternatives. MIT licensed.
 - [Other identity providers](#other-identity-providers)
 - [Reverse proxy](#reverse-proxy)
 - [Databases](#databases)
+- [S3-compatible storage](#s3-compatible-storage)
 - [Backups, export and import](#backups-export-and-import)
 - [Upgrading](#upgrading)
 - [Security model](#security-model)
@@ -109,7 +110,7 @@ limits) lives on the in-app **Settings** page instead. Invalid values stop the
 server at startup with a message listing every problem.
 
 **Secrets from files:** `APP_URL`, `OIDC_ISSUER`, `OIDC_CLIENT_ID`,
-`OIDC_CLIENT_SECRET`, `DB_DSN` and `SESSION_SECRET` also accept a `_FILE`
+`OIDC_CLIENT_SECRET`, `DB_DSN`, `SESSION_SECRET` and `S3_SECRET_ACCESS_KEY` also accept a `_FILE`
 suffix (e.g. `OIDC_CLIENT_SECRET_FILE=/run/secrets/oidc`) for Docker or
 Kubernetes secrets. Setting both forms is an error.
 
@@ -117,7 +118,7 @@ Kubernetes secrets. Setting both forms is an error.
 | --- | --- | --- |
 | `APP_URL` | **required** | Public base URL, e.g. `https://cal.example.com`. Used for redirect URIs, cookies (`Secure` when https) and ICS links. |
 | `LISTEN_ADDR` | `:8080` | HTTP bind address. |
-| `DATA_DIR` | `/data` | SQLite database, attachments, uploaded themes, logo, generated session secret. |
+| `DATA_DIR` | `/data` | SQLite database, attachments and logo (with `BLOB_STORE=fs`), drop-in theme files, generated session secret, upload temp files. See [Running without a data volume](#running-without-a-data-volume). |
 | `DB_DRIVER` | `sqlite` | `sqlite`, `postgres` or `mysql` (also for MariaDB). |
 | `DB_DSN` | `$DATA_DIR/sharedcal.db` | Connection string. Required for `postgres`/`mysql`. See [Databases](#databases). |
 | `OIDC_ISSUER` | **required** | Provider issuer URL (discovery at `/.well-known/openid-configuration`). |
@@ -145,6 +146,13 @@ Kubernetes secrets. Setting both forms is an error.
 | `ATTACHMENT_MAX_PER_COMMENT` | `5` | Files per comment. |
 | `ATTACHMENT_QUOTA` | `2GB` | Total attachment storage. Uploads beyond it are refused. |
 | `CLAMAV_ADDR` | empty (off) | `host:port` of clamd, e.g. `clamav:3310`. Uploads stay pending until they scan clean. |
+| `BLOB_STORE` | `fs` | Where attachments, thumbnails and the logo are stored: `fs` (`$DATA_DIR/attachments`) or `s3`. See [S3-compatible storage](#s3-compatible-storage). |
+| `S3_ENDPOINT` | — | `BLOB_STORE=s3`: endpoint URL with only scheme and host, e.g. `https://s3.eu-central-1.amazonaws.com` or `http://minio:9000`. |
+| `S3_BUCKET` | — | `BLOB_STORE=s3`: an existing bucket. |
+| `S3_REGION` | empty (discovered) | Bucket region, e.g. `eu-central-1`. Some providers need it (R2: `auto`). |
+| `S3_PREFIX` | empty | Optional key prefix, e.g. `sharedcal`, to share a bucket. |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | empty | Static credentials (the secret also accepts `_FILE`). Leave both empty to use the standard AWS environment variables, credentials file or an IAM role. |
+| `S3_FORCE_PATH_STYLE` | `false` | `true` for servers that don't support bucket subdomains (MinIO, Garage and most self-hosted ones). |
 | `BACKUP_SCHEDULE` | empty (off) | Cron schedule for in-container backups, e.g. `0 3 * * *` or `@daily`. |
 | `BACKUP_KEEP` | `7` | Number of scheduled backups to keep (`0` keeps all). |
 
@@ -253,10 +261,59 @@ Serve SharedCal on its own (sub)domain, not under a path prefix.
   itself.
 - Migrations run automatically at startup under a lock, so concurrent starts
   are safe. `sharedcal migrate` applies them without starting the server.
-- **Attachments always live on the `/data` volume**, whichever database you
-  use, so mount it in every setup.
+- **Attachments live on the `/data` volume** unless you use
+  [S3-compatible storage](#s3-compatible-storage), so mount it in every
+  other setup.
 - **Switching databases** is two commands, see
   [export and import](#backups-export-and-import).
+
+## S3-compatible storage
+
+Attachments, thumbnails and the logo can live in a bucket on AWS S3 or any
+S3-compatible server (MinIO, Garage, Cloudflare R2, Backblaze B2, Wasabi…)
+instead of `$DATA_DIR/attachments`:
+
+```yaml
+    environment:
+      BLOB_STORE: s3
+      S3_ENDPOINT: https://s3.eu-central-1.amazonaws.com
+      S3_REGION: eu-central-1
+      S3_BUCKET: sharedcal-files
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+```
+
+- **Downloads still go through SharedCal**, with the same session check and
+  safe-serving headers, so the bucket stays private. Grant the credentials
+  `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` and `s3:ListBucket` on
+  the bucket only.
+- **The bucket must already exist.** At startup SharedCal waits up to about a
+  minute for it to answer, then fails with a clear error.
+- **Backups:** `sharedcal backup` leaves attachments out (its `backup.json`
+  says so). Protect them with the bucket's own versioning, object lock or
+  replication. Blobs are content-addressed and never overwritten, so
+  versioning costs nothing extra. `sharedcal export` still includes every
+  referenced blob, read from the bucket.
+- **Moving existing files** needs no SharedCal command: objects use the same
+  `<ab>/<sha256>` layout as `$DATA_DIR/attachments`. Stop the server, copy the
+  directory into the bucket, then switch `BLOB_STORE`:
+
+  ```sh
+  mc mirror ./data/attachments myminio/sharedcal-files/   # or: rclone copy, aws s3 sync
+  ```
+
+  Leave out the hidden `.tmp` directory, and add your `S3_PREFIX` to the
+  target if you set one.
+
+### Running without a data volume
+
+With PostgreSQL or MySQL, `BLOB_STORE=s3` and an explicit `SESSION_SECRET`,
+nothing SharedCal needs to keep is in `DATA_DIR`. It must still be writable,
+because uploads are checked in a temp file there before they go to the
+bucket, but it can be the container's own filesystem, an `emptyDir` or a
+`tmpfs` sized for a few concurrent uploads. Uploaded themes are stored in the
+database. Theme files dropped into `$DATA_DIR/themes/` are copied into the
+database at startup, so they only need to be there once.
 
 ## Backups, export and import
 
@@ -287,10 +344,11 @@ docker exec sharedcal /sharedcal backup --out /data/backups
   the app could:
   `pg_dump -Fc -d "$DB_DSN" > sharedcal.dump`, or
   `mysqldump --single-transaction --routines sharedcal > sharedcal.sql`.
-- Attachments, uploaded themes and the logo are always included. Blobs that
+- Attachments, the logo and drop-in theme files are included. Blobs that
   were already in the previous backup are **hard-linked**, not copied, so
   daily backups cost little space, and each backup directory is still complete
-  by itself.
+  by itself. With `BLOB_STORE=s3` attachments and the logo are left out (see
+  [S3-compatible storage](#s3-compatible-storage)).
 - **Scheduled:** set `BACKUP_SCHEDULE="0 3 * * *"`, and `BACKUP_KEEP=7` keeps
   the newest seven. Scheduled backups go to `$DATA_DIR/backups`. Copy them
   off the host too, because a backup on the same disk doesn't protect against

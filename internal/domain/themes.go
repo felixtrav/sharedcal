@@ -174,16 +174,31 @@ func (s *Service) builtinThemes() ([]Theme, error) {
 	return out, nil
 }
 
-// diskThemes reads DATA_DIR/themes/*.json, skipping invalid files.
-func (s *Service) diskThemes() []Theme {
+// ImportThemeFiles copies the drop-in themes in DATA_DIR/themes/*.json into
+// the database at startup, so nothing reads the directory at runtime (and an
+// instance on PostgreSQL or MySQL with S3 storage needs no data volume). A
+// file is written when its theme is missing or differs from the stored copy;
+// invalid files and files that reuse a built-in id are skipped with a warning.
+func (s *Service) ImportThemeFiles(ctx context.Context) error {
 	if s.Opts.DataDir == "" {
 		return nil
 	}
 	files, _ := filepath.Glob(filepath.Join(s.Opts.DataDir, "themes", "*.json"))
-	var out []Theme
+	if len(files) == 0 {
+		return nil
+	}
+	builtin, err := s.builtinThemes()
+	if err != nil {
+		return err
+	}
+	reserved := map[string]bool{}
+	for _, b := range builtin {
+		reserved[b.ID] = true
+	}
 	for _, f := range files {
 		b, err := os.ReadFile(f)
 		if err != nil || len(b) > 64<<10 {
+			s.Log.Warn("skipping theme file", "file", f, "err", err, "bytes", len(b))
 			continue
 		}
 		var t Theme
@@ -195,10 +210,51 @@ func (s *Service) diskThemes() []Theme {
 			s.Log.Warn("skipping invalid theme file", "file", f, "err", err)
 			continue
 		}
-		t.Builtin = false
-		out = append(out, t)
+		if reserved[t.ID] {
+			s.Log.Warn("skipping theme file that reuses a built-in id", "file", f, "id", t.ID)
+			continue
+		}
+		var changed bool
+		err = s.write(ctx, authz.Actor{}, func(tx *Tx) error {
+			changed, err = tx.saveTheme(t, true)
+			return err
+		})
+		if err != nil {
+			return fmt.Errorf("import theme %s: %w", f, err)
+		}
+		if changed {
+			s.Log.Info("imported theme file", "file", f, "id", t.ID)
+		}
 	}
-	return out
+	return nil
+}
+
+// saveTheme stores t as an uploaded theme, records it and announces the
+// change. With onlyIfChanged, an identical stored copy is left alone.
+func (tx *Tx) saveTheme(t Theme, onlyIfChanged bool) (bool, error) {
+	t.Builtin = false
+	data, _ := json.Marshal(t)
+	row := store.Setting{Key: themeKeyPrefix + t.ID, ValueJSON: string(data), CreatedAt: tx.now, UpdatedAt: tx.now}
+	var existing store.Setting
+	if err := byKey(tx.db, row.Key).Take(&existing).Error; err == nil {
+		if onlyIfChanged && existing.ValueJSON == row.ValueJSON {
+			return false, nil
+		}
+		row.CreatedAt = existing.CreatedAt
+		if err := tx.db.Save(&row).Error; err != nil {
+			return false, err
+		}
+	} else if isNotFound(err) {
+		if err := tx.db.Create(&row).Error; err != nil {
+			return false, err
+		}
+	} else {
+		return false, err
+	}
+	if err := tx.record("theme.installed", "theme", t.ID, nil, nil, map[string]string{"id": t.ID, "name": t.Name}); err != nil {
+		return false, err
+	}
+	return true, tx.emit("settings.changed", settingsKey, 0, struct{}{}, "")
 }
 
 func (s *Service) uploadedThemes(db *gorm.DB) ([]Theme, error) {
@@ -217,8 +273,8 @@ func (s *Service) uploadedThemes(db *gorm.DB) ([]Theme, error) {
 	return out, nil
 }
 
-// allThemes merges built-in, disk and uploaded themes; earlier sources win
-// on ID collisions.
+// allThemes merges built-in and stored themes; built-in ones win on ID
+// collisions.
 func (s *Service) allThemes(db *gorm.DB) ([]Theme, error) {
 	builtin, err := s.builtinThemes()
 	if err != nil {
@@ -230,7 +286,7 @@ func (s *Service) allThemes(db *gorm.DB) ([]Theme, error) {
 	}
 	seen := map[string]bool{}
 	out := []Theme{}
-	for _, list := range [][]Theme{builtin, s.diskThemes(), uploaded} {
+	for _, list := range [][]Theme{builtin, uploaded} {
 		for _, t := range list {
 			if !seen[t.ID] {
 				seen[t.ID] = true
@@ -309,25 +365,8 @@ func (s *Service) InstallTheme(ctx context.Context, actor authz.Actor, t Theme) 
 				return invalidField("id", "a built-in theme already uses this id")
 			}
 		}
-		data, _ := json.Marshal(t)
-		row := store.Setting{Key: themeKeyPrefix + t.ID, ValueJSON: string(data), CreatedAt: tx.now, UpdatedAt: tx.now}
-		var existing store.Setting
-		if err := byKey(tx.db, row.Key).Take(&existing).Error; err == nil {
-			row.CreatedAt = existing.CreatedAt
-			if err := tx.db.Save(&row).Error; err != nil {
-				return err
-			}
-		} else if isNotFound(err) {
-			if err := tx.db.Create(&row).Error; err != nil {
-				return err
-			}
-		} else {
-			return err
-		}
-		if err := tx.record("theme.installed", "theme", t.ID, nil, nil, map[string]string{"id": t.ID, "name": t.Name}); err != nil {
-			return err
-		}
-		return tx.emit("settings.changed", settingsKey, 0, struct{}{}, "")
+		_, err = tx.saveTheme(t, false)
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -335,8 +374,9 @@ func (s *Service) InstallTheme(ctx context.Context, actor authz.Actor, t Theme) 
 	return &t, nil
 }
 
-// RemoveTheme deletes an uploaded theme. Built-in and disk themes cannot be
-// removed from the UI.
+// RemoveTheme deletes a stored theme. Built-in themes cannot be removed. A
+// theme imported from DATA_DIR/themes comes back at the next start unless its
+// file is deleted too.
 func (s *Service) RemoveTheme(ctx context.Context, actor authz.Actor, id string) error {
 	if !authz.CanAdminister(actor) {
 		return forbidden("admins only")

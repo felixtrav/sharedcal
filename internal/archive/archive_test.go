@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/felixtrav/sharedcal/internal/attachments"
 	"github.com/felixtrav/sharedcal/internal/store"
 	"github.com/felixtrav/sharedcal/internal/store/storetest"
 )
@@ -24,25 +25,30 @@ func ptr[T any](v T) *T { return &v }
 
 func sha(b []byte) string { s := sha256.Sum256(b); return hex.EncodeToString(s[:]) }
 
+// fsBlobs is the blob store a server with DATA_DIR=dir uses.
+func fsBlobs(t *testing.T, dir string) attachments.BlobStore {
+	t.Helper()
+	b, err := attachments.NewFSStore(filepath.Join(dir, "attachments"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
 // seed puts at least one row in every table (and two in some, so paging and
-// ordering are exercised) and writes the matching blobs.
-func seed(t *testing.T, db *store.DB, dataDir string) {
+// ordering are exercised) and stores the referenced blobs: an attachment, its
+// thumbnail and the logo. An unreferenced blob and an infected attachment
+// whose blob is gone must both be left out of the export.
+func seed(t *testing.T, db *store.DB, blobs attachments.BlobStore) {
 	t.Helper()
 	ts := time.Date(2026, 10, 22, 9, 30, 15, 123456000, time.UTC)
 	blob := []byte("hello attachment")
 	thumb := []byte("thumbnail bytes")
-	bsha, tsha := sha(blob), sha(thumb)
-	for p, b := range map[string][]byte{
-		filepath.Join("attachments", bsha[:2], bsha): blob,
-		filepath.Join("attachments", tsha[:2], tsha): thumb,
-		filepath.Join("themes", "nord.json"):         []byte(`{"id":"nord"}`),
-		filepath.Join("branding", "logo.png"):        []byte("logo"),
-	} {
-		full := filepath.Join(dataDir, p)
-		if err := os.MkdirAll(filepath.Dir(full), 0o750); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(full, b, 0o640); err != nil {
+	logo := []byte("logo bytes")
+	bsha, tsha, lsha := sha(blob), sha(thumb), sha(logo)
+	gone := sha([]byte("infected, deleted"))
+	for _, b := range [][]byte{blob, thumb, logo, []byte("orphan")} {
+		if err := blobs.Put(context.Background(), attachments.KeyFor(sha(b)), bytes.NewReader(b)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -73,6 +79,8 @@ func seed(t *testing.T, db *store.DB, dataDir string) {
 		&store.Attachment{ID: store.NewID(), EventID: ev, CommentID: &cm, UploaderID: u2, Filename: "map.png", ContentType: "image/png",
 			SizeBytes: int64(len(blob)), SHA256: bsha, StorageKey: bsha[:2] + "/" + bsha, Width: ptr(480), Height: ptr(320),
 			ThumbKey: ptr(tsha[:2] + "/" + tsha), ScanStatus: store.ScanClean, CreatedAt: ts, UpdatedAt: ts},
+		&store.Attachment{ID: store.NewID(), EventID: ev, UploaderID: u2, Filename: "virus.pdf", ContentType: "application/pdf",
+			SizeBytes: 17, SHA256: gone, StorageKey: attachments.KeyFor(gone), ScanStatus: store.ScanInfected, CreatedAt: ts, UpdatedAt: ts},
 		&store.Suggestion{ID: store.NewID(), EventID: ev, AuthorID: u2, Kind: store.SuggestionEdit, PatchJSON: `{"title":"x"}`, BaseVersion: 3,
 			Status: store.SuggestionRejected, ReviewerID: &u1, ReviewNote: "no", ResolvedAt: &ts, CreatedAt: ts, UpdatedAt: ts},
 		&store.Notification{ID: store.NewID(), UserID: u1, Kind: "comment.reply", SubjectType: "comment", SubjectID: reply, EventID: &ev, ActorID: &u2, CreatedAt: ts, UpdatedAt: ts},
@@ -81,6 +89,7 @@ func seed(t *testing.T, db *store.DB, dataDir string) {
 		&store.ChangeLog{Type: "event.updated", SubjectID: ev, AudienceUserID: &u1, PayloadJSON: "{}", CreatedAt: ts},
 		&store.FeedToken{ID: store.NewID(), UserID: u1, TokenHash: strings.Repeat("a", 64), LastUsedAt: &ts, CreatedAt: ts, UpdatedAt: ts},
 		&store.Setting{Key: "calendar_name", ValueJSON: `"Family"`, CreatedAt: ts, UpdatedAt: ts},
+		&store.Setting{Key: "instance", ValueJSON: `{"calendarName":"Family","logoKey":"` + attachments.KeyFor(lsha) + `"}`, CreatedAt: ts, UpdatedAt: ts},
 	}
 	for i := 0; i < 3; i++ { // more users than one key comparison
 		id := store.NewID()
@@ -94,10 +103,10 @@ func seed(t *testing.T, db *store.DB, dataDir string) {
 	}
 }
 
-func export(t *testing.T, db *store.DB, dataDir string) []byte {
+func export(t *testing.T, db *store.DB, blobs attachments.BlobStore) []byte {
 	t.Helper()
 	var buf bytes.Buffer
-	if err := Export(context.Background(), db, dataDir, &buf); err != nil {
+	if err := Export(context.Background(), db, blobs, &buf); err != nil {
 		t.Fatalf("export: %v", err)
 	}
 	return buf.Bytes()
@@ -125,11 +134,11 @@ func entries(t *testing.T, b []byte) map[string][]byte {
 func TestRoundTrip(t *testing.T) {
 	ctx := context.Background()
 	src := storetest.Open(t)
-	srcDir := t.TempDir()
-	seed(t, src, srcDir)
+	srcBlobs := fsBlobs(t, t.TempDir())
+	seed(t, src, srcBlobs)
 	pageSizeForTest(t, 2) // force several pages for users
 
-	a := export(t, src, srcDir)
+	a := export(t, src, srcBlobs)
 	ea := entries(t, a)
 	var m Manifest
 	if err := json.Unmarshal(ea[manifestName], &m); err != nil {
@@ -147,18 +156,19 @@ func TestRoundTrip(t *testing.T) {
 	if _, ok := ea[tablesDir+"change_log.jsonl"]; ok {
 		t.Fatal("change_log must not be exported")
 	}
-	if len(m.Files) != 4 {
+	if len(m.Files) != 3 { // attachment, thumbnail, logo
 		t.Fatalf("files: %+v", m.Files)
 	}
 
 	dst := storetest.Open(t)
 	dstDir := t.TempDir()
-	if err := Import(ctx, dst, dstDir, bytes.NewReader(a), int64(len(a))); err != nil {
+	dstBlobs := fsBlobs(t, dstDir)
+	if err := Import(ctx, dst, dstDir, dstBlobs, bytes.NewReader(a), int64(len(a))); err != nil {
 		t.Fatalf("import: %v", err)
 	}
 
-	// Every exported table is identical when exported again from the target.
-	eb := entries(t, export(t, dst, dstDir))
+	// Every exported table and blob is identical when exported again from the target.
+	eb := entries(t, export(t, dst, dstBlobs))
 	for name, content := range ea {
 		if name == manifestName {
 			continue
@@ -204,7 +214,7 @@ func TestRoundTrip(t *testing.T) {
 	}
 
 	// A second import into the now non-empty database is refused.
-	err := Import(ctx, dst, dstDir, bytes.NewReader(a), int64(len(a)))
+	err := Import(ctx, dst, dstDir, dstBlobs, bytes.NewReader(a), int64(len(a)))
 	if !errors.Is(err, ErrNotEmpty) {
 		t.Fatalf("want ErrNotEmpty, got %v", err)
 	}
@@ -271,7 +281,7 @@ func TestImportRejectsHostileArchives(t *testing.T) {
 			dir := t.TempDir()
 			lim := DefaultLimits
 			lim.MaxEntryBytes = 1 << 20
-			err := ImportWithLimits(context.Background(), db, dir, bytes.NewReader(a), int64(len(a)), lim)
+			err := ImportWithLimits(context.Background(), db, dir, fsBlobs(t, dir), bytes.NewReader(a), int64(len(a)), lim)
 			if err == nil {
 				t.Fatal("expected an error")
 			}
@@ -295,7 +305,7 @@ func TestImportGoodBlob(t *testing.T) {
 	a := craft(t, []File{{Path: p, Size: 4, SHA256: gsha}}, entry{name: p, body: good})
 	db := storetest.Open(t)
 	dir := t.TempDir()
-	if err := Import(context.Background(), db, dir, bytes.NewReader(a), int64(len(a))); err != nil {
+	if err := Import(context.Background(), db, dir, fsBlobs(t, dir), bytes.NewReader(a), int64(len(a))); err != nil {
 		t.Fatal(err)
 	}
 	b, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(p)))
@@ -306,6 +316,21 @@ func TestImportGoodBlob(t *testing.T) {
 	ents, _ := os.ReadDir(filepath.Join(dir, "attachments", gsha[:2]))
 	if len(ents) != 1 {
 		t.Fatalf("leftover files: %v", ents)
+	}
+}
+
+// Archives from older versions carry DATA_DIR files (drop-in themes) under
+// files/; they are still restored there.
+func TestImportLegacyFiles(t *testing.T) {
+	theme := []byte(`{"id":"nord"}`)
+	p := "files/themes/nord.json"
+	a := craft(t, []File{{Path: p, Size: int64(len(theme)), SHA256: sha(theme)}}, entry{name: p, body: theme})
+	dir := t.TempDir()
+	if err := Import(context.Background(), storetest.Open(t), dir, fsBlobs(t, dir), bytes.NewReader(a), int64(len(a))); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "themes", "nord.json")); err != nil || !bytes.Equal(b, theme) {
+		t.Fatalf("legacy theme not restored: %v", err)
 	}
 }
 

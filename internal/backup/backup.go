@@ -62,6 +62,14 @@ type Stats struct {
 	Copied int   `json:"copied"`
 }
 
+// Options adjust what Run includes.
+type Options struct {
+	// ExternalAttachments names where attachment blobs live when they are not
+	// in dataDir (e.g. "s3://bucket/prefix"). They are then left out: the
+	// bucket's own versioning or replication protects them.
+	ExternalAttachments string
+}
+
 // now is replaceable in tests.
 var now = func() time.Time { return time.Now().UTC() }
 
@@ -71,8 +79,8 @@ var now = func() time.Time { return time.Now().UTC() }
 // snapshotSQLite). PostgreSQL and MySQL are not dumped: use pg_dump or
 // mysqldump, which understand their own consistency and permission models far
 // better than the app could. Attachments, themes and branding are backed up
-// for every dialect, because they always live in dataDir.
-func Run(ctx context.Context, db *store.DB, dataDir, outDir string, log *slog.Logger) (string, error) {
+// for every dialect, unless opts says attachments live elsewhere.
+func Run(ctx context.Context, db *store.DB, dataDir, outDir string, opts Options, log *slog.Logger) (string, error) {
 	if log == nil {
 		log = slog.New(slog.DiscardHandler)
 	}
@@ -100,6 +108,7 @@ func Run(ctx context.Context, db *store.DB, dataDir, outDir string, log *slog.Lo
 	}()
 
 	m := Manifest{CreatedAt: started}
+	var notes []string
 	if db != nil {
 		m.Dialect = db.Dialect
 		switch db.Dialect {
@@ -109,21 +118,26 @@ func Run(ctx context.Context, db *store.DB, dataDir, outDir string, log *slog.Lo
 			}
 			m.Database = DBFile
 		default:
-			m.Note = fmt.Sprintf("database (%s) not included: back it up with %s", db.Dialect, nativeTool(db.Dialect))
+			notes = append(notes, fmt.Sprintf("database (%s) not included: back it up with %s", db.Dialect, nativeTool(db.Dialect)))
 			log.WarnContext(ctx, "backup: database not included; use the database's native backup tool",
 				"dialect", db.Dialect, "tool", nativeTool(db.Dialect))
 		}
 	}
 
-	prevAttach := ""
-	if prev != "" {
-		prevAttach = filepath.Join(prev, "attachments")
+	if opts.ExternalAttachments == "" {
+		prevAttach := ""
+		if prev != "" {
+			prevAttach = filepath.Join(prev, "attachments")
+		}
+		st, err := syncTree(ctx, filepath.Join(dataDir, "attachments"), filepath.Join(tmp, "attachments"), prevAttach)
+		if err != nil {
+			return "", fmt.Errorf("backup: attachments: %w", err)
+		}
+		m.Attachments = st
+	} else {
+		notes = append(notes, "attachments not included: they are stored in "+opts.ExternalAttachments)
 	}
-	st, err := syncTree(ctx, filepath.Join(dataDir, "attachments"), filepath.Join(tmp, "attachments"), prevAttach)
-	if err != nil {
-		return "", fmt.Errorf("backup: attachments: %w", err)
-	}
-	m.Attachments = st
+	m.Note = strings.Join(notes, "; ")
 	for _, d := range copiedDirs {
 		if _, err := syncTree(ctx, filepath.Join(dataDir, d), filepath.Join(tmp, d), ""); err != nil {
 			return "", fmt.Errorf("backup: %s: %w", d, err)
@@ -142,7 +156,7 @@ func Run(ctx context.Context, db *store.DB, dataDir, outDir string, log *slog.Lo
 	}
 	ok = true
 	log.InfoContext(ctx, "backup complete", "path", final, "dialect", m.Dialect,
-		"attachments", st.Files, "linked", st.Linked, "copied", st.Copied,
+		"attachments", m.Attachments.Files, "linked", m.Attachments.Linked, "copied", m.Attachments.Copied,
 		"duration", time.Since(started).Round(time.Millisecond).String())
 	return final, nil
 }

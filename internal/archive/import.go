@@ -21,6 +21,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
+	"github.com/felixtrav/sharedcal/internal/attachments"
 	"github.com/felixtrav/sharedcal/internal/store"
 )
 
@@ -48,16 +49,18 @@ var DefaultLimits = Limits{
 // ErrNotEmpty is returned when the target database already holds data.
 var ErrNotEmpty = errors.New("archive: the target database is not empty; import needs a freshly migrated database")
 
-// Import restores an archive written by Export into db and dataDir, using
+// Import restores an archive written by Export into db and blobs, using
 // DefaultLimits. See ImportWithLimits.
-func Import(ctx context.Context, db *store.DB, dataDir string, r io.ReaderAt, size int64) error {
-	return ImportWithLimits(ctx, db, dataDir, r, size, DefaultLimits)
+func Import(ctx context.Context, db *store.DB, dataDir string, blobs attachments.BlobStore, r io.ReaderAt, size int64) error {
+	return ImportWithLimits(ctx, db, dataDir, blobs, r, size, DefaultLimits)
 }
 
 // ImportWithLimits restores an archive. The database must be freshly migrated
 // and empty. The whole archive is validated first (entry names, types,
-// sizes, manifest); then files are restored (each verified against its
-// SHA-256 while being written, and moved into place atomically) and finally
+// sizes, manifest); then blobs are stored through blobs (which verifies each
+// against its key) and any files/ entries from older archives are written to
+// dataDir (verified against their SHA-256 and moved into place atomically);
+// finally
 // all rows are inserted in dependency order, in batches, inside one
 // transaction. IDs are preserved, and the change_log sequence continues after
 // the source's high-water mark.
@@ -66,7 +69,7 @@ func Import(ctx context.Context, db *store.DB, dataDir string, r io.ReaderAt, si
 // committed and the only leftovers are content-addressed blobs, so the import
 // can simply be retried; the reverse order could commit rows pointing at
 // blobs that never arrived.
-func ImportWithLimits(ctx context.Context, db *store.DB, dataDir string, r io.ReaderAt, size int64, lim Limits) error {
+func ImportWithLimits(ctx context.Context, db *store.DB, dataDir string, blobs attachments.BlobStore, r io.ReaderAt, size int64, lim Limits) error {
 	zr, err := zip.NewReader(r, size)
 	if err != nil {
 		return fmt.Errorf("archive: not a valid archive: %w", err)
@@ -136,6 +139,9 @@ func ImportWithLimits(ctx context.Context, db *store.DB, dataDir string, r io.Re
 		return err
 	}
 
+	if err := restoreBlobs(ctx, blobs, entries, m.Files, lim); err != nil {
+		return err
+	}
 	if err := restoreFiles(ctx, dataDir, entries, m.Files, lim); err != nil {
 		return err
 	}
@@ -283,10 +289,48 @@ func ensureEmpty(ctx context.Context, db *store.DB, tbls []table) error {
 	return nil
 }
 
-// restoreFiles writes every listed file below dataDir through an os.Root,
-// which refuses any path (including via pre-existing symlinks) that would
-// leave dataDir.
-func restoreFiles(ctx context.Context, dataDir string, entries map[string]*zip.File, files []File, lim Limits) error {
+// restoreBlobs stores every attachments/<key> entry. The key must be the
+// entry's SHA-256 (and the store checks the content against it again), so an
+// archive can never make a key point at different content.
+func restoreBlobs(ctx context.Context, blobs attachments.BlobStore, entries map[string]*zip.File, files []File, lim Limits) error {
+	for _, f := range files {
+		key, ok := strings.CutPrefix(f.Path, attachDir)
+		if !ok {
+			continue
+		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if !attachments.ValidKey(key) || key[3:] != f.SHA256 {
+			return fmt.Errorf("archive: restore %s: file name does not match its sha256", f.Path)
+		}
+		zf := entries[f.Path]
+		if int64(zf.UncompressedSize64) != f.Size {
+			return fmt.Errorf("archive: restore %s: size differs from manifest", f.Path)
+		}
+		rc, err := open(zf, lim.MaxEntryBytes)
+		if err != nil {
+			return fmt.Errorf("archive: restore %s: %w", f.Path, err)
+		}
+		err = blobs.Put(ctx, key, rc)
+		rc.Close()
+		if err != nil {
+			return fmt.Errorf("archive: restore %s: %w", f.Path, err)
+		}
+	}
+	return nil
+}
+
+// restoreFiles writes the files/ entries of older archives below dataDir
+// through an os.Root, which refuses any path (including via pre-existing
+// symlinks) that would leave dataDir.
+func restoreFiles(ctx context.Context, dataDir string, entries map[string]*zip.File, all []File, lim Limits) error {
+	var files []File
+	for _, f := range all {
+		if isExtraFile(f.Path) {
+			files = append(files, f)
+		}
+	}
 	if len(files) == 0 {
 		return nil
 	}
@@ -311,11 +355,7 @@ func restoreFiles(ctx context.Context, dataDir string, entries map[string]*zip.F
 }
 
 func restoreFile(root *os.Root, rel string, zf *zip.File, want File, lim Limits) error {
-	// Content-addressed blobs are named by their hash: the name must match.
 	base := path.Base(rel)
-	if strings.HasPrefix(rel, attachDir) && isHex64(base) && base != want.SHA256 {
-		return errors.New("file name does not match its sha256")
-	}
 	if int64(zf.UncompressedSize64) != want.Size {
 		return errors.New("size differs from manifest")
 	}
@@ -324,8 +364,7 @@ func restoreFile(root *os.Root, rel string, zf *zip.File, want File, lim Limits)
 			return err
 		}
 	}
-	// Already present with the right content (e.g. the same /data volume is
-	// reused when switching databases)? Nothing to do.
+	// Already present with the right content? Nothing to do.
 	if got, err := hashFile(root, rel); err == nil && got == want.SHA256 {
 		return nil
 	}
@@ -388,14 +427,6 @@ func hashFile(root *os.Root, rel string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(h.Sum(nil)), nil
-}
-
-func isHex64(s string) bool {
-	if len(s) != 64 {
-		return false
-	}
-	_, err := hex.DecodeString(s)
-	return err == nil && strings.ToLower(s) == s
 }
 
 func randHex() string {

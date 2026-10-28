@@ -175,6 +175,48 @@ func TestExternalDatabaseNeedsDSN(t *testing.T) {
 	}
 }
 
+func TestBlobStore(t *testing.T) {
+	if c := mustLoad(t, nil); c.BlobStore != "fs" {
+		t.Errorf("default blob store %q", c.BlobStore)
+	}
+	s3 := map[string]string{
+		"BLOB_STORE": "S3", "S3_ENDPOINT": "http://minio:9000/", "S3_BUCKET": "cal", "S3_PREFIX": "/prod/blobs/",
+		"S3_ACCESS_KEY_ID": "id", "S3_SECRET_ACCESS_KEY": "key", "S3_FORCE_PATH_STYLE": "true",
+	}
+	c := mustLoad(t, s3)
+	if c.BlobStore != "s3" || c.S3.Endpoint.String() != "http://minio:9000" || c.S3.Bucket != "cal" ||
+		c.S3.Prefix != "prod/blobs" || c.S3.AccessKeyID != "id" || c.S3.SecretAccessKey != "key" || !c.S3.ForcePathStyle {
+		t.Errorf("s3: %+v", c.S3)
+	}
+	// No static keys means the AWS credential chain (env, file, IAM role).
+	c = mustLoad(t, map[string]string{"BLOB_STORE": "s3", "S3_ENDPOINT": "https://s3.amazonaws.com", "S3_BUCKET": "cal"})
+	if c.S3.AccessKeyID != "" || c.S3.Region != "" {
+		t.Errorf("chain credentials: %+v", c.S3)
+	}
+
+	cases := []struct {
+		overrides map[string]string
+		want      string
+	}{
+		{map[string]string{"BLOB_STORE": "gcs"}, "BLOB_STORE must be fs or s3"},
+		{map[string]string{"BLOB_STORE": "s3"}, "S3_ENDPOINT is required"},
+		{map[string]string{"BLOB_STORE": "s3", "S3_ENDPOINT": "https://s3.amazonaws.com"}, "S3_BUCKET is required"},
+		{map[string]string{"BLOB_STORE": "s3", "S3_BUCKET": "b", "S3_ENDPOINT": "s3.amazonaws.com"}, "S3_ENDPOINT must be"},
+		{map[string]string{"BLOB_STORE": "s3", "S3_BUCKET": "b", "S3_ENDPOINT": "https://s3.amazonaws.com/bucket"}, "S3_ENDPOINT must be"},
+		{map[string]string{"BLOB_STORE": "s3", "S3_BUCKET": "b", "S3_ENDPOINT": "https://u:p@s3.amazonaws.com"}, "S3_ENDPOINT must be"},
+		{map[string]string{"BLOB_STORE": "s3", "S3_BUCKET": "b", "S3_ENDPOINT": "https://s3.amazonaws.com", "S3_PREFIX": "a/../b"}, "S3_PREFIX"},
+		{map[string]string{"BLOB_STORE": "s3", "S3_BUCKET": "b", "S3_ENDPOINT": "https://s3.amazonaws.com", "S3_PREFIX": "a//b"}, "S3_PREFIX"},
+		{map[string]string{"BLOB_STORE": "s3", "S3_BUCKET": "b", "S3_ENDPOINT": "https://s3.amazonaws.com", "S3_ACCESS_KEY_ID": "id"}, "set both"},
+		{map[string]string{"BLOB_STORE": "s3", "S3_BUCKET": "b", "S3_ENDPOINT": "https://s3.amazonaws.com", "S3_FORCE_PATH_STYLE": "yes please"}, "true or false"},
+		{map[string]string{"S3_BUCKET": "b"}, "S3_BUCKET is set but BLOB_STORE is not s3"},
+	}
+	for _, tc := range cases {
+		if _, err := LoadFrom(env(tc.overrides)); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%v: got %v, want error containing %q", tc.overrides, err, tc.want)
+		}
+	}
+}
+
 func TestSecretsFromFiles(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, content string) string {

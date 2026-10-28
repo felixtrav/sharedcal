@@ -14,6 +14,8 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -68,8 +70,24 @@ type Config struct {
 	AttachmentQuota         int64
 	ClamAVAddr              string
 
+	// BlobStore is where attachment blobs and the logo live: "fs" (DATA_DIR)
+	// or "s3" (the bucket described by S3).
+	BlobStore string
+	S3        S3
+
 	BackupSchedule string
 	BackupKeep     int
+}
+
+// S3 configures an S3-compatible bucket for BLOB_STORE=s3.
+type S3 struct {
+	Endpoint        *url.URL
+	Bucket          string
+	Region          string
+	Prefix          string
+	AccessKeyID     string
+	SecretAccessKey string
+	ForcePathStyle  bool
 }
 
 // Secure reports whether the public URL is HTTPS, which controls the Secure
@@ -193,6 +211,7 @@ func LoadFrom(getenv Getenv) (*Config, error) {
 	c.AttachmentMaxPerComment = p.integer("ATTACHMENT_MAX_PER_COMMENT", 5)
 	c.AttachmentQuota = p.size("ATTACHMENT_QUOTA", 2<<30)
 	c.ClamAVAddr = p.str("CLAMAV_ADDR", "")
+	p.blobStore(c)
 
 	c.BackupSchedule = p.str("BACKUP_SCHEDULE", "")
 	c.BackupKeep = p.integer("BACKUP_KEEP", 7)
@@ -201,6 +220,54 @@ func LoadFrom(getenv Getenv) (*Config, error) {
 		return nil, errors.Join(p.errs...)
 	}
 	return c, nil
+}
+
+var s3PrefixPattern = regexp.MustCompile(`^[A-Za-z0-9!_.*'()-]+(/[A-Za-z0-9!_.*'()-]+)*$`)
+
+// blobStore reads BLOB_STORE and, for s3, the S3_* settings. S3_* variables
+// without BLOB_STORE=s3 are an error, so a typo cannot silently keep
+// attachments on local disk.
+func (p *parser) blobStore(c *Config) {
+	c.BlobStore = strings.ToLower(p.str("BLOB_STORE", "fs"))
+	s3Vars := []string{"S3_ENDPOINT", "S3_BUCKET", "S3_REGION", "S3_PREFIX", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY_FILE", "S3_FORCE_PATH_STYLE"}
+	switch c.BlobStore {
+	case "fs":
+		for _, k := range s3Vars {
+			if strings.TrimSpace(p.getenv(k)) != "" {
+				p.errf("%s is set but BLOB_STORE is not s3", k)
+				return
+			}
+		}
+		return
+	case "s3":
+	default:
+		p.errf("BLOB_STORE must be fs or s3, got %q", c.BlobStore)
+		return
+	}
+
+	if ep := p.str("S3_ENDPOINT", ""); ep == "" {
+		p.errf("S3_ENDPOINT is required when BLOB_STORE=s3")
+	} else if u, err := url.Parse(ep); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" ||
+		strings.Trim(u.Path, "/") != "" || u.RawQuery != "" || u.User != nil {
+		p.errf("S3_ENDPOINT must be an http(s) URL with only a host, like https://s3.eu-central-1.amazonaws.com, got %q", ep)
+	} else {
+		c.S3.Endpoint = &url.URL{Scheme: u.Scheme, Host: u.Host}
+	}
+	c.S3.Bucket = p.str("S3_BUCKET", "")
+	if c.S3.Bucket == "" {
+		p.errf("S3_BUCKET is required when BLOB_STORE=s3")
+	}
+	c.S3.Region = p.str("S3_REGION", "")
+	c.S3.Prefix = strings.Trim(p.str("S3_PREFIX", ""), "/")
+	if c.S3.Prefix != "" && (!s3PrefixPattern.MatchString(c.S3.Prefix) || slices.Contains(strings.Split(c.S3.Prefix, "/"), "..")) {
+		p.errf("S3_PREFIX may only contain letters, digits, !_.*'()- and / between segments, got %q", c.S3.Prefix)
+	}
+	c.S3.AccessKeyID = p.str("S3_ACCESS_KEY_ID", "")
+	c.S3.SecretAccessKey = p.secret("S3_SECRET_ACCESS_KEY", "")
+	if (c.S3.AccessKeyID == "") != (c.S3.SecretAccessKey == "") {
+		p.errf("set both S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, or neither to use the AWS environment, credentials file or IAM role")
+	}
+	c.S3.ForcePathStyle = p.boolean("S3_FORCE_PATH_STYLE", false)
 }
 
 // LoadOrCreateSessionSecret fills SessionSecret from DATA_DIR when it was not

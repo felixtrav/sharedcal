@@ -14,7 +14,9 @@ proxy, and the backup/restore runbook. For configuration see the
   `chown -R 65532:65532 ./data` first. On Kubernetes set
   `securityContext: { runAsUser: 65532, runAsGroup: 65532, fsGroup: 65532 }`.
 - The root filesystem can be read-only (`read_only: true` in Compose), because
-  everything is written under `/data`.
+  everything is written under `/data`. With PostgreSQL/MySQL, `BLOB_STORE=s3`
+  and `SESSION_SECRET` set, `/data` holds only upload temp files and can be an
+  `emptyDir` or `tmpfs` (see the README's "Running without a data volume").
 - Shutdown: on `SIGTERM` the server stops accepting connections, closes SSE
   streams (browsers reconnect and replay from `Last-Event-ID`) and finishes
   in-flight requests.
@@ -25,9 +27,10 @@ proxy, and the backup/restore runbook. For configuration see the
 /data
 ├── sharedcal.db          SQLite database (+ -wal, -shm while running)
 ├── session_secret        generated if SESSION_SECRET is not set; keep it with backups
-├── attachments/<ab>/<sha256>   content-addressed blobs and thumbnails
-├── themes/*.json         themes uploaded by admins or dropped in by hand
-├── branding/             uploaded logo
+├── attachments/<ab>/<sha256>   content-addressed blobs: attachments, thumbnails, logo
+│                         (BLOB_STORE=fs only; with s3 they live in the bucket)
+├── tmp/                  upload temp files (BLOB_STORE=s3 only)
+├── themes/*.json         optional drop-in themes, copied into the database at startup
 └── backups/              default target of scheduled backups
 ```
 
@@ -111,8 +114,9 @@ Snippets: [`deploy/proxy/`](../deploy/proxy). Checklist:
 | --- | --- | --- |
 | Database (SQLite) | `/data/sharedcal.db` | `sharedcal backup` (online `VACUUM INTO` snapshot) |
 | Database (PostgreSQL/MySQL) | the DB server | `pg_dump` / `mysqldump --single-transaction` |
-| Attachments | `/data/attachments` | `sharedcal backup` (incremental, hard links) |
-| Themes, logo | `/data/themes`, `/data/branding` | `sharedcal backup` |
+| Attachments, logo | `/data/attachments` | `sharedcal backup` (incremental, hard links) |
+| Attachments, logo (`BLOB_STORE=s3`) | the bucket | bucket versioning, object lock or replication; `sharedcal backup` leaves them out |
+| Themes | the database (`settings`); drop-in files in `/data/themes` | with the database; `sharedcal backup` also copies `/data/themes` |
 | Session secret | `/data/session_secret` or `SESSION_SECRET` | your secrets store. Losing it only invalidates in-flight logins. |
 | Configuration | your Compose file / env | version control (without secrets) |
 
@@ -204,8 +208,8 @@ between databases or hosts. The archive is a zip:
 | --- | --- |
 | `manifest.json` | format version, app version, source dialect, creation time, row counts, SHA-256 and size of every file, change_log high-water mark |
 | `tables/<table>.jsonl` | one JSON object per row, keys are column names, ordered by primary key |
-| `attachments/<ab>/<sha256>` | attachment blobs and thumbnails |
-| `files/themes/…`, `files/branding/…` | uploaded themes and logo |
+| `attachments/<ab>/<sha256>` | every blob the database references (attachments, thumbnails, logo), read through the configured blob store |
+| `files/themes/…`, `files/branding/…` | only in archives from older versions; still restored into `DATA_DIR` |
 
 - Tables are read page by page inside one read transaction, which gives a
   consistent snapshot and constant memory. The export can run while the
@@ -218,12 +222,13 @@ between databases or hosts. The archive is a zip:
   `sharedcal migrate` first). It validates the whole archive before writing
   anything. It rejects absolute paths, `..`, symlinks, unknown entries and
   oversized entries (zip-bomb limits: 4 GiB per entry, 256 GiB in total,
-  32 MiB per row). It restores files first, each verified against its
-  SHA-256 while being written and moved into place atomically, then inserts
+  32 MiB per row). It restores blobs first, into the configured blob store
+  (local or S3), each verified against its SHA-256 before it is stored, then inserts
   all rows in dependency order, in batches, in **one transaction**. IDs are
   preserved. If anything fails, no rows are committed, and re-running is safe.
-- Files that already exist with the right checksum are skipped, so importing
-  onto the same `/data` volume (the usual SQLite → PostgreSQL move) is fast.
+- Blobs that already exist are skipped, so importing onto the same `/data`
+  volume or bucket (the usual SQLite → PostgreSQL move) is fast. Export and
+  import also work across stores, e.g. to move from local files to S3.
 
 ```sh
 # SQLite → PostgreSQL, same host and volume

@@ -7,8 +7,10 @@
 //	                              creation time, row counts, file checksums
 //	tables/<table>.jsonl          one JSON object per row, keyed by column name,
 //	                              ordered by primary key, in store.AllModels() order
-//	attachments/<prefix>/<sha>    attachment blobs (and thumbnails) from DATA_DIR
-//	files/themes/…, files/branding/…  uploaded themes and the logo
+//	attachments/<prefix>/<sha>    every blob the database references (attachments,
+//	                              thumbnails, the logo), read through the BlobStore
+//	files/themes/…, files/branding/…  only in archives from older versions, which
+//	                              exported DATA_DIR files; import still restores them
 //
 // Values are dialect-neutral JSON: strings, numbers, booleans, null, and
 // RFC 3339 UTC timestamps. Two tables are deliberately left out:
@@ -33,10 +35,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"path"
-	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -44,6 +45,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 
+	"github.com/felixtrav/sharedcal/internal/attachments"
 	"github.com/felixtrav/sharedcal/internal/store"
 )
 
@@ -70,7 +72,8 @@ var pageSize = 500
 // skipped tables are never exported (see the package documentation).
 var skipped = map[string]bool{"sessions": true, "change_log": true}
 
-// extraDirs are DATA_DIR subdirectories exported under files/.
+// extraDirs are DATA_DIR subdirectories that older versions exported under
+// files/. Themes now live in the settings table, so only Import uses this.
 var extraDirs = []string{"themes", "branding"}
 
 // Manifest is the archive's manifest.json.
@@ -113,10 +116,10 @@ func tables(db *gorm.DB) ([]table, error) {
 	return out, nil
 }
 
-// Export writes a portable archive of the database and the files in dataDir
-// to w. Rows are read in pages inside one read transaction, so the archive is
-// a consistent snapshot and whole tables are never held in memory.
-func Export(ctx context.Context, db *store.DB, dataDir string, w io.Writer) error {
+// Export writes a portable archive of the database and the blobs it
+// references to w. Rows are read in pages inside one read transaction, so the
+// archive is a consistent snapshot and whole tables are never held in memory.
+func Export(ctx context.Context, db *store.DB, blobs attachments.BlobStore, w io.Writer) error {
 	tbls, err := tables(db.R)
 	if err != nil {
 		return err
@@ -159,16 +162,17 @@ func Export(ctx context.Context, db *store.DB, dataDir string, w io.Writer) erro
 		return fmt.Errorf("archive: read change_log: %w", err)
 	}
 	m.ChangeLogMaxSeq = maxSeq.Int64
+	keys, err := blobKeys(tx)
+	if err != nil {
+		return fmt.Errorf("archive: list blobs: %w", err)
+	}
 	_ = tx.Rollback()
 
 	// Blobs are content-addressed and immutable, so reading them after the
 	// row snapshot cannot produce a row that points at a missing blob (blobs
 	// are only removed after their rows).
-	if err := exportDir(ctx, zw, filepath.Join(dataDir, "attachments"), attachDir, &m); err != nil {
-		return err
-	}
-	for _, d := range extraDirs {
-		if err := exportDir(ctx, zw, filepath.Join(dataDir, d), filesDir+d+"/", &m); err != nil {
+	for _, k := range keys {
+		if err := exportBlob(ctx, zw, blobs, k, &m); err != nil {
 			return err
 		}
 	}
@@ -295,57 +299,66 @@ func encodeRow(ctx context.Context, s *schema.Schema, rv reflect.Value) ([]byte,
 	return append(buf, '}', '\n'), nil
 }
 
-// exportDir adds every regular file under dir to the archive under prefix.
-// Hidden entries (in-progress upload temp files) are skipped.
-func exportDir(ctx context.Context, zw *zip.Writer, dir, prefix string, m *Manifest) error {
-	if _, err := os.Lstat(dir); errors.Is(err, fs.ErrNotExist) {
+// blobKeys returns every blob key the database references: attachments,
+// their thumbnails, and the branding logo (the logoKey field of the
+// "instance" settings row, see internal/domain/settings.go).
+func blobKeys(tx *gorm.DB) ([]string, error) {
+	var rows []struct {
+		StorageKey string
+		ThumbKey   *string
+	}
+	if err := tx.Model(&store.Attachment{}).Select("storage_key", "thumb_key").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	var keys []string
+	for _, r := range rows {
+		keys = append(keys, r.StorageKey)
+		if r.ThumbKey != nil {
+			keys = append(keys, *r.ThumbKey)
+		}
+	}
+	var st store.Setting
+	switch err := tx.Where(map[string]any{"key": "instance"}).Limit(1).Find(&st).Error; {
+	case err != nil:
+		return nil, err
+	case st.ValueJSON != "":
+		var v struct {
+			LogoKey string `json:"logoKey"`
+		}
+		if json.Unmarshal([]byte(st.ValueJSON), &v) == nil && v.LogoKey != "" {
+			keys = append(keys, v.LogoKey)
+		}
+	}
+	slices.Sort(keys)
+	return slices.Compact(keys), nil
+}
+
+// exportBlob adds one blob as attachments/<key>. A blob that is already gone
+// (an infected upload, whose row is kept for the audit trail) is skipped.
+func exportBlob(ctx context.Context, zw *zip.Writer, blobs attachments.BlobStore, key string, m *Manifest) error {
+	if !attachments.ValidKey(key) {
+		return fmt.Errorf("archive: refusing to export blob with invalid key %q", key)
+	}
+	rc, _, err := blobs.Open(ctx, key)
+	if errors.Is(err, attachments.ErrNotFound) {
 		return nil
 	}
-	return filepath.WalkDir(dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		if strings.HasPrefix(d.Name(), ".") && p != dir {
-			if d.IsDir() {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if !d.Type().IsRegular() {
-			return nil
-		}
-		rel, err := filepath.Rel(dir, p)
-		if err != nil {
-			return err
-		}
-		name := prefix + filepath.ToSlash(rel)
-		if err := checkName(name); err != nil {
-			return fmt.Errorf("archive: refusing to export %s: %w", p, err)
-		}
-		info, err := d.Info()
-		if err != nil {
-			return err
-		}
-		f, err := os.Open(p)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		fw, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store, Modified: info.ModTime()})
-		if err != nil {
-			return err
-		}
-		h := sha256.New()
-		size, err := io.Copy(io.MultiWriter(fw, h), f)
-		if err != nil {
-			return fmt.Errorf("archive: %s: %w", p, err)
-		}
-		m.Files = append(m.Files, File{Path: name, Size: size, SHA256: hex.EncodeToString(h.Sum(nil))})
-		return nil
-	})
+	if err != nil {
+		return fmt.Errorf("archive: blob %s: %w", key, err)
+	}
+	defer rc.Close()
+	name := attachDir + key
+	fw, err := zw.CreateHeader(&zip.FileHeader{Name: name, Method: zip.Store, Modified: m.CreatedAt})
+	if err != nil {
+		return err
+	}
+	h := sha256.New()
+	size, err := io.Copy(io.MultiWriter(fw, h), rc)
+	if err != nil {
+		return fmt.Errorf("archive: blob %s: %w", key, err)
+	}
+	m.Files = append(m.Files, File{Path: name, Size: size, SHA256: hex.EncodeToString(h.Sum(nil))})
+	return nil
 }
 
 // checkName accepts only clean, relative, forward-slash paths with no "..",

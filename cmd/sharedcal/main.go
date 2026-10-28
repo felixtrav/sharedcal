@@ -45,7 +45,7 @@ Usage: sharedcal <command> [flags]
 Commands:
   serve                 run the server (default)
   migrate               apply database migrations and exit
-  backup --out DIR      back up the database (SQLite) and attachments [--keep N]
+  backup --out DIR      back up the database (SQLite) and local attachments [--keep N]
   export --out FILE     write a portable archive of all data
   import --in FILE      load an archive into an empty database
   healthcheck           exit 0 if the local server answers /healthz
@@ -68,9 +68,7 @@ func main() {
 	case "serve":
 		err = serve(ctx)
 	case "migrate":
-		err = withConfig(func(cfg *config.Config, log *slog.Logger) error {
-			return store.Migrate(ctx, cfg.DBDriver, cfg.DBDSN, log)
-		})
+		err = withDB(ctx, func(*config.Config, *slog.Logger, *store.DB) error { return nil })
 	case "backup":
 		err = runBackup(ctx, args)
 	case "export":
@@ -117,6 +115,12 @@ func withConfig(fn func(*config.Config, *slog.Logger) error) error {
 
 // openDB migrates (holding the migration lock) and opens the pools.
 func openDB(ctx context.Context, cfg *config.Config, log *slog.Logger) (*store.DB, error) {
+	// SQLite cannot create its file in a missing directory.
+	if cfg.DBDriver == "sqlite" {
+		if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
+			return nil, fmt.Errorf("create data dir: %w", err)
+		}
+	}
 	if err := store.Migrate(ctx, cfg.DBDriver, cfg.DBDSN, log); err != nil {
 		return nil, err
 	}
@@ -155,7 +159,7 @@ func serve(ctx context.Context) error {
 				broker.Publish(realtime.Message{Type: realtime.TypeSessionsRevoked, Payload: payload})
 			}}
 
-		blobs, pipeline, scanner, err := newAttachments(cfg)
+		blobs, pipeline, scanner, err := newAttachments(ctx, cfg, log)
 		if err != nil {
 			return err
 		}
@@ -172,6 +176,9 @@ func serve(ctx context.Context) error {
 			},
 		}
 		defer svc.Wait()
+		if err := svc.ImportThemeFiles(ctx); err != nil {
+			return err
+		}
 
 		if cfg.Secure() && len(cfg.TrustedProxies) == 0 {
 			log.Warn("APP_URL is https but TRUSTED_PROXIES is empty: all clients will appear to share the proxy's IP, so rate limits are shared and client IPs are wrong")
@@ -210,7 +217,7 @@ func serve(ctx context.Context) error {
 		if cfg.BackupSchedule != "" {
 			out := filepath.Join(cfg.DataDir, "backups")
 			err := backup.Schedule(bgCtx, cfg.BackupSchedule, func(ctx context.Context) {
-				if _, err := backup.Run(ctx, db, cfg.DataDir, out, log); err != nil {
+				if _, err := backup.Run(ctx, db, cfg.DataDir, out, backupOptions(cfg), log); err != nil {
 					log.Error("scheduled backup failed", "err", err)
 					return
 				}
@@ -265,13 +272,52 @@ func roleMapping(cfg *config.Config) auth.RoleMapping {
 	}
 }
 
-func newAttachments(cfg *config.Config) (attachments.BlobStore, *attachments.Pipeline, attachments.Scanner, error) {
-	blobs, err := attachments.NewFSStore(filepath.Join(cfg.DataDir, "attachments"))
-	if err != nil {
-		return nil, nil, nil, err
+// newBlobStore opens the configured blob store and returns it with the
+// directory for upload temp files. For S3 it waits until the bucket answers.
+func newBlobStore(ctx context.Context, cfg *config.Config, log *slog.Logger) (attachments.BlobStore, string, error) {
+	if cfg.BlobStore != "s3" {
+		blobs, err := attachments.NewFSStore(filepath.Join(cfg.DataDir, "attachments"))
+		if err != nil {
+			return nil, "", err
+		}
+		tmp := filepath.Join(cfg.DataDir, "attachments", ".tmp")
+		return blobs, tmp, os.MkdirAll(tmp, 0o700)
 	}
-	tmp := filepath.Join(cfg.DataDir, "attachments", ".tmp")
+	// Uploads are still spilled to local disk while they are checked, so
+	// DATA_DIR must be writable, but it need not be a persistent volume.
+	tmp := filepath.Join(cfg.DataDir, "tmp")
 	if err := os.MkdirAll(tmp, 0o700); err != nil {
+		return nil, "", err
+	}
+	blobs, err := attachments.NewS3Store(attachments.S3Config{
+		Endpoint: cfg.S3.Endpoint, Bucket: cfg.S3.Bucket, Region: cfg.S3.Region, Prefix: cfg.S3.Prefix,
+		AccessKey: cfg.S3.AccessKeyID, SecretKey: cfg.S3.SecretAccessKey, PathStyle: cfg.S3.ForcePathStyle, TempDir: tmp,
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	if err := blobs.WaitReady(ctx); err != nil {
+		return nil, "", err
+	}
+	log.Info("storing attachments in S3", "location", blobs.String(), "endpoint", cfg.S3.Endpoint.String())
+	return blobs, tmp, nil
+}
+
+// backupOptions leaves attachments out of backups when they are in a bucket.
+func backupOptions(cfg *config.Config) backup.Options {
+	if cfg.BlobStore != "s3" {
+		return backup.Options{}
+	}
+	loc := "s3://" + cfg.S3.Bucket
+	if cfg.S3.Prefix != "" {
+		loc += "/" + cfg.S3.Prefix
+	}
+	return backup.Options{ExternalAttachments: loc}
+}
+
+func newAttachments(ctx context.Context, cfg *config.Config, log *slog.Logger) (attachments.BlobStore, *attachments.Pipeline, attachments.Scanner, error) {
+	blobs, tmp, err := newBlobStore(ctx, cfg, log)
+	if err != nil {
 		return nil, nil, nil, err
 	}
 	var scanner attachments.Scanner
@@ -333,7 +379,7 @@ func runBackup(ctx context.Context, args []string) error {
 		return errors.New("backup: --out is required")
 	}
 	return withDB(ctx, func(cfg *config.Config, log *slog.Logger, db *store.DB) error {
-		dir, err := backup.Run(ctx, db, cfg.DataDir, *out, log)
+		dir, err := backup.Run(ctx, db, cfg.DataDir, *out, backupOptions(cfg), log)
 		if err != nil {
 			return err
 		}
@@ -360,7 +406,12 @@ func runExport(ctx context.Context, args []string) error {
 			return err
 		}
 		defer os.Remove(tmp.Name())
-		if err := archive.Export(ctx, db, cfg.DataDir, tmp); err != nil {
+		blobs, _, err := newBlobStore(ctx, cfg, log)
+		if err != nil {
+			tmp.Close()
+			return err
+		}
+		if err := archive.Export(ctx, db, blobs, tmp); err != nil {
 			tmp.Close()
 			return err
 		}
@@ -398,7 +449,11 @@ func runImport(ctx context.Context, args []string) error {
 		if err != nil {
 			return err
 		}
-		if err := archive.Import(ctx, db, cfg.DataDir, f, st.Size()); err != nil {
+		blobs, _, err := newBlobStore(ctx, cfg, log)
+		if err != nil {
+			return err
+		}
+		if err := archive.Import(ctx, db, cfg.DataDir, blobs, f, st.Size()); err != nil {
 			return err
 		}
 		log.Info("import complete", "file", *in)
