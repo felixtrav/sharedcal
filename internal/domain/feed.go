@@ -105,8 +105,10 @@ func (s *Service) Feed(ctx context.Context, raw string) (*ics.Calendar, error) {
 		_ = s.DB.W.WithContext(ctx).Model(&store.FeedToken{}).Where("id = ?", tok.ID).Update("last_used_at", now).Error
 	}
 
+	// Events still in the trash are kept as cancelled entries so subscribers
+	// that missed the deletion drop them; they leave the feed when purged.
 	var evs []store.Event
-	if err := db.Where("deleted_at IS NULL").
+	if err := db.Where("deleted_at IS NULL OR deleted_at > ?", now.Add(-trashRetention)).
 		Where("(rrule = '' AND end_at > ?) OR (rrule <> '' AND (series_end_at IS NULL OR series_end_at > ?))", now.Add(-feedWindow), now.Add(-feedWindow)).
 		Order("start_at").Limit(10000).Find(&evs).Error; err != nil {
 		return nil, err
@@ -144,6 +146,13 @@ func (s *Service) Feed(ctx context.Context, raw string) (*ics.Calendar, error) {
 	cal := &ics.Calendar{Name: st.CalendarName}
 	for i := range evs {
 		e := &evs[i]
+		if e.DeletedAt != nil {
+			cal.Events = append(cal.Events, ics.Event{
+				UID: e.ID, Start: e.StartAt, End: e.EndAt, AllDay: e.AllDay, TimeZone: e.TimeZone, RRule: e.RRule,
+				Sequence: e.Version, Updated: e.UpdatedAt, Cancelled: true,
+			})
+			continue
+		}
 		ie := ics.Event{
 			UID: e.ID, Title: e.Title, Description: e.Description, Location: e.Location,
 			Start: e.StartAt, End: e.EndAt, AllDay: e.AllDay, TimeZone: e.TimeZone, RRule: e.RRule,

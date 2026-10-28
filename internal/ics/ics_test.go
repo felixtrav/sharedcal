@@ -2,6 +2,7 @@ package ics
 
 import (
 	"bytes"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -157,6 +158,46 @@ func TestEventFields(t *testing.T) {
 		if ev.Props.Get(forbidden) != nil {
 			t.Errorf("feed must not contain %s", forbidden)
 		}
+	}
+}
+
+func TestCancelledEventIsStripped(t *testing.T) {
+	start := time.Date(2026, 3, 2, 9, 0, 0, 0, time.UTC)
+	deleted := start.Add(-24 * time.Hour)
+	moved := "Moved"
+	_, cal := writeAndParse(t, Calendar{Events: []Event{{
+		UID: "u-gone", Title: "Secret plans", Description: "notes", Location: "HQ",
+		Start: start, End: start.Add(time.Hour), TimeZone: "Europe/Berlin", RRule: "FREQ=WEEKLY",
+		ExDates: []time.Time{start.Add(7 * 24 * time.Hour)}, Status: "tentative", Categories: []string{"Work"},
+		Sequence: 4, Created: start.Add(-48 * time.Hour), Updated: deleted, URL: "https://cal.example.com/?event=u-gone",
+		Overrides: []Override{{RecurrenceID: start.Add(14 * 24 * time.Hour), Title: &moved}},
+		Cancelled: true,
+	}}})
+	evs := cal.Events()
+	if len(evs) != 1 {
+		t.Fatalf("want only the master VEVENT, got %d", len(evs))
+	}
+	ev := evs[0]
+	var names []string
+	for name := range ev.Props {
+		names = append(names, name)
+	}
+	slices.Sort(names)
+	want := []string{"DTEND", "DTSTAMP", "DTSTART", "LAST-MODIFIED", "RRULE", "SEQUENCE", "STATUS", "UID"}
+	if !slices.Equal(names, want) {
+		t.Errorf("properties = %v, want %v", names, want)
+	}
+	if got := ev.Props.Get(ical.PropStatus).Value; got != "CANCELLED" {
+		t.Errorf("status %q", got)
+	}
+	if got := ev.Props.Get(ical.PropSequence).Value; got != "4" {
+		t.Errorf("sequence %q", got)
+	}
+	if got := ev.Props.Get(ical.PropDateTimeStamp).Value; got != "20260301T090000Z" {
+		t.Errorf("DTSTAMP %q (want the deletion time)", got)
+	}
+	if tz := ev.Props.Get(ical.PropDateTimeStart).Params.Get("TZID"); tz != "Europe/Berlin" {
+		t.Errorf("DTSTART TZID %q", tz)
 	}
 }
 

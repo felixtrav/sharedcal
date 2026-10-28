@@ -44,6 +44,10 @@ type Event struct {
 	Updated    time.Time
 	URL        string     // link back to the app (optional)
 	Overrides  []Override // emitted as VEVENTs with the same UID and RECURRENCE-ID
+	// Cancelled marks a deleted event. It is emitted as a bare STATUS:CANCELLED
+	// VEVENT (no title, description, location, tags or overrides) so clients
+	// that missed the deletion remove it, without exposing deleted content.
+	Cancelled bool
 }
 
 // Override is a modified or cancelled occurrence of a recurring event.
@@ -130,6 +134,9 @@ func buildEvent(e *Event, zones *zoneSet, now time.Time) ([]*ical.Component, err
 	}
 	setUTC(master.Props, ical.PropDateTimeStamp, stamp)
 	setRaw(master.Props, ical.PropUID, cleanRaw(e.UID))
+	if e.Cancelled {
+		return []*ical.Component{cancelledEvent(master, e, tf)}, nil
+	}
 	addCommon(master.Props, e.Title, e.Description, e.Location, e.Status, e)
 	tf.setRange(master.Props, e.Start, e.End, e.AllDay)
 
@@ -158,6 +165,21 @@ func buildEvent(e *Event, zones *zoneSet, now time.Time) ([]*ical.Component, err
 		}
 	}
 	return append([]*ical.Component{master}, overrides...), nil
+}
+
+// cancelledEvent completes a deleted event's VEVENT with only what a client
+// needs to match and drop it: its times, recurrence, SEQUENCE and status.
+func cancelledEvent(c *ical.Component, e *Event, tf *timeFormat) *ical.Component {
+	tf.setRange(c.Props, e.Start, e.End, e.AllDay)
+	if strings.TrimSpace(e.RRule) != "" {
+		setRaw(c.Props, ical.PropRecurrenceRule, normalizeRRule(e.RRule))
+	}
+	setRaw(c.Props, ical.PropStatus, "CANCELLED")
+	setRaw(c.Props, ical.PropSequence, fmt.Sprint(e.Sequence))
+	if !e.Updated.IsZero() {
+		setUTC(c.Props, ical.PropLastModified, e.Updated)
+	}
+	return c
 }
 
 func buildOverride(e *Event, o *Override, tf *timeFormat, stamp time.Time) *ical.Component {

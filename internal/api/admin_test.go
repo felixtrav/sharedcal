@@ -5,11 +5,15 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/emersion/go-ical"
+
 	"github.com/felixtrav/sharedcal/internal/authz"
+	"github.com/felixtrav/sharedcal/internal/store"
 )
 
 func TestAdminEndpointsForbiddenToOthers(t *testing.T) {
@@ -249,6 +253,84 @@ func TestICSFeed(t *testing.T) {
 	resp.Body.Close()
 	if resp.StatusCode != 404 {
 		t.Errorf("bad token: %d", resp.StatusCode)
+	}
+}
+
+// feedEvent fetches the feed and returns the VEVENT with this UID, or nil.
+func feedEvent(t *testing.T, url, uid string) *ical.Component {
+	t.Helper()
+	resp, err := http.Get(url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	cal, err := ical.NewDecoder(resp.Body).Decode()
+	if err != nil {
+		t.Fatalf("decode feed: %v", err)
+	}
+	for _, ev := range cal.Events() {
+		if id, _ := ev.Props.Text(ical.PropUID); id == uid {
+			return ev.Component
+		}
+	}
+	return nil
+}
+
+func TestICSFeedCancelsDeletedEvents(t *testing.T) {
+	t.Parallel()
+	e := newEnv(t, options{})
+	bob := e.login(t, "bob")
+	ev := bob.createEvent(map[string]any{"title": "Secret offsite", "location": "HQ", "start": "2099-01-01T10:00:00", "end": "2099-01-01T11:00:00"})
+	var feed struct {
+		URL string `json:"url"`
+	}
+	bob.mustJSON("POST", "/api/me/feed-token", nil, 200, &feed)
+	live := feedEvent(t, feed.URL, ev.ID)
+	if live == nil {
+		t.Fatal("live event missing from feed")
+	}
+	liveSeq, _ := strconv.Atoi(live.Props.Get(ical.PropSequence).Value)
+
+	// Deleted: still listed, as a bare cancellation with a higher SEQUENCE.
+	if st := bob.status("DELETE", "/api/events/"+ev.ID, nil); st != 204 {
+		t.Fatalf("delete: %d", st)
+	}
+	gone := feedEvent(t, feed.URL, ev.ID)
+	if gone == nil {
+		t.Fatal("deleted event dropped from feed instead of cancelled")
+	}
+	if got := gone.Props.Get(ical.PropStatus).Value; got != "CANCELLED" {
+		t.Errorf("status %q", got)
+	}
+	if seq, _ := strconv.Atoi(gone.Props.Get(ical.PropSequence).Value); seq <= liveSeq {
+		t.Errorf("SEQUENCE %d not above %d", seq, liveSeq)
+	}
+	for _, p := range []string{ical.PropSummary, ical.PropLocation, ical.PropDescription, ical.PropURL} {
+		if gone.Props.Get(p) != nil {
+			t.Errorf("cancelled entry leaks %s", p)
+		}
+	}
+
+	// Restored: back in full.
+	bob.mustJSON("POST", "/api/events/"+ev.ID+"/restore", nil, 200, nil)
+	back := feedEvent(t, feed.URL, ev.ID)
+	if back == nil || back.Props.Get(ical.PropStatus).Value != "CONFIRMED" {
+		t.Fatalf("restored event: %v", back)
+	}
+	if title, _ := back.Props.Text(ical.PropSummary); title != "Secret offsite" {
+		t.Errorf("restored title %q", title)
+	}
+
+	// Past the trash window the cancellation leaves the feed with the event.
+	if st := bob.status("DELETE", "/api/events/"+ev.ID, nil); st != 204 {
+		t.Fatalf("delete again: %d", st)
+	}
+	old := time.Now().Add(-31 * 24 * time.Hour)
+	if err := e.db.W.Model(&store.Event{}).Where("id = ?", ev.ID).Update("deleted_at", old).Error; err != nil {
+		t.Fatal(err)
+	}
+	if feedEvent(t, feed.URL, ev.ID) != nil {
+		t.Error("event deleted over 30 days ago is still in the feed")
 	}
 }
 
