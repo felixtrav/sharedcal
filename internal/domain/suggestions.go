@@ -251,11 +251,8 @@ func (s *Service) CreateSuggestion(ctx context.Context, actor authz.Actor, event
 }
 
 func (s *Service) loadSuggestion(db *gorm.DB, id string) (*store.Suggestion, *store.Event, error) {
-	var sg store.Suggestion
-	if err := db.Where("id = ?", id).Take(&sg).Error; err != nil {
-		if isNotFound(err) {
-			return nil, nil, notFound("suggestion")
-		}
+	sg, err := take[store.Suggestion](db, id, "suggestion")
+	if err != nil {
 		return nil, nil, err
 	}
 	ev, err := s.loadEvent(db, sg.EventID, true)
@@ -292,15 +289,8 @@ func (s *Service) AcceptSuggestion(ctx context.Context, actor authz.Actor, id st
 			return err
 		}
 		credit := map[string]any{"suggestionId": sg.ID, "suggestedBy": sg.AuthorID}
-
-		if sg.Kind == store.SuggestionDelete {
-			sg.Status = store.SuggestionAccepted
-			if err := s.resolveSuggestion(tx, sg, ev); err != nil {
-				return err
-			}
-			if err := s.applyDelete(tx, ev, ScopeAll, nil, "event.deleted"); err != nil {
-				return err
-			}
+		// accepted logs the acceptance and fills in the resolved suggestion.
+		accepted := func() error {
 			if err := tx.record("suggestion.accepted", "suggestion", sg.ID, &ev.ID, nil, credit); err != nil {
 				return err
 			}
@@ -310,6 +300,17 @@ func (s *Service) AcceptSuggestion(ctx context.Context, actor authz.Actor, id st
 			}
 			out.Suggestion = dtos[0]
 			return nil
+		}
+
+		if sg.Kind == store.SuggestionDelete {
+			sg.Status = store.SuggestionAccepted
+			if err := s.resolveSuggestion(tx, sg, ev); err != nil {
+				return err
+			}
+			if err := s.applyDelete(tx, ev, ScopeAll, nil, "event.deleted"); err != nil {
+				return err
+			}
+			return accepted()
 		}
 
 		fields := in.Fields
@@ -366,15 +367,7 @@ func (s *Service) AcceptSuggestion(ctx context.Context, actor authz.Actor, id st
 		}
 		out.Event = dto
 		credit["fields"] = apply
-		if err := tx.record("suggestion.accepted", "suggestion", sg.ID, &ev.ID, nil, credit); err != nil {
-			return err
-		}
-		dtos, err := s.suggestionDTOs(tx.db, actor, []store.Suggestion{*sg}, ev)
-		if err != nil {
-			return err
-		}
-		out.Suggestion = dtos[0]
-		return nil
+		return accepted()
 	})
 	if err != nil {
 		return nil, err

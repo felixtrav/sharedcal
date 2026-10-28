@@ -33,7 +33,7 @@ export type RangeParams = {
   q?: string
 }
 
-export type ScopeParams = { scope?: EditScope; occurrence?: string | null }
+type ScopeParams = { scope?: EditScope; occurrence?: string | null }
 
 const enc = encodeURIComponent
 

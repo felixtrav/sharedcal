@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 
 /** True when the keyboard event comes from a text field or an editable/interactive widget. */
-export function isTypingTarget(target: EventTarget | null) {
+function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false
   if (target.isContentEditable) return true
   const tag = target.tagName
@@ -15,7 +15,7 @@ export function isTypingTarget(target: EventTarget | null) {
 
 const ARROW_OWNERS = '[role="tablist"],[role="radiogroup"],[role="group"],[role="toolbar"],[role="menu"],[role="listbox"],[role="grid"],[role="slider"]'
 
-export type HotkeyMap = Record<string, (e: KeyboardEvent) => void>
+type HotkeyMap = Record<string, (e: KeyboardEvent) => void>
 
 /**
  * Global single-key shortcuts. Ignored while typing, with modifiers held, or

@@ -1,15 +1,15 @@
 // Hand-written types mirroring docs/api.md. Once the backend publishes
 // `openapi.json`, run `npm run gen:api` and reconcile against src/api/schema.d.ts.
 
-export type UUID = string
+type UUID = string
 /** RFC 3339 instant in UTC, e.g. `2026-10-30T23:00:00Z`. */
-export type Instant = string
+type Instant = string
 
 export type UserRef = { id: UUID; name: string; avatarUrl: string }
 
 export type Role = 'viewer' | 'writer' | 'admin'
 
-export type Permissions = {
+type Permissions = {
   edit: boolean
   delete: boolean
   suggest: boolean
@@ -46,7 +46,7 @@ export type CalEvent = {
   deletedAt?: Instant
 }
 
-export type Override = {
+type Override = {
   id: UUID
   recurrenceId: Instant
   cancelled: boolean
@@ -61,7 +61,7 @@ export type Override = {
   status?: string
 }
 
-export type ScanStatus = 'pending' | 'clean' | 'infected' | 'skipped'
+type ScanStatus = 'pending' | 'clean' | 'infected' | 'skipped'
 
 export type Attachment = {
   id: UUID
@@ -103,14 +103,14 @@ export type Comment = {
 export const SUGGESTION_FIELDS = ['title', 'description', 'location', 'start', 'end', 'timeZone', 'allDay', 'rrule', 'status', 'tags'] as const
 export type SuggestionField = (typeof SUGGESTION_FIELDS)[number]
 
-export type SuggestionChange = {
+type SuggestionChange = {
   base: unknown
   proposed: unknown
   current: unknown
   conflict: boolean
 }
 
-export type SuggestionStatus = 'open' | 'accepted' | 'partially_accepted' | 'rejected' | 'withdrawn' | 'closed'
+type SuggestionStatus = 'open' | 'accepted' | 'partially_accepted' | 'rejected' | 'withdrawn' | 'closed'
 
 export type Suggestion = {
   id: UUID
@@ -138,7 +138,7 @@ export type Tag = {
   sortOrder: number
 }
 
-export type NotificationKind = 'suggestion.created' | 'suggestion.resolved' | 'comment.reply' | 'comment.mention'
+type NotificationKind = 'suggestion.created' | 'suggestion.resolved' | 'comment.reply' | 'comment.mention'
 
 export type Notification = {
   id: UUID
@@ -280,12 +280,3 @@ export type EventWrite = {
 export type EditScope = 'this' | 'following' | 'all'
 
 export type PresenceViewer = UserRef & { state: 'viewing' | 'editing' }
-
-/** Message envelope sent on /api/stream. */
-export type StreamMessage<T = unknown> = {
-  seq?: number
-  type: string
-  id?: string
-  version?: number
-  payload: T
-}

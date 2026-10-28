@@ -31,7 +31,7 @@ export function allTimeZones(): string[] {
   return zoneList
 }
 
-export type Wall = { year: number; month: number; day: number; hour: number; minute: number; second: number }
+type Wall = { year: number; month: number; day: number; hour: number; minute: number; second: number }
 
 const partsCache = new Map<string, Intl.DateTimeFormat>()
 function partsFormatter(tz: string) {
@@ -105,10 +105,6 @@ export function dateInZone(ms: number, tz: string) {
   return `${pad(w.year, 4)}-${pad(w.month)}-${pad(w.day)}`
 }
 
-export function todayInZone(tz: string) {
-  return dateInZone(Date.now(), tz)
-}
-
 export function addDays(date: string, n: number) {
   const [y, m, d] = date.split('-').map(Number)
   const t = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + n))
@@ -141,7 +137,7 @@ function fmt(o: FormatOptions, opts: Intl.DateTimeFormatOptions) {
   return f
 }
 
-export function formatTime(ms: number, o: FormatOptions) {
+function formatTime(ms: number, o: FormatOptions) {
   return fmt(o, { hour: 'numeric', minute: '2-digit' }).format(ms)
 }
 
@@ -150,10 +146,6 @@ export function formatTimeShort(ms: number, o: FormatOptions) {
   const w = toWall(ms, o.timeZone)
   if (!o.clock24h && w.minute === 0) return fmt(o, { hour: 'numeric' }).format(ms)
   return formatTime(ms, o)
-}
-
-export function formatDateLong(ms: number, o: FormatOptions) {
-  return fmt(o, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(ms)
 }
 
 export function formatDateMedium(ms: number, o: FormatOptions) {

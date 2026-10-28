@@ -4,15 +4,15 @@ import { expect, type Browser, type BrowserContext, type Page } from '@playwrigh
  * Test users provided by the mock OIDC provider (`go run ./cmd/mockoidc`).
  * Adjust here if the provider's fixtures change.
  */
-export const USERS = {
+const USERS = {
   alice: { hint: 'alice', name: /alice/i, role: 'admin' },
   bob: { hint: 'bob', name: /bob/i, role: 'writer' },
   carol: { hint: 'carol', name: /carol/i, role: 'viewer' },
   dave: { hint: 'dave', name: /dave/i, role: 'writer' },
 } as const
-export type TestUser = keyof typeof USERS
+type TestUser = keyof typeof USERS
 
-export const OIDC_ISSUER = process.env.E2E_OIDC_ISSUER ?? 'http://localhost:9999'
+const OIDC_ISSUER = process.env.E2E_OIDC_ISSUER ?? 'http://localhost:9999'
 
 /**
  * Sign in through the real OIDC flow: the app redirects to the mock
@@ -107,7 +107,7 @@ export async function createEvent(page: Page, title: string, date = midWeekDate(
 /** A valid 8×8 PNG for upload tests (the server re-encodes it). */
 export const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAGElEQVR4nGJhqGCQY8CCWMAkFjg4JQADAFSvAj003n0VAAAAAElFTkSuQmCC', 'base64')
 
-export type ApiRangeEvent = { id: string; title: string; occurrence?: string | null; version: number }
+type ApiRangeEvent = { id: string; title: string; occurrence?: string | null; version: number }
 
 /** Occurrences in [from, to) as the API expands them. */
 export async function listRange(page: Page, from: string, to: string): Promise<ApiRangeEvent[]> {

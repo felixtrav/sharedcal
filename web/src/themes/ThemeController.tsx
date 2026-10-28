@@ -1,20 +1,15 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useMe, useThemes } from '@/api/queries'
+import { useMediaQuery } from '@/lib/useMediaQuery'
 import { BUILTIN_THEMES, compileTheme } from './compile'
-import { applyTheme, persistTheme } from './runtime'
-
-function subscribeScheme(cb: () => void) {
-  const mq = window.matchMedia?.('(prefers-color-scheme: dark)')
-  mq?.addEventListener('change', cb)
-  return () => mq?.removeEventListener('change', cb)
-}
-const getScheme = () => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false
+import { applyTheme, DARK_SCHEME, persistTheme } from './runtime'
 
 /** Applies the user's theme, mode and the admin accent to <html>. Renders nothing. */
 export function ThemeController() {
   const { data: me } = useMe()
   const { data: themesData } = useThemes()
-  const systemDark = useSyncExternalStore(subscribeScheme, getScheme, () => false)
+  // Re-applies the theme when the OS switches between light and dark.
+  const systemDark = useMediaQuery(DARK_SCHEME)
 
   const themeId = me?.preferences.themeId || 'default'
   const mode = me?.preferences.colorMode ?? 'system'

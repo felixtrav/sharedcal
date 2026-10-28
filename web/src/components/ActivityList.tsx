@@ -7,13 +7,13 @@ import { formatDateTime, formatRelative, type FormatOptions } from '@/lib/time'
 
 const IGNORED = new Set(['version', 'updatedAt', 'createdAt', 'id', 'counts', 'permissions', 'startUtc', 'endUtc', 'owner'])
 
-export function changedKeys(before: Record<string, unknown> | null, after: Record<string, unknown> | null) {
+function changedKeys(before: Record<string, unknown> | null, after: Record<string, unknown> | null) {
   if (!before || !after) return []
   const keys = new Set([...Object.keys(before), ...Object.keys(after)])
   return [...keys].filter((k) => !IGNORED.has(k) && JSON.stringify(before[k]) !== JSON.stringify(after[k]))
 }
 
-export function actionLabel(action: string, t: (k: string, o?: Record<string, unknown>) => string) {
+function actionLabel(action: string, t: (k: string, o?: Record<string, unknown>) => string) {
   return t(`activity.actions.${action.replace(/\./g, '_')}`, { defaultValue: action })
 }
 

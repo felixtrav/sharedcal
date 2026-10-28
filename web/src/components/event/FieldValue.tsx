@@ -6,7 +6,7 @@ import { describeRRule } from './recurrenceText'
 import { TagChips } from './TagChips'
 
 /** Format a date/time value as the API returns it: date, wall time, or instant. */
-export function formatTimeValue(v: string, fmt: FormatOptions): string {
+function formatTimeValue(v: string, fmt: FormatOptions): string {
   if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return formatPlainDate(v)
   if (/(Z|[+-]\d{2}:?\d{2})$/.test(v)) return formatDateTime(Date.parse(v), fmt)
   // Wall-clock time: format its fields without shifting zones.

@@ -2,10 +2,10 @@ import type { ReactNode } from 'react'
 
 const URL_RE = /\b(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi
 
-export type Piece = { type: 'text' | 'link'; value: string; href?: string }
+type Piece = { type: 'text' | 'link'; value: string; href?: string }
 
 /** Split free text into text and http(s) link pieces. Trailing punctuation stays text. */
-export function splitLinks(text: string): Piece[] {
+function splitLinks(text: string): Piece[] {
   const out: Piece[] = []
   let last = 0
   for (const m of text.matchAll(URL_RE)) {

@@ -4,7 +4,7 @@ import { endpoints, type RangeParams } from './endpoints'
 import { keys } from './keys'
 import type { Me } from './types'
 
-export async function fetchMe(): Promise<Me> {
+async function fetchMe(): Promise<Me> {
   const me = await endpoints.me()
   setCsrfToken(me.csrfToken)
   return me

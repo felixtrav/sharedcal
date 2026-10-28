@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { createStore, useStore } from '@/lib/store'
 import { cn } from '@/lib/utils'
 
-export type ToastInput = {
+type ToastInput = {
   title: string
   description?: string
   variant?: 'default' | 'error' | 'success'

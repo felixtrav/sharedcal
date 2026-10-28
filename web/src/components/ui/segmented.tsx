@@ -1,7 +1,7 @@
 import { ToggleGroup } from 'radix-ui'
 import { cn } from '@/lib/utils'
 
-export type SegmentOption<T extends string> = { value: T; label: string; shortcut?: string }
+type SegmentOption<T extends string> = { value: T; label: string; shortcut?: string }
 
 /** A single-choice segmented control (radio-group semantics via Radix ToggleGroup). */
 export function Segmented<T extends string>({

@@ -1,17 +1,15 @@
 import { PencilIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { UserAvatar } from '@/components/ui/avatar'
-import { useStore } from '@/lib/store'
-import { presenceStore } from '@/realtime/stores'
+import { presenceLabel, useEventViewers } from '@/realtime/presence'
 
 /** Compact presence on a calendar event chip: up to two avatars plus a count. */
 export function ChipPresence({ eventId }: { eventId: string }) {
   const { t } = useTranslation()
-  const all = useStore(presenceStore)
-  const viewers = all[eventId] ?? []
+  const viewers = useEventViewers(eventId)
   if (!viewers.length) return null
   const editing = viewers.some((v) => v.state === 'editing')
-  const summary = viewers.map((v) => (v.state === 'editing' ? t('presence.editing', { name: v.name }) : t('presence.viewing', { name: v.name }))).join(', ')
+  const summary = viewers.map((v) => presenceLabel(t, v)).join(', ')
   return (
     <>
       <span className="sr-only">{summary}</span>

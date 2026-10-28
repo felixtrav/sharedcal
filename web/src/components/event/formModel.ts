@@ -107,7 +107,7 @@ export function formToPayload(v: EventFormValues): EventWrite {
 }
 
 /** Fields a single occurrence can't change on its own (server rule; see docs/decisions.md). */
-export const SERIES_ONLY_FIELDS = ['timeZone', 'allDay', 'rrule', 'tags'] as const
+const SERIES_ONLY_FIELDS = ['timeZone', 'allDay', 'rrule', 'tags'] as const
 
 export function needsSeriesScope(diff: Partial<EventWrite>) {
   return SERIES_ONLY_FIELDS.some((k) => k in diff)

@@ -86,16 +86,6 @@ const (
 	Allowed
 )
 
-func (d EditDecision) String() string {
-	switch d {
-	case Allowed:
-		return "allowed"
-	case SuggestOnly:
-		return "suggest"
-	}
-	return "forbidden"
-}
-
 func owns(a Actor, ownerID string) bool { return ownerID != "" && a.ID == ownerID }
 
 // CanView: every active signed-in user can view the calendar, events,

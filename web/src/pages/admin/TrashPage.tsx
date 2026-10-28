@@ -6,7 +6,7 @@ import { storeEvent } from '@/api/eventCache'
 import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
 import type { TrashedAttachment } from '@/api/types'
-import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader'
+import { EmptyState, LoadError, Page, PageHeader } from '@/components/layout/PageHeader'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -40,17 +40,8 @@ export function TrashPage() {
 }
 
 function Loading({ isPending, isError, refetch, children }: { isPending: boolean; isError: boolean; refetch: () => void; children: () => ReactNode }) {
-  const { t } = useTranslation()
   if (isPending) return <Skeleton className="h-40" />
-  if (isError)
-    return (
-      <div role="alert" className="text-sm">
-        {t('errors.loadFailed')}{' '}
-        <Button variant="link" size="xs" onClick={refetch}>
-          {t('common.retry')}
-        </Button>
-      </div>
-    )
+  if (isError) return <LoadError onRetry={refetch} />
   return <>{children()}</>
 }
 

@@ -263,11 +263,8 @@ func (s *Service) UpdateUser(ctx context.Context, actor authz.Actor, id string, 
 	var out AdminUser
 	var revoke bool
 	err := s.write(ctx, actor, func(tx *Tx) error {
-		var u store.User
-		if err := tx.db.Where("id = ?", id).Take(&u).Error; err != nil {
-			if isNotFound(err) {
-				return notFound("user")
-			}
+		u, err := take[store.User](tx.db, id, "user")
+		if err != nil {
 			return err
 		}
 		before := adminView(&u, 0)
@@ -570,11 +567,8 @@ func (s *Service) EraseUser(ctx context.Context, actor authz.Actor, id, transfer
 	var res EraseResult
 	var keys, sessions []string
 	err := s.write(ctx, actor, func(tx *Tx) error {
-		var u store.User
-		if err := tx.db.Where("id = ?", id).Take(&u).Error; err != nil {
-			if isNotFound(err) {
-				return notFound("user")
-			}
+		u, err := take[store.User](tx.db, id, "user")
+		if err != nil {
 			return err
 		}
 		if u.ErasedAt != nil {
@@ -696,17 +690,23 @@ func (s *Service) EraseUser(ctx context.Context, actor authz.Actor, id, transfer
 			}
 		}
 
+		// orSubjects widens q to rows about any of their erased content.
+		orSubjects := func(q *gorm.DB) *gorm.DB {
+			for _, sub := range []struct {
+				typ string
+				ids []string
+			}{{"comment", commentIDs}, {"suggestion", sgIDs}, {"attachment", attIDs}} {
+				if len(sub.ids) > 0 {
+					q = q.Or("subject_type = ? AND subject_id IN ?", sub.typ, sub.ids)
+				}
+			}
+			return q
+		}
+
 		// Inbox items addressed to them or about content that is now gone;
 		// elsewhere they stop being named as the actor.
 		nq := tx.db.Where("user_id = ?", id)
-		for _, sub := range []struct {
-			typ string
-			ids []string
-		}{{"comment", commentIDs}, {"suggestion", sgIDs}, {"attachment", attIDs}} {
-			if len(sub.ids) > 0 {
-				nq = nq.Or("subject_type = ? AND subject_id IN ?", sub.typ, sub.ids)
-			}
-		}
+		nq = orSubjects(nq)
 		if err := nq.Delete(&store.Notification{}).Error; err != nil {
 			return err
 		}
@@ -716,14 +716,7 @@ func (s *Service) EraseUser(ctx context.Context, actor authz.Actor, id, transfer
 
 		// Audit rows keep who did what, but not the content.
 		aq := tx.db.Model(&store.Activity{}).Where("subject_type = ? AND subject_id = ?", "user", id)
-		for _, sub := range []struct {
-			typ string
-			ids []string
-		}{{"comment", commentIDs}, {"suggestion", sgIDs}, {"attachment", attIDs}} {
-			if len(sub.ids) > 0 {
-				aq = aq.Or("subject_type = ? AND subject_id IN ?", sub.typ, sub.ids)
-			}
-		}
+		aq = orSubjects(aq)
 		if err := aq.Updates(map[string]any{"before_json": "null", "after_json": "null"}).Error; err != nil {
 			return err
 		}

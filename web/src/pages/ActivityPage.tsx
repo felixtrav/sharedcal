@@ -6,7 +6,7 @@ import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
 import { useDirectory, useMeData } from '@/api/queries'
 import { ActivityList } from '@/components/ActivityList'
-import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader'
+import { EmptyState, LoadError, Page, PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input, NativeSelect } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -98,12 +98,7 @@ export function ActivityPage() {
           ))}
         </div>
       ) : q.isError ? (
-        <div role="alert" className="text-sm">
-          {t('errors.loadFailed')}{' '}
-          <Button variant="link" size="xs" onClick={() => void q.refetch()}>
-            {t('common.retry')}
-          </Button>
-        </div>
+        <LoadError onRetry={() => void q.refetch()} />
       ) : items.length === 0 ? (
         <EmptyState icon={<HistoryIcon />} title={t('activity.empty')} />
       ) : (

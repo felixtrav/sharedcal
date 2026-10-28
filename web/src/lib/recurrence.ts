@@ -5,7 +5,7 @@ export type Weekday = (typeof WEEKDAYS)[number]
 
 export type Freq = 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
 
-export type RecurrenceEnd = { type: 'never' } | { type: 'count'; count: number } | { type: 'until'; until: string /* YYYY-MM-DD */ }
+type RecurrenceEnd = { type: 'never' } | { type: 'count'; count: number } | { type: 'until'; until: string /* YYYY-MM-DD */ }
 
 export type RecurrenceRule = {
   freq: Freq
@@ -22,7 +22,7 @@ export type RecurrenceRule = {
 
 export type Preset = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly' | 'custom'
 
-export type DateParts = { year: number; month: number; day: number }
+type DateParts = { year: number; month: number; day: number }
 
 export function parseDate(s: string): DateParts {
   const [y, m, d] = s.slice(0, 10).split('-').map(Number)
@@ -30,7 +30,7 @@ export function parseDate(s: string): DateParts {
 }
 
 /** Monday = 0 … Sunday = 6. */
-export function weekdayIndex(p: DateParts) {
+function weekdayIndex(p: DateParts) {
   const js = new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()
   return (js + 6) % 7
 }
@@ -39,18 +39,10 @@ export function weekdayOf(p: DateParts): Weekday {
   return WEEKDAYS[weekdayIndex(p)] as Weekday
 }
 
-function daysInMonth(year: number, month: number) {
-  return new Date(Date.UTC(year, month, 0)).getUTCDate()
-}
-
 /** Which occurrence of its weekday a date is within its month: 1..4, or -1 when it's the 5th (last). */
 export function nthOfMonth(p: DateParts) {
   const n = Math.ceil(p.day / 7)
   return n >= 5 ? -1 : n
-}
-
-export function isLastWeekdayOfMonth(p: DateParts) {
-  return p.day + 7 > daysInMonth(p.year, p.month)
 }
 
 export function defaultRule(start: DateParts, freq: Freq = 'WEEKLY'): RecurrenceRule {

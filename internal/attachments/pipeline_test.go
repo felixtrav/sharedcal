@@ -420,6 +420,18 @@ func TestMisconfiguredPipeline(t *testing.T) {
 	}
 }
 
+// AllowedContentTypes returns every Content-Type the pipeline can produce.
+// Tests use it to check that output types never leave the allow-list.
+func AllowedContentTypes() map[string]bool {
+	out := map[string]bool{"image/png": true, "image/jpeg": true}
+	for _, ft := range allowList {
+		if ft.kind != kindImage {
+			out[ft.contentType] = true
+		}
+	}
+	return out
+}
+
 func TestAllowedContentTypes(t *testing.T) {
 	got := AllowedContentTypes()
 	for _, ct := range []string{"image/png", "image/jpeg", "application/pdf", "text/plain; charset=utf-8", mimeODP} {

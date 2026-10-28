@@ -7,7 +7,7 @@ import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
 import { useInbox } from '@/api/queries'
 import type { Notification } from '@/api/types'
-import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader'
+import { EmptyState, LoadError, Page, PageHeader } from '@/components/layout/PageHeader'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -104,12 +104,7 @@ export function InboxPage() {
           ))}
         </div>
       ) : isError ? (
-        <div role="alert" className="text-sm">
-          {t('errors.loadFailed')}{' '}
-          <Button variant="link" size="xs" onClick={() => void refetch()}>
-            {t('common.retry')}
-          </Button>
-        </div>
+        <LoadError onRetry={() => void refetch()} />
       ) : items.length === 0 ? (
         <EmptyState icon={<InboxIcon />} title={t('inbox.emptyTitle')} body={t('inbox.emptyBody')} />
       ) : (

@@ -123,6 +123,18 @@ func openDB(ctx context.Context, cfg *config.Config, log *slog.Logger) (*store.D
 	return store.Open(cfg.DBDriver, cfg.DBDSN)
 }
 
+// withDB runs fn with the configuration and a migrated, open database.
+func withDB(ctx context.Context, fn func(*config.Config, *slog.Logger, *store.DB) error) error {
+	return withConfig(func(cfg *config.Config, log *slog.Logger) error {
+		db, err := openDB(ctx, cfg, log)
+		if err != nil {
+			return err
+		}
+		defer db.Close()
+		return fn(cfg, log, db)
+	})
+}
+
 func serve(ctx context.Context) error {
 	return withConfig(func(cfg *config.Config, log *slog.Logger) error {
 		log.Info("starting SharedCal", "version", version, "db", cfg.DBDriver, "url", cfg.AppURL.String())
@@ -317,12 +329,7 @@ func runBackup(ctx context.Context, args []string) error {
 	if *out == "" {
 		return errors.New("backup: --out is required")
 	}
-	return withConfig(func(cfg *config.Config, log *slog.Logger) error {
-		db, err := openDB(ctx, cfg, log)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
+	return withDB(ctx, func(cfg *config.Config, log *slog.Logger, db *store.DB) error {
 		dir, err := backup.Run(ctx, db, cfg.DataDir, *out, log)
 		if err != nil {
 			return err
@@ -344,12 +351,7 @@ func runExport(ctx context.Context, args []string) error {
 	if *out == "" {
 		return errors.New("export: --out is required")
 	}
-	return withConfig(func(cfg *config.Config, log *slog.Logger) error {
-		db, err := openDB(ctx, cfg, log)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
+	return withDB(ctx, func(cfg *config.Config, log *slog.Logger, db *store.DB) error {
 		tmp, err := os.CreateTemp(filepath.Dir(*out), ".sharedcal-export-*")
 		if err != nil {
 			return err
@@ -383,12 +385,7 @@ func runImport(ctx context.Context, args []string) error {
 	if *in == "" {
 		return errors.New("import: --in is required")
 	}
-	return withConfig(func(cfg *config.Config, log *slog.Logger) error {
-		db, err := openDB(ctx, cfg, log)
-		if err != nil {
-			return err
-		}
-		defer db.Close()
+	return withDB(ctx, func(cfg *config.Config, log *slog.Logger, db *store.DB) error {
 		f, err := os.Open(*in)
 		if err != nil {
 			return err

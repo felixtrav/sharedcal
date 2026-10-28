@@ -8,7 +8,7 @@ import { toast } from '@/components/ui/toast'
 import { errorMessage } from '@/lib/errors'
 import { markOwnWrite } from '@/realtime/stores'
 
-export const UNDO_MS = 10_000
+const UNDO_MS = 10_000
 
 /** Delete an event (or occurrences) and offer "Undo" for 10 seconds. Resolves true on success. */
 export async function deleteEventWithUndo(opts: {

@@ -1,14 +1,14 @@
 import type { PresenceViewer } from '@/api/types'
 import { createStore } from '@/lib/store'
 
-export type ConnectionState = 'connecting' | 'open' | 'reconnecting'
+type ConnectionState = 'connecting' | 'open' | 'reconnecting'
 
 export const connectionStore = createStore<ConnectionState>('connecting')
 
 /** Event IDs that should glow briefly because a remote edit just landed. */
 export const glowStore = createStore<ReadonlySet<string>>(new Set())
 
-export const GLOW_MS = 600
+const GLOW_MS = 600
 
 export function glow(id: string) {
   glowStore.set((prev) => new Set(prev).add(id))

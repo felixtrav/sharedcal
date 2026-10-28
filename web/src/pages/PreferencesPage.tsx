@@ -1,13 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { CheckIcon } from 'lucide-react'
-import { useRef, type ReactNode } from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
 import { useMeData, useThemes } from '@/api/queries'
 import type { CalendarView, ColorMode, Me, Preferences, Theme } from '@/api/types'
 import { TimeZoneSelect } from '@/components/event/TimeZoneSelect'
-import { Page, PageHeader } from '@/components/layout/PageHeader'
+import { Page, PageHeader, Section } from '@/components/layout/PageHeader'
 import { NativeSelect } from '@/components/ui/input'
 import { Segmented } from '@/components/ui/segmented'
 import { toast } from '@/components/ui/toast'
@@ -17,20 +17,6 @@ import { browserTimeZone } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { weekdayName } from '@/components/event/recurrenceText'
 import { WEEKDAYS } from '@/lib/recurrence'
-
-function Section({ title, description, children, id }: { title: string; description?: string; children: ReactNode; id: string }) {
-  return (
-    <section aria-labelledby={id} className="grid gap-4 border-b border-border py-6 first:pt-0 last:border-0 sm:grid-cols-[minmax(0,14rem)_1fr]">
-      <div>
-        <h2 id={id} className="text-sm font-semibold">
-          {title}
-        </h2>
-        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
-      </div>
-      <div className="grid gap-4">{children}</div>
-    </section>
-  )
-}
 
 export function PreferencesPage() {
   const { t } = useTranslation()

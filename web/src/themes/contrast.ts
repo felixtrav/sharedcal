@@ -9,7 +9,7 @@ export function parseHex(hex: string): [number, number, number] | null {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
 }
 
-export function toHex([r, g, b]: [number, number, number]) {
+function toHex([r, g, b]: [number, number, number]) {
   const c = (v: number) =>
     Math.round(Math.min(255, Math.max(0, v)))
       .toString(16)
@@ -22,7 +22,7 @@ function channel(v: number) {
   return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
 }
 
-export function luminance(hex: string) {
+function luminance(hex: string) {
   const rgb = parseHex(hex)
   if (!rgb) throw new Error(`Not a hex color: ${hex}`)
   return 0.2126 * channel(rgb[0]) + 0.7152 * channel(rgb[1]) + 0.0722 * channel(rgb[2])

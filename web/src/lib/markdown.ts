@@ -85,7 +85,7 @@ function getPurifier() {
   return p
 }
 
-export function sanitizeHtml(html: string): string {
+function sanitizeHtml(html: string): string {
   return getPurifier().sanitize(html, {
     ALLOWED_TAGS,
     ALLOWED_ATTR,

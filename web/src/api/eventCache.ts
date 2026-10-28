@@ -6,7 +6,7 @@ import { overlaps } from '@/realtime/applyMessage'
 
 type EventsData = { events: CalEvent[] }
 
-export type CacheSnapshot = [QueryKey, unknown][]
+type CacheSnapshot = [QueryKey, unknown][]
 
 export function snapshotEvent(qc: QueryClient, id: string): CacheSnapshot {
   const out: CacheSnapshot = []

@@ -1,10 +1,10 @@
 import { CALENDAR_VIEWS, type CalendarView } from '@/api/types'
 import { isDateString } from './time'
 
-export const PANEL_TABS = ['details', 'comments', 'suggestions', 'history'] as const
+const PANEL_TABS = ['details', 'comments', 'suggestions', 'history'] as const
 export type PanelTab = (typeof PANEL_TABS)[number]
 
-export type CalendarSearch = {
+type CalendarSearch = {
   view?: CalendarView
   date?: string
   event?: string

@@ -6,7 +6,7 @@ import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
 import { useTags } from '@/api/queries'
 import { TAG_SLOTS, type Tag, type TagSlot } from '@/api/types'
-import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader'
+import { EmptyState, LoadError, Page, PageHeader } from '@/components/layout/PageHeader'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -147,12 +147,7 @@ export function TagsPage() {
       {isPending ? (
         <Skeleton className="h-40" />
       ) : isError ? (
-        <div role="alert" className="text-sm">
-          {t('errors.loadFailed')}{' '}
-          <Button variant="link" size="xs" onClick={() => void refetch()}>
-            {t('common.retry')}
-          </Button>
-        </div>
+        <LoadError onRetry={() => void refetch()} />
       ) : tags.length === 0 ? (
         <EmptyState icon={<TagsIcon />} title={t('tags.empty')} body={t('tags.emptyBody')} />
       ) : (

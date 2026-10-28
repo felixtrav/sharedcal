@@ -347,3 +347,14 @@ func TestRoleRank(t *testing.T) {
 		t.Fatal("role ranks out of order")
 	}
 }
+
+// String names a decision in test expectations and failure messages.
+func (d EditDecision) String() string {
+	switch d {
+	case Allowed:
+		return "allowed"
+	case SuggestOnly:
+		return "suggest"
+	}
+	return "forbidden"
+}

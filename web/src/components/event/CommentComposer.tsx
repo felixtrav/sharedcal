@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils'
 const MENTION_RE = /(^|\s)@([\p{L}\p{N}_.'-]{0,40})$/u
 
 /** IDs of users whose "@Name" still appears in the text. */
-export function extractMentions(body: string, candidates: UserRef[]) {
+function extractMentions(body: string, candidates: UserRef[]) {
   const ids = new Set<string>()
   for (const u of candidates) if (body.includes(`@${u.name}`)) ids.add(u.id)
   return [...ids]

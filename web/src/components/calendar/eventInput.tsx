@@ -17,11 +17,11 @@ export type ChipProps = {
 }
 
 /** FullCalendar event IDs must be unique per occurrence. */
-export function fcId(ev: Pick<CalEvent, 'id' | 'occurrence'>) {
+function fcId(ev: Pick<CalEvent, 'id' | 'occurrence'>) {
   return ev.occurrence ? `${ev.id}|${ev.occurrence}` : ev.id
 }
 
-export function tagColorVars(ev: Pick<CalEvent, 'tags'>, tagsById: Map<string, Tag>) {
+function tagColorVars(ev: Pick<CalEvent, 'tags'>, tagsById: Map<string, Tag>) {
   const first = ev.tags[0] ? tagsById.get(ev.tags[0]) : undefined
   return first
     ? { color: `var(--${first.colorSlot})`, contrastColor: `var(--${first.colorSlot}-foreground)` }

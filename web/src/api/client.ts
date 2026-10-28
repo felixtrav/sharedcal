@@ -1,7 +1,7 @@
 import type { CalEvent } from './types'
 
 /** RFC 9457 problem details as returned by the server. */
-export type Problem = {
+type Problem = {
   type?: string
   title?: string
   status: number
@@ -53,9 +53,6 @@ let csrfToken = ''
 export function setCsrfToken(token: string) {
   csrfToken = token
 }
-export function getCsrfToken() {
-  return csrfToken
-}
 
 export function loginUrl(returnTo?: string) {
   const ret = returnTo ?? `${window.location.pathname}${window.location.search}${window.location.hash}`
@@ -73,8 +70,8 @@ export function setUnauthorizedHandler(fn: UnauthorizedHandler) {
 
 // ---------------------------------------------------------------------------
 
-export type QueryValue = string | number | boolean | null | undefined | readonly (string | number)[]
-export type Query = Record<string, QueryValue>
+type QueryValue = string | number | boolean | null | undefined | readonly (string | number)[]
+type Query = Record<string, QueryValue>
 
 export function buildUrl(path: string, query?: Query) {
   if (!query) return path
@@ -88,7 +85,7 @@ export function buildUrl(path: string, query?: Query) {
   return s ? `${path}?${s}` : path
 }
 
-export type RequestOptions = {
+type RequestOptions = {
   query?: Query
   body?: unknown
   headers?: Record<string, string>
@@ -110,7 +107,7 @@ async function parseProblem(res: Response): Promise<Problem> {
   return { status: res.status, title: res.statusText }
 }
 
-export async function request<T>(method: string, path: string, opts: RequestOptions = {}): Promise<T> {
+async function request<T>(method: string, path: string, opts: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json', ...opts.headers }
   let body: BodyInit | undefined
   if (opts.body instanceof FormData) {

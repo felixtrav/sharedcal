@@ -1,7 +1,7 @@
 import { Avatar as AvatarPrimitive } from 'radix-ui'
 import { cn } from '@/lib/utils'
 
-export function initials(name: string) {
+function initials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   const first = parts[0]?.[0] ?? '?'
   const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : ''

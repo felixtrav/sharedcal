@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ImageUpIcon, Trash2Icon, UploadIcon } from 'lucide-react'
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { fieldErrors } from '@/api/client'
 import { endpoints } from '@/api/endpoints'
@@ -8,7 +8,7 @@ import { keys } from '@/api/keys'
 import { useMeData, useThemes } from '@/api/queries'
 import type { Role, Settings, Theme } from '@/api/types'
 import { TimeZoneSelect } from '@/components/event/TimeZoneSelect'
-import { Page, PageHeader } from '@/components/layout/PageHeader'
+import { LoadError, Page, PageHeader, Section } from '@/components/layout/PageHeader'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,38 +26,13 @@ import { BUILTIN_THEMES, validateTheme } from '@/themes/compile'
 const MB = 1024 * 1024
 const GB = 1024 * MB
 
-function Section({ id, title, description, children }: { id: string; title: string; description?: string; children: ReactNode }) {
-  return (
-    <section aria-labelledby={id} className="grid gap-4 border-b border-border py-6 first:pt-0 last:border-0 md:grid-cols-[minmax(0,15rem)_1fr]">
-      <div>
-        <h2 id={id} className="text-sm font-semibold">
-          {title}
-        </h2>
-        {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
-      </div>
-      <div className="grid max-w-xl gap-4">{children}</div>
-    </section>
-  )
-}
-
 export function SettingsPage() {
   const { t } = useTranslation()
   const { data, isPending, isError, refetch, dataUpdatedAt } = useQuery({ queryKey: keys.settings, queryFn: endpoints.settings })
   return (
     <Page wide>
       <PageHeader title={t('settings.title')} description={t('settings.description')} />
-      {isPending ? (
-        <Skeleton className="h-96" />
-      ) : isError ? (
-        <div role="alert" className="text-sm">
-          {t('errors.loadFailed')}{' '}
-          <Button variant="link" size="xs" onClick={() => void refetch()}>
-            {t('common.retry')}
-          </Button>
-        </div>
-      ) : (
-        <SettingsForm key={dataUpdatedAt} initial={data} />
-      )}
+      {isPending ? <Skeleton className="h-96" /> : isError ? <LoadError onRetry={() => void refetch()} /> : <SettingsForm key={dataUpdatedAt} initial={data} />}
     </Page>
   )
 }
@@ -106,7 +81,7 @@ function SettingsForm({ initial }: { initial: Settings }) {
       }}
       noValidate
     >
-      <Section id="set-general" title={t('settings.general')}>
+      <Section wide id="set-general" title={t('settings.general')}>
         <Field id="set-name" label={t('settings.calendarName')} error={errors.calendarName}>
           <Input id="set-name" value={s.calendarName} maxLength={80} onChange={(e) => set('calendarName', e.target.value)} />
         </Field>
@@ -124,7 +99,7 @@ function SettingsForm({ initial }: { initial: Settings }) {
         </Field>
       </Section>
 
-      <Section id="set-brand" title={t('settings.branding')} description={t('settings.brandingHint')}>
+      <Section wide id="set-brand" title={t('settings.branding')} description={t('settings.brandingHint')}>
         <Field id="set-accent" label={t('settings.accentColor')} error={errors.accentColor} hint={t('settings.accentHint')}>
           <div className="flex items-center gap-2">
             <input
@@ -153,11 +128,11 @@ function SettingsForm({ initial }: { initial: Settings }) {
         <LogoField hasLogo={me.instance.hasLogo} logoUrl={me.instance.logoUrl} />
       </Section>
 
-      <Section id="set-themes" title={t('settings.themes')} description={t('settings.themesHint')}>
+      <Section wide id="set-themes" title={t('settings.themes')} description={t('settings.themesHint')}>
         <ThemesField enabled={s.enabledThemes} onChange={(ids) => set('enabledThemes', ids)} />
       </Section>
 
-      <Section id="set-att" title={t('settings.attachments')}>
+      <Section wide id="set-att" title={t('settings.attachments')}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field id="set-maxsize" label={t('settings.maxSize')} error={errors.attachmentMaxSize}>
             <Input

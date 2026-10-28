@@ -311,11 +311,8 @@ type AttachmentContent struct {
 // OpenAttachment authorizes and opens an attachment (or its thumbnail).
 func (s *Service) OpenAttachment(ctx context.Context, actor authz.Actor, id string, thumb bool) (*AttachmentContent, error) {
 	db := s.DB.R.WithContext(ctx)
-	var a store.Attachment
-	if err := db.Where("id = ?", id).Take(&a).Error; err != nil {
-		if isNotFound(err) {
-			return nil, notFound("attachment")
-		}
+	a, err := take[store.Attachment](db, id, "attachment")
+	if err != nil {
 		return nil, err
 	}
 	ev, err := s.loadEvent(db, a.EventID, false)

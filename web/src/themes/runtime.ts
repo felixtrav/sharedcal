@@ -1,14 +1,16 @@
 import type { ColorMode } from '@/api/types'
-import { readLocal, STORAGE_KEYS, writeLocal } from '@/lib/storage'
+import { STORAGE_KEYS, writeLocal } from '@/lib/storage'
 import type { CompiledTheme, CompiledVars, Mode } from './compile'
 
-export type StoredTheme = CompiledTheme & { mode: ColorMode }
+type StoredTheme = CompiledTheme & { mode: ColorMode }
 
-export function systemPrefersDark() {
-  return typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches === true
+export const DARK_SCHEME = '(prefers-color-scheme: dark)'
+
+function systemPrefersDark() {
+  return typeof window !== 'undefined' && window.matchMedia?.(DARK_SCHEME).matches === true
 }
 
-export function resolveMode(mode: ColorMode): Mode {
+function resolveMode(mode: ColorMode): Mode {
   if (mode === 'system') return systemPrefersDark() ? 'dark' : 'light'
   return mode
 }
@@ -31,8 +33,4 @@ export function applyTheme(theme: CompiledTheme, mode: ColorMode, root: HTMLElem
 export function persistTheme(theme: CompiledTheme, mode: ColorMode) {
   const stored: StoredTheme = { ...theme, mode }
   writeLocal(STORAGE_KEYS.theme, stored)
-}
-
-export function readStoredTheme(): StoredTheme | null {
-  return readLocal<StoredTheme | null>(STORAGE_KEYS.theme, null)
 }

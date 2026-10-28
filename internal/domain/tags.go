@@ -132,11 +132,8 @@ func (s *Service) UpdateTag(ctx context.Context, actor authz.Actor, id string, i
 	}
 	var out TagDTO
 	err := s.write(ctx, actor, func(tx *Tx) error {
-		var t store.Tag
-		if err := tx.db.Where("id = ?", id).Take(&t).Error; err != nil {
-			if isNotFound(err) {
-				return notFound("tag")
-			}
+		t, err := take[store.Tag](tx.db, id, "tag")
+		if err != nil {
 			return err
 		}
 		before := tagDTO(t)
@@ -172,11 +169,8 @@ func (s *Service) DeleteTag(ctx context.Context, actor authz.Actor, id string) e
 		return forbidden("admins only")
 	}
 	return s.write(ctx, actor, func(tx *Tx) error {
-		var t store.Tag
-		if err := tx.db.Where("id = ?", id).Take(&t).Error; err != nil {
-			if isNotFound(err) {
-				return notFound("tag")
-			}
+		t, err := take[store.Tag](tx.db, id, "tag")
+		if err != nil {
 			return err
 		}
 		if err := tx.db.Where("tag_id = ?", id).Delete(&store.EventTag{}).Error; err != nil {

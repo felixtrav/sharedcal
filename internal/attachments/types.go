@@ -72,18 +72,6 @@ const (
 	mimeODP  = "application/vnd.oasis.opendocument.presentation"
 )
 
-// AllowedContentTypes returns every Content-Type the pipeline can produce.
-// Useful for assertions and for validating rows read back from the database.
-func AllowedContentTypes() map[string]bool {
-	out := map[string]bool{"image/png": true, "image/jpeg": true}
-	for _, ft := range allowList {
-		if ft.kind != kindImage {
-			out[ft.contentType] = true
-		}
-	}
-	return out
-}
-
 // classify checks the detected MIME type against the allow-list entry for
 // ext. It distinguishes "allowed type, wrong extension" (ErrTypeMismatch) from
 // "type not allowed at all" (ErrTypeNotAllowed) so users get a useful error.

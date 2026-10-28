@@ -47,7 +47,7 @@ const dayRowCommonClasses: CalendarOptions = {
   rowMoreLinkInnerClass: (info) => (info.isNarrow ? `px-0.5 py-px ${xxsTextClass}` : 'px-1 py-0.5 text-xs'),
 }
 
-export type EventCalendarViewProps = CalendarOptions & Required<Pick<CalendarOptions, 'popoverCloseContent'>> & { ref?: Ref<CalendarRef> } // ensure callers define icons // local change: expose the calendar API
+type EventCalendarViewProps = CalendarOptions & Required<Pick<CalendarOptions, 'popoverCloseContent'>> & { ref?: Ref<CalendarRef> } // ensure callers define icons // local change: expose the calendar API
 
 export function EventCalendarViews({ views: userViews, ref, ...restOptions }: EventCalendarViewProps) {
   return (

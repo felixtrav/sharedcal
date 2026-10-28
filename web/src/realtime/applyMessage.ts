@@ -7,7 +7,7 @@ type EventsData = { events: CalEvent[] }
 type CommentsData = { comments: Comment[] }
 type InboxData = { items: Notification[]; unread: number }
 
-export type ApplyContext = {
+type ApplyContext = {
   meId?: string
   /** Called for events changed by someone else, to highlight them. */
   onRemoteChange?: (eventId: string) => void

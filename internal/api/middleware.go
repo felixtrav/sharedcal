@@ -133,15 +133,14 @@ func (m *metrics) middleware(next http.Handler) http.Handler {
 		start := time.Now()
 		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
 		next.ServeHTTP(ww, r)
+		if r.URL.Path == "/api/stream" {
+			return // long-lived; its duration is not latency
+		}
 		route := chi.RouteContext(r.Context()).RoutePattern()
-		if route == "" || r.URL.Path == "/api/stream" {
-			if route == "" {
-				route = "unmatched"
-			}
+		if route == "" {
+			route = "unmatched"
 		}
-		if r.URL.Path != "/api/stream" {
-			m.latency.WithLabelValues(r.Method, route, strconv.Itoa(ww.Status())).Observe(time.Since(start).Seconds())
-		}
+		m.latency.WithLabelValues(r.Method, route, strconv.Itoa(ww.Status())).Observe(time.Since(start).Seconds())
 	})
 }
 
@@ -210,12 +209,13 @@ func (l *limiter) run(ctx context.Context) {
 	}
 }
 
+// setRetryAfter sets Retry-After to retry rounded up to whole seconds (≥ 1).
+func setRetryAfter(w http.ResponseWriter, retry time.Duration) {
+	w.Header().Set("Retry-After", strconv.Itoa(max(1, int(retry.Seconds()+0.999))))
+}
+
 func tooMany(w http.ResponseWriter, retry time.Duration) {
-	secs := int(retry.Seconds() + 0.999)
-	if secs < 1 {
-		secs = 1
-	}
-	w.Header().Set("Retry-After", strconv.Itoa(secs))
+	setRetryAfter(w, retry)
 	writeProblem(w, newProblem(http.StatusTooManyRequests, "too many requests; slow down"))
 }
 
@@ -227,7 +227,7 @@ func (s *Server) rateLimit(next http.Handler) http.Handler {
 			if ok, retry := s.authLimit.allow(s.clientIP(r)); !ok {
 				if strings.HasPrefix(r.URL.Path, "/auth/") && r.Method == http.MethodGet {
 					// People land here in a browser: show a page, not JSON.
-					w.Header().Set("Retry-After", strconv.Itoa(max(1, int(retry.Seconds()+0.999))))
+					setRetryAfter(w, retry)
 					w.Header().Set("Content-Type", "text/html; charset=utf-8")
 					w.WriteHeader(http.StatusTooManyRequests)
 					_, _ = w.Write([]byte(`<!doctype html><meta charset="utf-8"><title>Slow down · SharedCal</title><body style="font:16px system-ui;max-width:32rem;margin:15vh auto;padding:0 1.5rem"><h1>Too many sign-in attempts</h1><p>Please wait a minute, then <a href="/auth/login">try again</a>.</p>`))

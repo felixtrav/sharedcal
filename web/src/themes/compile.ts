@@ -3,9 +3,9 @@ import { bestContrast, contrastRatio, mix, parseHex } from './contrast'
 import defaultTheme from './default.json'
 import nordTheme from './nord.json'
 
-export const REQUIRED_KEYS = ['background', 'foreground', 'primary', 'muted', 'border'] as const
+const REQUIRED_KEYS = ['background', 'foreground', 'primary', 'muted', 'border'] as const
 
-export const ALLOWED_KEYS = [
+const ALLOWED_KEYS = [
   ...REQUIRED_KEYS,
   'primary-foreground',
   'muted-foreground',
@@ -100,7 +100,7 @@ const WHITE = '#ffffff'
 const INK = '#111114'
 
 /** First preferred color that reaches AA on `bg`, else whichever of white/ink is stronger. */
-export function readableOn(bg: string, preferred: string[] = []) {
+function readableOn(bg: string, preferred: string[] = []) {
   for (const p of preferred) if (contrastRatio(bg, p) >= MIN_CONTRAST) return p
   return bestContrast(bg, [WHITE, INK])
 }
@@ -185,7 +185,7 @@ export function compileTheme(theme: Pick<Theme, 'id' | 'modes'>, accent?: string
 }
 
 /** Pairs that must reach AA, as [label, foreground var, background var]. */
-export const CONTRAST_PAIRS: [string, string, string][] = [
+const CONTRAST_PAIRS: [string, string, string][] = [
   ['foreground/background', '--foreground', '--background'],
   ['card', '--card-foreground', '--card'],
   ['popover', '--popover-foreground', '--popover'],

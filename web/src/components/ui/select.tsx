@@ -3,7 +3,7 @@ import { Select as S } from 'radix-ui'
 import type * as React from 'react'
 import { cn } from '@/lib/utils'
 
-export type SelectOption = { value: string; label: string; disabled?: boolean }
+type SelectOption = { value: string; label: string; disabled?: boolean }
 
 /** Radix Select with a simple options API. */
 export function Select({

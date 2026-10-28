@@ -7,7 +7,7 @@ import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
 import { useMeData } from '@/api/queries'
 import type { AdminUser, Role } from '@/api/types'
-import { EmptyState, Page, PageHeader } from '@/components/layout/PageHeader'
+import { EmptyState, LoadError, Page, PageHeader } from '@/components/layout/PageHeader'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -70,12 +70,7 @@ export function PeoplePage() {
       {isPending ? (
         <Skeleton className="h-60" />
       ) : isError ? (
-        <div role="alert" className="text-sm">
-          {t('errors.loadFailed')}{' '}
-          <Button variant="link" size="xs" onClick={() => void refetch()}>
-            {t('common.retry')}
-          </Button>
-        </div>
+        <LoadError onRetry={() => void refetch()} />
       ) : data.users.length === 0 ? (
         <EmptyState icon={<UsersIcon />} title={t('people.empty')} />
       ) : (
@@ -299,10 +294,27 @@ function SessionsDialog({ user, onClose }: { user: AdminUser; onClose: () => voi
   )
 }
 
+/** Who can take over someone's events: other active writers and admins (erased users are inactive). */
+function transferTargets(users: AdminUser[], fromId: string) {
+  return users.filter((u) => u.id !== fromId && u.active && u.role !== 'viewer')
+}
+
+function UserSelect({ id, users, value, onChange }: { id: string; users: AdminUser[]; value: string; onChange: (id: string) => void }) {
+  return (
+    <NativeSelect id={id} value={value} onChange={(e) => onChange(e.target.value)}>
+      {users.map((u) => (
+        <option key={u.id} value={u.id}>
+          {u.name} ({u.email})
+        </option>
+      ))}
+    </NativeSelect>
+  )
+}
+
 function TransferDialog({ from, users, onClose }: { from: AdminUser; users: AdminUser[]; onClose: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
-  const targets = users.filter((u) => u.id !== from.id && u.active && u.role !== 'viewer')
+  const targets = transferTargets(users, from.id)
   const [to, setTo] = useState(targets[0]?.id ?? '')
   const [busy, setBusy] = useState(false)
 
@@ -334,13 +346,7 @@ function TransferDialog({ from, users, onClose }: { from: AdminUser; users: Admi
             <label htmlFor="transfer-to" className="text-sm font-medium">
               {t('people.transferTo')}
             </label>
-            <NativeSelect id="transfer-to" value={to} onChange={(e) => setTo(e.target.value)}>
-              {targets.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.email})
-                </option>
-              ))}
-            </NativeSelect>
+            <UserSelect id="transfer-to" users={targets} value={to} onChange={setTo} />
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">{t('people.noTransferTargets')}</p>
@@ -361,7 +367,7 @@ function TransferDialog({ from, users, onClose }: { from: AdminUser; users: Admi
 function EraseDialog({ user, users, onClose }: { user: AdminUser; users: AdminUser[]; onClose: () => void }) {
   const { t } = useTranslation()
   const qc = useQueryClient()
-  const targets = users.filter((u) => u.id !== user.id && u.active && !u.erased && u.role !== 'viewer')
+  const targets = transferTargets(users, user.id)
   const [to, setTo] = useState(targets[0]?.id ?? '')
   const [understood, setUnderstood] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -396,13 +402,7 @@ function EraseDialog({ user, users, onClose }: { user: AdminUser; users: AdminUs
             {t('people.eraseTransferTo')}
           </label>
           {targets.length ? (
-            <NativeSelect id="erase-transfer-to" value={to} onChange={(e) => setTo(e.target.value)}>
-              {targets.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name} ({u.email})
-                </option>
-              ))}
-            </NativeSelect>
+            <UserSelect id="erase-transfer-to" users={targets} value={to} onChange={setTo} />
           ) : (
             <p className="text-sm text-muted-foreground">{t('people.noTransferTargets')}</p>
           )}

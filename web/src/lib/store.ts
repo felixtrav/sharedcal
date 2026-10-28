@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 /** A minimal observable value for app-wide UI state that isn't server data. */
-export type Store<T> = {
+type Store<T> = {
   get: () => T
   set: (next: T | ((prev: T) => T)) => void
   subscribe: (fn: () => void) => () => void

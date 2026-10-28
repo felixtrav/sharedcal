@@ -28,7 +28,7 @@ import type { ScopeAsk } from './ScopeDialog'
 import { TagPicker } from './TagPicker'
 import { TimeZoneSelect } from './TimeZoneSelect'
 
-export type FormMode =
+type FormMode =
   | { kind: 'create'; draft: Draft }
   | { kind: 'edit'; event: CalEvent; occurrence: string | null }
   | { kind: 'suggest'; event: CalEvent; occurrence: string | null }

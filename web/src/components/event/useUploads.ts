@@ -12,7 +12,7 @@ import { applyStreamMessage } from '@/realtime/applyMessage'
 
 export type UploadItem = { key: number; name: string; size: number; progress: number; error?: string }
 
-export type UploadTarget = { kind: 'event'; eventId: string } | { kind: 'comment'; commentId: string; eventId: string }
+type UploadTarget = { kind: 'event'; eventId: string } | { kind: 'comment'; commentId: string; eventId: string }
 
 let seq = 1
 

@@ -175,4 +175,14 @@ func jsonOrNull(v any) string {
 
 func isNotFound(err error) bool { return errors.Is(err, gorm.ErrRecordNotFound) }
 
+// take loads the row with this ID, reporting a missing one as "<what> not found".
+func take[T any](db *gorm.DB, id, what string) (T, error) {
+	var row T
+	err := db.Where("id = ?", id).Take(&row).Error
+	if isNotFound(err) {
+		err = notFound(what)
+	}
+	return row, err
+}
+
 func ptr[T any](v T) *T { return &v }

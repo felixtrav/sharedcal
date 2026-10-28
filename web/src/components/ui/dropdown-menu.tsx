@@ -4,8 +4,6 @@ import { cn } from '@/lib/utils'
 
 export const DropdownMenu = M.Root
 export const DropdownMenuTrigger = M.Trigger
-export const DropdownMenuGroup = M.Group
-export const DropdownMenuRadioGroup = M.RadioGroup
 
 export function DropdownMenuContent({ className, sideOffset = 6, ...props }: React.ComponentProps<typeof M.Content>) {
   return (
@@ -41,19 +39,6 @@ export function DropdownMenuCheckboxItem({ className, children, ...props }: Reac
       </span>
       {children}
     </M.CheckboxItem>
-  )
-}
-
-export function DropdownMenuRadioItem({ className, children, ...props }: React.ComponentProps<typeof M.RadioItem>) {
-  return (
-    <M.RadioItem className={cn(itemClass, 'ps-8', className)} {...props}>
-      <span className="pointer-events-none absolute start-2 flex size-4 items-center justify-center">
-        <M.ItemIndicator>
-          <span className="block size-2 rounded-full bg-current" />
-        </M.ItemIndicator>
-      </span>
-      {children}
-    </M.RadioItem>
   )
 }
 
