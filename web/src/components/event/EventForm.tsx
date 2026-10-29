@@ -45,6 +45,7 @@ import { TagPicker } from './TagPicker'
 import { TimeZoneSelect } from './TimeZoneSelect'
 import { TypeFieldsEditor } from './TypeFieldsEditor'
 import { TypeInstructions } from './TypeInstructions'
+import { ownerLabel, ownerName } from '@/lib/owner'
 
 type FormMode =
   | { kind: 'create'; draft: Draft }
@@ -207,7 +208,7 @@ export function EventForm({
       if (mode.kind === 'suggest') {
         await endpoints.suggestEdit(ev.id, ev.version, diff)
         void qc.invalidateQueries({ queryKey: keys.suggestionsAll(ev.id) })
-        toast.success(t('suggestions.sent'), t('suggestions.sentBody', { name: ev.owner.name }))
+        toast.success(t('suggestions.sent'), t('suggestions.sentBody', { name: ownerName(ev.owner, t) }))
         onDone()
         return
       }
@@ -232,7 +233,7 @@ export function EventForm({
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="grid gap-5 pt-1" aria-label={submitLabel}>
       {mode.kind === 'suggest' ? (
         <p className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
-          {t('suggestions.formHint', { name: mode.event.owner.name })}
+          {t('suggestions.formHint', { name: ownerName(mode.event.owner, t) })}
         </p>
       ) : null}
 
@@ -450,8 +451,8 @@ export function EventForm({
 
       {mode.kind !== 'create' ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
-          <UserAvatar name={mode.event.owner.name} src={mode.event.owner.avatarUrl} className="size-5" />
-          {t('event.ownedBy', { name: mode.event.owner.name })}
+          {mode.event.owner.system ? null : <UserAvatar name={mode.event.owner.name} src={mode.event.owner.avatarUrl} className="size-5" />}
+          {ownerLabel(mode.event.owner, t)}
         </p>
       ) : null}
 

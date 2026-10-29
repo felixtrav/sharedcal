@@ -48,7 +48,8 @@
     "skipToContent": "Skip to content",
     "unreadCount_one": "{{count}} unread notification",
     "unreadCount_other": "{{count}} unread notifications",
-    "eventTypes": "Event types"
+    "eventTypes": "Event types",
+    "import": "Import"
   },
   "roles": {
     "viewer": "Viewer",
@@ -142,6 +143,7 @@
     "newTitle": "New event",
     "closePanel": "Close event details",
     "ownedBy": "owned by {{name}}",
+    "systemOwner": "System",
     "recurring": "recurring",
     "openSuggestions_one": "{{count}} open suggestion",
     "openSuggestions_other": "{{count}} open suggestions",
@@ -701,6 +703,28 @@
     "attachmentRestored": "{{name}} restored to “{{title}}”",
     "attachmentRestoreFailed": "Couldn't restore the attachment"
   },
+  "import": {
+    "title": "Import events",
+    "description": "Add events from an iCalendar (.ics) file, such as a public holiday calendar. Review what will be created before importing.",
+    "file": "Calendar file (.ics)",
+    "type": "Create events as",
+    "generic": "Generic events",
+    "typeHint": "Imported events take on this type, including its all-day and repeat rules. Events of an ownerless type belong to the calendar.",
+    "preview": "Preview",
+    "previewing": "Reading…",
+    "import": "Import {{count}} events",
+    "importing": "Importing…",
+    "choose": "Choose a file to preview what would be imported.",
+    "readFailed": "Couldn't read that file",
+    "failed": "Couldn't import the events",
+    "summary": "{{created}} to create, {{duplicates}} already imported, {{invalid}} that can't be imported, {{ignored}} ignored",
+    "done": "Imported {{count}} events",
+    "doneBody": "{{duplicates}} were already imported and {{invalid}} couldn't be imported.",
+    "ignoredHint": "Cancelled events and changes to single occurrences are not imported.",
+    "columns": { "title": "Title", "when": "When", "repeats": "Repeats", "result": "Result" },
+    "outcome": { "new": "Will be created", "duplicate": "Already imported", "invalid": "Can't import" },
+    "list": "Events in the file"
+  },
   "eventTypes": {
     "title": "Event types",
     "description": "Event types give events a color, an icon and a set of predefined fields in place of a free-form description. Birthdays and holidays are typical examples.",
@@ -860,6 +884,8 @@
     },
     "yearCounter": "Count years since the first occurrence",
     "adminOnly": "Only admins can create events of this type",
+    "ownerless": "Events have no owner",
+    "ownerlessHint": "Events of this type belong to the calendar instead of the person who adds them, like holidays. Only admins can edit them; everyone else can suggest changes.",
     "defaultDuration": "New events last (minutes)",
     "defaultDurationHint": "0 makes an instant, like a deadline. Not used for all-day events."
   }

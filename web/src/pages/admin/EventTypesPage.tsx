@@ -43,7 +43,7 @@ type Preset = Pick<
   EventType,
   'name' | 'icon' | 'colorSlot' | 'style' | 'yearCounter' | 'defaultAllDay' | 'defaultDurationMinutes' | 'defaultRrule' | 'fields'
 > &
-  Partial<Pick<EventType, 'titleTemplate' | 'singleDay'>>
+  Partial<Pick<EventType, 'titleTemplate' | 'singleDay' | 'adminOnly' | 'ownerless'>>
 
 /** Translations write placeholders as [key] because i18next reads {{key}} itself. */
 const braced = (s: string) => s.replace(/\[([#/]?[a-z][a-z0-9_]*)\]/g, '{{$1}}')
@@ -92,6 +92,9 @@ function presets(t: TFunction): Record<string, Preset> {
       defaultAllDay: true,
       defaultDurationMinutes: 60,
       defaultRrule: '',
+      // Public holidays belong to the calendar, and are usually imported by an admin.
+      adminOnly: true,
+      ownerless: true,
       fields: [f('region', 'text'), f('day_off', 'checkbox')],
     },
     deadline: {
@@ -142,6 +145,8 @@ export function EventTypesPage() {
   const types = data?.eventTypes ?? []
   const [name, setName] = useState('')
   const [slot, setSlot] = useState<TagSlot>('tag-1')
+  const [newAdminOnly, setNewAdminOnly] = useState(false)
+  const [newOwnerless, setNewOwnerless] = useState(false)
   const [deleting, setDeleting] = useState<EventType | null>(null)
   const [announce, setAnnounce] = useState('')
   // Editors start collapsed so a long list doesn't mean a long scroll; a new type opens ready to configure.
@@ -171,8 +176,10 @@ export function EventTypesPage() {
   const create = async () => {
     const n = name.trim()
     if (!n) return
-    if (await add({ name: n, colorSlot: slot })) {
+    if (await add({ name: n, colorSlot: slot, adminOnly: newAdminOnly, ownerless: newOwnerless })) {
       setName('')
+      setNewAdminOnly(false)
+      setNewOwnerless(false)
       setSlot(TAG_SLOTS[(types.length + 1) % 8] ?? 'tag-1')
     }
   }
@@ -252,6 +259,19 @@ export function EventTypesPage() {
             <PlusIcon aria-hidden />
             {t('eventTypes.add')}
           </Button>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+          <div className="flex items-center gap-2">
+            <Switch id="new-type-admin-only" checked={newAdminOnly} onCheckedChange={setNewAdminOnly} />
+            <Label htmlFor="new-type-admin-only">{t('eventTypes.adminOnly')}</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch id="new-type-ownerless" checked={newOwnerless} onCheckedChange={setNewOwnerless} aria-describedby="new-type-ownerless-hint" />
+            <Label htmlFor="new-type-ownerless">{t('eventTypes.ownerless')}</Label>
+          </div>
+          <p id="new-type-ownerless-hint" className="basis-full text-xs text-muted-foreground">
+            {t('eventTypes.ownerlessHint')}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
           <span className="text-xs text-muted-foreground">{t('eventTypes.startFrom')}</span>
@@ -407,6 +427,7 @@ function TypeEditor({
   const [style, setStyle] = useState<EventTypeStyle>(type.style)
   const [counter, setCounter] = useState(type.yearCounter)
   const [adminOnly, setAdminOnly] = useState(type.adminOnly)
+  const [ownerless, setOwnerless] = useState(type.ownerless)
   const [minutes, setMinutes] = useState(String(type.defaultDurationMinutes))
   const [rrule, setRrule] = useState<string>(type.neverRepeats ? NEVER : type.defaultRrule)
   const [fields, setFields] = useState<EventTypeField[]>(type.fields)
@@ -415,7 +436,7 @@ function TypeEditor({
   const [busy, setBusy] = useState(false)
 
   const dirty =
-    JSON.stringify({ name, icon, slot, style, counter, adminOnly, allDay, singleDay, minutes, rrule, fields, titleTemplate, instructions }) !==
+    JSON.stringify({ name, icon, slot, style, counter, adminOnly, ownerless, allDay, singleDay, minutes, rrule, fields, titleTemplate, instructions }) !==
     JSON.stringify({
       name: type.name,
       icon: type.icon,
@@ -423,6 +444,7 @@ function TypeEditor({
       style: type.style,
       counter: type.yearCounter,
       adminOnly: type.adminOnly,
+      ownerless: type.ownerless,
       allDay: type.defaultAllDay,
       singleDay: type.singleDay,
       minutes: String(type.defaultDurationMinutes),
@@ -497,6 +519,7 @@ function TypeEditor({
       style,
       yearCounter: counter,
       adminOnly,
+      ownerless,
       defaultAllDay: allDay,
       singleDay: allDay && singleDay,
       defaultDurationMinutes: Number(minutes),
@@ -612,6 +635,15 @@ function TypeEditor({
         <div className="flex items-center justify-between gap-3 self-start sm:pt-6">
           <Label htmlFor={`${uid}-admin-only`}>{t('eventTypes.adminOnly')}</Label>
           <Switch id={`${uid}-admin-only`} checked={adminOnly} onCheckedChange={setAdminOnly} />
+        </div>
+        <div className="grid gap-1 self-start sm:pt-6">
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor={`${uid}-ownerless`}>{t('eventTypes.ownerless')}</Label>
+            <Switch id={`${uid}-ownerless`} checked={ownerless} onCheckedChange={setOwnerless} aria-describedby={`${uid}-ownerless-hint`} />
+          </div>
+          <p id={`${uid}-ownerless-hint`} className="text-xs text-muted-foreground">
+            {t('eventTypes.ownerlessHint')}
+          </p>
         </div>
       </div>
 

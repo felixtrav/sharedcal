@@ -12,6 +12,10 @@ import (
 
 // NewID returns a new UUIDv7 string: time-ordered, safe to expose, and valid
 // as an iCalendar UID.
+// SystemUserID identifies the reserved inactive user that owns events of
+// ownerless types. It never signs in and is hidden from user lists.
+const SystemUserID = "00000000-0000-0000-0000-000000000000"
+
 func NewID() string { return uuid.Must(uuid.NewV7()).String() }
 
 // Enumerations stored as short strings with check constraints.
@@ -97,6 +101,8 @@ type Event struct {
 	AllDay      bool      `gorm:"not null"`
 	TimeZone    string    `gorm:"size:64;not null"`
 	RRule       string    `gorm:"column:rrule;size:1000;not null;default:''"`
+	// SourceUID is the iCalendar UID the event was imported from; re-imports skip UIDs already present.
+	SourceUID string `gorm:"column:source_uid;size:255;not null;default:'';index:ix_events_source_uid"`
 	// SeriesEndAt is the end of the last occurrence for recurring events
 	// (nil = unbounded); it lets range queries skip finished series.
 	SeriesEndAt *time.Time
@@ -156,6 +162,9 @@ type EventType struct {
 	SingleDay bool `gorm:"not null"`
 	// AdminOnly reserves the type for admins: only they can create events of it or switch events to it.
 	AdminOnly bool `gorm:"not null"`
+	// Ownerless gives the type's events no personal owner: they belong to the calendar (SystemUserID)
+	// and only admins edit them.
+	Ownerless bool `gorm:"not null"`
 	// Instructions are shown to writers while they create an event of this type.
 	Instructions string    `gorm:"size:1000;not null;default:''"`
 	FieldsJSON   string    `gorm:"column:fields_json;type:text;not null"`

@@ -147,6 +147,10 @@
           "sessionCount": {
             "format": "int64",
             "type": "integer"
+          },
+          "system": {
+            "description": "The calendar itself, owner of events whose type has no personal owner",
+            "type": "boolean"
           }
         },
         "required": [
@@ -909,6 +913,10 @@
             "description": "Events of the type never repeat; excludes defaultRrule",
             "type": "boolean"
           },
+          "ownerless": {
+            "description": "Events of this type belong to the calendar rather than a person; only admins edit them",
+            "type": "boolean"
+          },
           "singleDay": {
             "description": "With defaultAllDay: events last a single date",
             "type": "boolean"
@@ -947,6 +955,7 @@
           "singleDay",
           "neverRepeats",
           "adminOnly",
+          "ownerless",
           "titleTemplate",
           "instructions",
           "fields",
@@ -1029,6 +1038,10 @@
           },
           "neverRepeats": {
             "description": "Events of this type can't repeat; cannot be combined with defaultRrule",
+            "type": "boolean"
+          },
+          "ownerless": {
+            "description": "New events of this type get no personal owner (holidays); only admins edit them",
             "type": "boolean"
           },
           "singleDay": {
@@ -1210,6 +1223,116 @@
         ],
         "type": "object"
       },
+      "ICSEntryDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "allDay": {
+            "type": "boolean"
+          },
+          "end": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "new",
+              "duplicate",
+              "invalid"
+            ],
+            "type": "string"
+          },
+          "rrule": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uid",
+          "title",
+          "start",
+          "end",
+          "allDay",
+          "rrule",
+          "outcome"
+        ],
+        "type": "object"
+      },
+      "ICSImportInput": {
+        "additionalProperties": false,
+        "properties": {
+          "dryRun": {
+            "description": "Validate and report without creating anything",
+            "type": "boolean"
+          },
+          "eventTypeId": {
+            "description": "Type for every imported event; empty imports generic events",
+            "maxLength": 36,
+            "type": "string"
+          },
+          "ics": {
+            "description": "The .ics file contents",
+            "maxLength": 2000000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "ics"
+        ],
+        "type": "object"
+      },
+      "ICSImportResult": {
+        "additionalProperties": false,
+        "properties": {
+          "created": {
+            "description": "Events created, or that would be created on a dry run",
+            "format": "int64",
+            "type": "integer"
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "duplicates": {
+            "description": "Skipped: an event from the same UID was imported before",
+            "format": "int64",
+            "type": "integer"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/ICSEntryDTO"
+            },
+            "type": "array"
+          },
+          "ignored": {
+            "description": "Cancelled events and single-occurrence overrides, which are not imported",
+            "format": "int64",
+            "type": "integer"
+          },
+          "invalid": {
+            "description": "Skipped: the event can't be created as an event of the chosen type",
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dryRun",
+          "created",
+          "duplicates",
+          "invalid",
+          "ignored",
+          "entries"
+        ],
+        "type": "object"
+      },
       "InboxBody": {
         "additionalProperties": false,
         "properties": {
@@ -1300,6 +1423,10 @@
               "admin"
             ],
             "type": "string"
+          },
+          "system": {
+            "description": "The calendar itself, owner of events whose type has no personal owner",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2299,6 +2426,10 @@
           },
           "name": {
             "type": "string"
+          },
+          "system": {
+            "description": "The calendar itself, owner of events whose type has no personal owner",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3720,6 +3851,52 @@
         "summary": "Propose an edit or deletion",
         "tags": [
           "suggestions"
+        ]
+      }
+    },
+    "/api/import/ics": {
+      "post": {
+        "operationId": "importIcs",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ICSImportInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ICSImportResult"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Import events from an iCalendar file, or preview the import (admins)",
+        "tags": [
+          "import"
         ]
       }
     },

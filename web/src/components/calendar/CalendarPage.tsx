@@ -41,6 +41,7 @@ import { compareEvents, ghostInput, renderEventContent, toEventInput, type ChipP
 import { typedDraft } from '@/components/event/typeDefaults'
 import { useEventTitle } from '@/components/event/useEventTitle'
 import { QuickCreatePopover, type Slot } from './QuickCreatePopover'
+import { ownerName } from '@/lib/owner'
 
 const route = getRouteApi('/')
 
@@ -331,7 +332,7 @@ export function CalendarPage() {
     try {
       await endpoints.suggestEdit(g.ev.id, g.ev.version, g.body)
       void qc.invalidateQueries({ queryKey: keys.suggestionsAll(g.ev.id) })
-      toast.success(t('suggestions.sent'), t('suggestions.sentBody', { name: g.ev.owner.name }))
+      toast.success(t('suggestions.sent'), t('suggestions.sentBody', { name: ownerName(g.ev.owner, t) }))
     } catch (err) {
       toast.error(t('suggestions.sendFailed'), errorMessage(err, t))
     }
@@ -471,7 +472,7 @@ export function CalendarPage() {
         description={
           ghost
             ? t('calendar.suggestMoveBody', {
-                name: ghost.ev.owner.name,
+                name: ownerName(ghost.ev.owner, t),
                 when: eventWhen({ allDay: ghost.allDay, start: ghost.start, end: ghost.end, startUtc: ghost.start, endUtc: ghost.end }, fmt, t),
               })
             : undefined

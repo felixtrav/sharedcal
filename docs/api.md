@@ -28,7 +28,7 @@ huma (`GET /api/openapi.json`, or `sharedcal openapi > web/openapi.json`);
 ## Shared objects
 
 ```ts
-type UserRef = { id: string; name: string; avatarUrl: string };
+type UserRef = { id: string; name: string; avatarUrl: string; system?: true };  // system: the calendar itself, owner of ownerless-type events (never listed or manageable)
 
 type Permissions = { edit: boolean; delete: boolean; suggest: boolean; comment: boolean; attach: boolean; review: boolean };
 
@@ -128,6 +128,7 @@ type EventType = {
   defaultAllDay: boolean;       // clients pre-fill new events with these defaults; the server stores what it is sent
   defaultDurationMinutes: number; // 0–1440; 0 = instants, e.g. deadlines. Ignored for all-day
   singleDay: boolean;           // with defaultAllDay: events last one date (end = start + 1 day)
+  ownerless: boolean;           // true: new events get owner = the calendar (UserRef.system) and only admins edit them; `ownerId` in create is 422
   adminOnly: boolean;           // true: only admins can create events of the type or switch events to it (403 otherwise)
   neverRepeats: boolean;        // true: events of the type can't repeat (releases); excludes defaultRrule
   defaultRrule: string;         // non-empty: every event of the type repeats with exactly this rule (422 otherwise)
@@ -180,6 +181,7 @@ checks foreground/background contrast ≥ 4.5:1 in both modes.
 | GET | `/auth/login?return=/path` | | 302 to the provider |
 | GET | `/auth/callback` | | 302 to `return` |
 | POST | `/auth/logout` | | `{ logoutUrl: string \| null }` — navigate there if set, else to `/` |
+| POST | `/api/import/ics` | `{ ics: string (≤2 MB, ≤500 events), eventTypeId?: string, dryRun?: boolean }` | admins. Creates one event per VEVENT in one transaction (`dryRun` validates and rolls back). Skips UIDs imported before (`duplicate`), cancelled events and RECURRENCE-ID overrides (`ignored`), and rows the type's rules reject (`invalid`, with `error`). → `{ dryRun, created, duplicates, invalid, ignored, entries: [{uid, title, start, end, allDay, rrule, outcome, error?}] }` |
 | GET | `/api/me` | | `{ user: UserRef & {email, role}, preferences: Preferences, csrfToken, permissions: {createEvent, attachToComments, admin}, instance: { calendarName, defaultTimeZone, accentColor, hasLogo, logoUrl, limits: {maxSize, maxPerEvent, maxPerComment} } }` |
 | PUT | `/api/me/preferences` | `Preferences` | `Preferences` |
 | GET | `/api/me/feed-token` | | `{ exists, createdAt, lastUsedAt }` |

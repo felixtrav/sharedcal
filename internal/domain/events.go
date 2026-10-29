@@ -826,39 +826,64 @@ func (s *Service) CreateEvent(ctx context.Context, actor authz.Actor, in EventIn
 		return nil, forbidden("only admins can set the owner")
 	}
 	var out *EventDTO
-	err := s.write(ctx, actor, func(tx *Tx) error {
-		base := &store.Event{Status: store.StatusConfirmed}
-		if err := checkTypeAllowed(tx.db, actor, nil, in.EventTypeID); err != nil {
-			return err
-		}
-		p, err := s.resolveInput(tx.db, base, in, true)
-		if err != nil {
-			return err
-		}
-		e := store.Event{ID: store.NewID(), OwnerID: actor.ID, Status: store.StatusConfirmed, Version: 1, ExdatesJSON: "[]", FieldsJSON: "{}", CreatedAt: tx.now, UpdatedAt: tx.now}
-		p.apply(&e)
-		if e.SeriesEndAt, err = seriesEnd(&e); err != nil {
-			return invalidField("rrule", "%v", err)
-		}
-		if err := tx.db.Create(&e).Error; err != nil {
-			return err
-		}
-		var tags []string
-		if p.tags != nil {
-			tags = *p.tags
-			if err := setEventTags(tx.db, e.ID, tags); err != nil {
-				return err
-			}
-		}
-		if err := tx.record("event.created", "event", e.ID, &e.ID, nil, snapshot(&e, tags)); err != nil {
-			return err
-		}
-		if out, err = s.eventDTO(tx.db, actor, &e); err != nil {
-			return err
-		}
-		return tx.emit("event.created", e.ID, e.Version, out, "")
+	err := s.write(ctx, actor, func(tx *Tx) (err error) {
+		out, err = s.createEventTx(tx, actor, in, "")
+		return err
 	})
 	return out, err
+}
+
+// createEventTx creates one event inside tx. Events of an ownerless type
+// belong to the system user instead of the actor. sourceUID records the
+// iCalendar UID of imported events.
+func (s *Service) createEventTx(tx *Tx, actor authz.Actor, in EventInput, sourceUID string) (*EventDTO, error) {
+	base := &store.Event{Status: store.StatusConfirmed}
+	if err := checkTypeAllowed(tx.db, actor, nil, in.EventTypeID); err != nil {
+		return nil, err
+	}
+	p, err := s.resolveInput(tx.db, base, in, true)
+	if err != nil {
+		return nil, err
+	}
+	owner := actor.ID
+	if p.eventTypeID != nil {
+		var n int64
+		if err := tx.db.Model(&store.EventType{}).Where("id = ? AND ownerless = ?", *p.eventTypeID, true).Count(&n).Error; err != nil {
+			return nil, err
+		}
+		if n > 0 {
+			if in.OwnerID != nil {
+				return nil, invalidField("ownerId", "events of this type have no owner")
+			}
+			if err := ensureSystemUser(tx); err != nil {
+				return nil, err
+			}
+			owner = store.SystemUserID
+		}
+	}
+	e := store.Event{ID: store.NewID(), OwnerID: owner, SourceUID: sourceUID, Status: store.StatusConfirmed, Version: 1, ExdatesJSON: "[]", FieldsJSON: "{}", CreatedAt: tx.now, UpdatedAt: tx.now}
+	p.apply(&e)
+	if e.SeriesEndAt, err = seriesEnd(&e); err != nil {
+		return nil, invalidField("rrule", "%v", err)
+	}
+	if err := tx.db.Create(&e).Error; err != nil {
+		return nil, err
+	}
+	var tags []string
+	if p.tags != nil {
+		tags = *p.tags
+		if err := setEventTags(tx.db, e.ID, tags); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.record("event.created", "event", e.ID, &e.ID, nil, snapshot(&e, tags)); err != nil {
+		return nil, err
+	}
+	out, err := s.eventDTO(tx.db, actor, &e)
+	if err != nil {
+		return nil, err
+	}
+	return out, tx.emit("event.created", e.ID, e.Version, out, "")
 }
 
 // Scope selects which occurrences of a recurring event a change affects.

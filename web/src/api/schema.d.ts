@@ -301,6 +301,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/import/ics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import events from an iCalendar file, or preview the import (admins) */
+        post: operations["importIcs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/inbox": {
         parameters: {
             query?: never;
@@ -763,6 +780,8 @@ export interface components {
             roleSource: "idp" | "manual";
             /** Format: int64 */
             sessionCount: number;
+            /** @description The calendar itself, owner of events whose type has no personal owner */
+            system?: boolean;
         };
         AttachmentDTO: {
             commentId: string | null;
@@ -971,6 +990,8 @@ export interface components {
             name: string;
             /** @description Events of the type never repeat; excludes defaultRrule */
             neverRepeats: boolean;
+            /** @description Events of this type belong to the calendar rather than a person; only admins edit them */
+            ownerless: boolean;
             /** @description With defaultAllDay: events last a single date */
             singleDay: boolean;
             /** Format: int64 */
@@ -1002,6 +1023,8 @@ export interface components {
             name?: string;
             /** @description Events of this type can't repeat; cannot be combined with defaultRrule */
             neverRepeats?: boolean;
+            /** @description New events of this type get no personal owner (holidays); only admins edit them */
+            ownerless?: boolean;
             /** @description With defaultAllDay: events last a single date rather than a range */
             singleDay?: boolean;
             /** @enum {string} */
@@ -1051,6 +1074,49 @@ export interface components {
         HistoryBody: {
             items: components["schemas"]["ActivityDTO"][];
         };
+        ICSEntryDTO: {
+            allDay: boolean;
+            end: string;
+            error?: string;
+            /** @enum {string} */
+            outcome: "new" | "duplicate" | "invalid";
+            rrule: string;
+            start: string;
+            title: string;
+            uid: string;
+        };
+        ICSImportInput: {
+            /** @description Validate and report without creating anything */
+            dryRun?: boolean;
+            /** @description Type for every imported event; empty imports generic events */
+            eventTypeId?: string;
+            /** @description The .ics file contents */
+            ics: string;
+        };
+        ICSImportResult: {
+            /**
+             * Format: int64
+             * @description Events created, or that would be created on a dry run
+             */
+            created: number;
+            dryRun: boolean;
+            /**
+             * Format: int64
+             * @description Skipped: an event from the same UID was imported before
+             */
+            duplicates: number;
+            entries: components["schemas"]["ICSEntryDTO"][];
+            /**
+             * Format: int64
+             * @description Cancelled events and single-occurrence overrides, which are not imported
+             */
+            ignored: number;
+            /**
+             * Format: int64
+             * @description Skipped: the event can't be created as an event of the chosen type
+             */
+            invalid: number;
+        };
         InboxBody: {
             items: components["schemas"]["NotificationDTO"][];
             /** Format: int64 */
@@ -1075,6 +1141,8 @@ export interface components {
             name: string;
             /** @enum {string} */
             role: "viewer" | "writer" | "admin";
+            /** @description The calendar itself, owner of events whose type has no personal owner */
+            system?: boolean;
         };
         MovedBody: {
             /** Format: int64 */
@@ -1354,6 +1422,8 @@ export interface components {
             avatarUrl: string;
             id: string;
             name: string;
+            /** @description The calendar itself, owner of events whose type has no personal owner */
+            system?: boolean;
         };
         UsersBody: {
             users: components["schemas"]["AdminUser"][];
@@ -2196,6 +2266,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuggestionDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    importIcs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ICSImportInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ICSImportResult"];
                 };
             };
             /** @description Error */

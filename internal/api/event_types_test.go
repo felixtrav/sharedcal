@@ -959,3 +959,152 @@ func TestAdminOnlyTypes(t *testing.T) {
 	alice.mustJSON("PATCH", "/api/event-types/"+closure.ID, map[string]any{"adminOnly": false}, 200, nil)
 	bob.mustJSON("POST", "/api/events", body(closure.ID), 201, nil)
 }
+
+const holidayICS = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n" +
+	"BEGIN:VEVENT\r\nUID:xmas@test\r\nDTSTART;VALUE=DATE:20261225\r\nDTEND;VALUE=DATE:20261226\r\nSUMMARY:Christmas Day\r\nEND:VEVENT\r\n" +
+	"BEGIN:VEVENT\r\nUID:ny@test\r\nDTSTART;VALUE=DATE:20270101\r\nSUMMARY:New Year\r\nRRULE:FREQ=YEARLY\r\nEND:VEVENT\r\n" +
+	"BEGIN:VEVENT\r\nUID:cancelled@test\r\nDTSTART;VALUE=DATE:20261101\r\nSUMMARY:Gone\r\nSTATUS:CANCELLED\r\nEND:VEVENT\r\n" +
+	"BEGIN:VEVENT\r\nUID:meet@test\r\nDTSTART:20261110T090000Z\r\nDTEND:20261110T100000Z\r\nSUMMARY:Timed\r\nEND:VEVENT\r\n" +
+	"END:VCALENDAR\r\n"
+
+type importResult struct {
+	DryRun     bool `json:"dryRun"`
+	Created    int  `json:"created"`
+	Duplicates int  `json:"duplicates"`
+	Invalid    int  `json:"invalid"`
+	Ignored    int  `json:"ignored"`
+	Entries    []struct {
+		UID     string `json:"uid"`
+		Outcome string `json:"outcome"`
+		Error   string `json:"error"`
+	} `json:"entries"`
+}
+
+func TestImportICSAndOwnerlessTypes(t *testing.T) {
+	t.Parallel()
+	e := newEnv(t, options{})
+	alice, bob := e.login(t, "alice"), e.login(t, "bob")
+
+	// Holidays are all-day, ownerless and can't be created by writers.
+	var holiday typeDTO
+	alice.mustJSON("POST", "/api/event-types", map[string]any{"name": "Holiday", "colorSlot": "tag-5", "defaultAllDay": true, "ownerless": true, "adminOnly": true}, 201, &holiday)
+	req := func(typeID string, dry bool) map[string]any {
+		return map[string]any{"ics": holidayICS, "eventTypeId": typeID, "dryRun": dry}
+	}
+
+	if st := bob.status("POST", "/api/import/ics", req(holiday.ID, false)); st != 403 {
+		t.Errorf("writer import: %d, want 403", st)
+	}
+
+	// Preview creates nothing.
+	var res importResult
+	alice.mustJSON("POST", "/api/import/ics", req(holiday.ID, true), 200, &res)
+	// The timed event doesn't fit an all-day type.
+	if !res.DryRun || res.Created != 2 || res.Ignored != 1 || res.Invalid != 1 {
+		t.Fatalf("preview: %+v", res)
+	}
+	var list struct {
+		Events []Event `json:"events"`
+	}
+	alice.mustJSON("GET", "/api/events?from=2026-06-01T00:00:00Z&to=2027-06-01T00:00:00Z", nil, 200, &list)
+	if len(list.Events) != 0 {
+		t.Fatalf("preview created %d events", len(list.Events))
+	}
+
+	alice.mustJSON("POST", "/api/import/ics", req(holiday.ID, false), 200, &res)
+	if res.Created != 2 {
+		t.Fatalf("import: %+v", res)
+	}
+	var got struct {
+		Events []Event `json:"events"`
+	}
+	bob.mustJSON("GET", "/api/events?from=2026-12-01T00:00:00Z&to=2026-12-31T00:00:00Z", nil, 200, &got)
+	if len(got.Events) != 1 || got.Events[0].Title != "Christmas Day" || !got.Events[0].AllDay || !got.Events[0].Owner.System {
+		t.Fatalf("imported: %+v", got.Events)
+	}
+	if got.Events[0].Start != "2026-12-25" || got.Events[0].End != "2026-12-26" {
+		t.Errorf("dates: %s – %s", got.Events[0].Start, got.Events[0].End)
+	}
+
+	// Importing again skips everything.
+	alice.mustJSON("POST", "/api/import/ics", req(holiday.ID, false), 200, &res)
+	if res.Created != 0 || res.Duplicates != 2 {
+		t.Fatalf("re-import: %+v", res)
+	}
+
+	// Nobody owns the event, so a writer can only suggest; admins edit.
+	id := got.Events[0].ID
+	if st := bob.status("PATCH", "/api/events/"+id, map[string]any{"location": "Everywhere"}, "If-Match", "1"); st != 403 {
+		t.Errorf("writer edit: %d, want 403", st)
+	}
+	alice.mustJSON("PATCH", "/api/events/"+id, map[string]any{"location": "Everywhere"}, 200, nil, "If-Match", "1")
+
+	// The calendar's own user stays out of user lists, and can't be managed.
+	for _, c := range []*client{alice, bob} {
+		var dir struct {
+			Users []struct {
+				ID string `json:"id"`
+			} `json:"users"`
+		}
+		c.mustJSON("GET", "/api/users/directory", nil, 200, &dir)
+		for _, u := range dir.Users {
+			if u.ID == store.SystemUserID {
+				t.Error("system user in directory")
+			}
+		}
+	}
+	var users struct {
+		Users []struct {
+			ID string `json:"id"`
+		} `json:"users"`
+	}
+	alice.mustJSON("GET", "/api/users", nil, 200, &users)
+	for _, u := range users.Users {
+		if u.ID == store.SystemUserID {
+			t.Error("system user in admin list")
+		}
+	}
+	if st := alice.status("PATCH", "/api/users/"+store.SystemUserID, map[string]any{"active": true}); st != 404 {
+		t.Errorf("patch system user: %d, want 404", st)
+	}
+
+	// Making a type ownerless later also takes the owner off events it already has.
+	var late typeDTO
+	alice.mustJSON("POST", "/api/event-types", map[string]any{"name": "Late", "colorSlot": "tag-2", "defaultAllDay": true}, 201, &late)
+	lateBody := map[string]any{"title": "Early", "eventTypeId": late.ID, "timeZone": "UTC", "allDay": true, "start": "2026-07-01", "end": "2026-07-02"}
+	var early Event
+	bob.mustJSON("POST", "/api/events", lateBody, 201, &early)
+	if early.Owner.ID != bob.ID {
+		t.Fatalf("owner before: %+v", early.Owner)
+	}
+	alice.mustJSON("PATCH", "/api/event-types/"+late.ID, map[string]any{"ownerless": true}, 200, nil)
+	alice.mustJSON("GET", "/api/events/"+early.ID, nil, 200, &early)
+	if !early.Owner.System || early.Version != 2 {
+		t.Errorf("after flag: owner %+v, version %d", early.Owner, early.Version)
+	}
+
+	// Events created by hand get no owner either, and an owner can't be forced.
+	body := map[string]any{"title": "Founders' Day", "eventTypeId": holiday.ID, "timeZone": "UTC", "allDay": true, "start": "2026-06-01", "end": "2026-06-02"}
+	var made Event
+	alice.mustJSON("POST", "/api/events", body, 201, &made)
+	if !made.Owner.System {
+		t.Error("manually created holiday has an owner")
+	}
+	body["ownerId"] = bob.ID
+	if st := alice.status("POST", "/api/events", body); st != 422 {
+		t.Errorf("owner on ownerless type: %d, want 422", st)
+	}
+
+	// Rows that don't fit the type are reported, not fatal.
+	var strict typeDTO
+	alice.mustJSON("POST", "/api/event-types", map[string]any{"name": "Yearly", "colorSlot": "tag-1", "defaultAllDay": true, "defaultRrule": "FREQ=YEARLY"}, 201, &strict)
+	fresh := req(strict.ID, false)
+	fresh["ics"] = strings.ReplaceAll(holidayICS, "@test", "@strict") // new UIDs, so nothing counts as imported already
+	alice.mustJSON("POST", "/api/import/ics", fresh, 200, &res)
+	if res.Created != 1 || res.Invalid != 2 {
+		t.Fatalf("strict type: %+v", res)
+	}
+	if st := alice.status("POST", "/api/import/ics", map[string]any{"ics": "nonsense"}); st != 422 {
+		t.Errorf("garbage: %d, want 422", st)
+	}
+}

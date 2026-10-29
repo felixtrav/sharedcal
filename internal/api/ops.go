@@ -514,6 +514,15 @@ func (s *Server) registerAdmin() {
 			return ok(eventTypesBody{EventTypes: t}), err
 		}))
 
+	register(s, huma.Operation{OperationID: "importIcs", Method: http.MethodPost, Path: "/api/import/ics", Tags: []string{"import"}, Summary: "Import events from an iCalendar file, or preview the import (admins)", MaxBodyBytes: 2_500_000},
+		withActor(func(ctx context.Context, a authz.Actor, in *body[domain.ICSImportInput]) (*body[domain.ICSImportResult], error) {
+			r, err := d.ImportICS(ctx, a, in.Body)
+			if err != nil {
+				return nil, err
+			}
+			return ok(*r), nil
+		}))
+
 	ut := []string{"users"}
 	type directoryBody struct {
 		Users []domain.UserRef `json:"users"`

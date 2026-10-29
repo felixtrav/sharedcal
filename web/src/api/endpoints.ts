@@ -10,6 +10,8 @@ import type {
   EventDetail,
   EventWrite,
   FeedTokenStatus,
+  IcsImportRequest,
+  IcsImportResult,
   Me,
   Notification,
   Preferences,
@@ -124,6 +126,7 @@ export const endpoints = {
   reorderTags: (ids: string[]) => api.post<{ tags: Tag[] }>('/api/tags/reorder', { ids }),
 
   eventTypes: () => api.get<{ eventTypes: EventType[] }>('/api/event-types'),
+  importIcs: (body: IcsImportRequest) => api.post<IcsImportResult>('/api/import/ics', body),
   createEventType: (body: EventTypeWrite & Pick<EventType, 'name' | 'colorSlot'>) => api.post<EventType>('/api/event-types', body),
   updateEventType: (id: string, body: EventTypeWrite) => api.patch<EventType>(`/api/event-types/${enc(id)}`, body),
   deleteEventType: (id: string) => api.del(`/api/event-types/${enc(id)}`),

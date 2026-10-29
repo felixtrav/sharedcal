@@ -89,6 +89,7 @@ type EventTypeDTO struct {
 	SingleDay              bool       `json:"singleDay" doc:"With defaultAllDay: events last a single date"`
 	NeverRepeats           bool       `json:"neverRepeats" doc:"Events of the type never repeat; excludes defaultRrule"`
 	AdminOnly              bool       `json:"adminOnly" doc:"Only admins can create events of this type or switch events to it"`
+	Ownerless              bool       `json:"ownerless" doc:"Events of this type belong to the calendar rather than a person; only admins edit them"`
 	TitleTemplate          string     `json:"titleTemplate" doc:"When set, event titles are generated from field values and cannot be set by hand"`
 	Instructions           string     `json:"instructions" doc:"Guidance shown while creating an event of this type"`
 	Fields                 []FieldDef `json:"fields"`
@@ -109,6 +110,7 @@ type EventTypeInput struct {
 	SingleDay              *bool       `json:"singleDay,omitempty" doc:"With defaultAllDay: events last a single date rather than a range"`
 	NeverRepeats           *bool       `json:"neverRepeats,omitempty" doc:"Events of this type can't repeat; cannot be combined with defaultRrule"`
 	AdminOnly              *bool       `json:"adminOnly,omitempty" doc:"Only admins can create events of this type or switch events to it"`
+	Ownerless              *bool       `json:"ownerless,omitempty" doc:"New events of this type get no personal owner (holidays); only admins edit them"`
 	TitleTemplate          *string     `json:"titleTemplate,omitempty" maxLength:"200" doc:"Generates event titles from {{field_key}} placeholders; empty turns it off"`
 	Instructions           *string     `json:"instructions,omitempty" maxLength:"1000" doc:"Guidance shown while creating an event of this type"`
 	Fields                 *[]FieldDef `json:"fields,omitempty" maxItems:"20"`
@@ -143,6 +145,9 @@ func applyLook(t *store.EventType, in EventTypeInput) error {
 	if in.AdminOnly != nil {
 		t.AdminOnly = *in.AdminOnly
 	}
+	if in.Ownerless != nil {
+		t.Ownerless = *in.Ownerless
+	}
 	if in.DefaultAllDay != nil {
 		t.DefaultAllDay = *in.DefaultAllDay
 	}
@@ -158,6 +163,49 @@ func applyLook(t *store.EventType, in EventTypeInput) error {
 			return err
 		}
 		t.DefaultDurationMinutes = *in.DefaultDurationMinutes
+	}
+	return nil
+}
+
+// disownTypeEvents hands the events of a type that just became ownerless to
+// the system user, trashed ones included so a restore doesn't bring a person back.
+func (s *Service) disownTypeEvents(tx *Tx, typeID string) error {
+	var evs []store.Event
+	if err := tx.db.Where("event_type_id = ? AND owner_id <> ?", typeID, store.SystemUserID).Find(&evs).Error; err != nil {
+		return err
+	}
+	if len(evs) == 0 {
+		return nil
+	}
+	if err := ensureSystemUser(tx); err != nil {
+		return err
+	}
+	ids := make([]string, len(evs))
+	for i := range evs {
+		ids[i] = evs[i].ID
+	}
+	if err := tx.db.Model(&store.Event{}).Where("id IN ?", ids).
+		Updates(map[string]any{"owner_id": store.SystemUserID, "version": gorm.Expr("version + 1"), "updated_at": tx.now}).Error; err != nil {
+		return err
+	}
+	if err := tx.record("eventtype.events_disowned", "event_type", typeID, nil, nil, map[string]any{"count": len(ids)}); err != nil {
+		return err
+	}
+	for _, id := range ids {
+		ev, err := s.loadEvent(tx.db, id, true)
+		if err != nil {
+			return err
+		}
+		if ev.DeletedAt != nil {
+			continue
+		}
+		dto, err := s.eventDTO(tx.db, tx.actor, ev)
+		if err != nil {
+			return err
+		}
+		if err := tx.emit("event.updated", id, ev.Version, dto, ""); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -199,7 +247,7 @@ func parseFieldDefs(raw string) []FieldDef {
 func eventTypeDTO(t store.EventType) EventTypeDTO {
 	return EventTypeDTO{
 		ID: t.ID, Name: t.Name, Icon: t.Icon, ColorSlot: t.ColorSlot, Style: t.Style, YearCounter: t.YearCounter, TitleTemplate: t.TitleTemplate, Instructions: t.Instructions, DefaultAllDay: t.DefaultAllDay, DefaultDurationMinutes: t.DefaultDurationMinutes,
-		DefaultRRule: t.DefaultRRule, NeverRepeats: t.NeverRepeats, AdminOnly: t.AdminOnly, SingleDay: t.SingleDay, Fields: parseFieldDefs(t.FieldsJSON), SortOrder: t.SortOrder,
+		DefaultRRule: t.DefaultRRule, NeverRepeats: t.NeverRepeats, AdminOnly: t.AdminOnly, Ownerless: t.Ownerless, SingleDay: t.SingleDay, Fields: parseFieldDefs(t.FieldsJSON), SortOrder: t.SortOrder,
 	}
 }
 
@@ -712,6 +760,11 @@ func (s *Service) UpdateEventType(ctx context.Context, actor authz.Actor, id str
 		}
 		if t.TitleTemplate != before.TitleTemplate || in.Fields != nil {
 			if err := tx.retitleType(t, ""); err != nil {
+				return err
+			}
+		}
+		if t.Ownerless && !before.Ownerless {
+			if err := s.disownTypeEvents(tx, t.ID); err != nil {
 				return err
 			}
 		}
