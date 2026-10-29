@@ -20,8 +20,8 @@ import { isApiError } from '@/api/client'
 import { patchEventInCache, restoreSnapshot, snapshotEvent, storeEvent } from '@/api/eventCache'
 import { endpoints, type RangeParams } from '@/api/endpoints'
 import { keys } from '@/api/keys'
-import { useEvents, useMeData, useTags } from '@/api/queries'
-import type { CalEvent, CalendarView, EditScope, EventWrite, Me, Tag } from '@/api/types'
+import { useEvents, useEventTypes, useMeData, useTags } from '@/api/queries'
+import type { CalEvent, CalendarView, EditScope, EventType, EventWrite, Me, Tag } from '@/api/types'
 import type { PanelMode } from '@/components/event/EventPanel'
 import { useScopePrompt } from '@/components/event/ScopeDialog'
 import { ConfirmDialog } from '@/components/ui/alert-dialog'
@@ -37,7 +37,9 @@ import { clearOwnWrite, glowStore, markOwnWrite } from '@/realtime/stores'
 import { CalendarSkeleton } from './CalendarSkeleton'
 import { CalendarToolbar, type Filters } from './CalendarToolbar'
 import { EventCalendarViews } from './event-calendar-views'
-import { ghostInput, renderEventContent, toEventInput, type ChipProps, type Ghost } from './eventInput'
+import { compareEvents, ghostInput, renderEventContent, toEventInput, type ChipProps, type Ghost } from './eventInput'
+import { typedDraft } from '@/components/event/typeDefaults'
+import { useEventTitle } from '@/components/event/useEventTitle'
 import { QuickCreatePopover, type Slot } from './QuickCreatePopover'
 
 const route = getRouteApi('/')
@@ -80,12 +82,16 @@ export function CalendarPage() {
   const [draft, setDraft] = useState<PanelMode | null>(null)
   const [creating, setCreating] = useState(false)
 
-  const filters: Filters = useMemo(() => ({ tags: search.tags ?? [], owners: search.owners ?? [] }), [search.tags, search.owners])
+  const filters: Filters = useMemo(
+    () => ({ tags: search.tags ?? [], types: search.types ?? [], owners: search.owners ?? [] }),
+    [search.tags, search.types, search.owners],
+  )
   const params: RangeParams | null = range
     ? {
         from: range.from,
         to: range.to,
         ...(filters.tags.length ? { tag: filters.tags } : {}),
+        ...(filters.types.length ? { type: filters.types } : {}),
         ...(filters.owners.length ? { owner: filters.owners } : {}),
         ...(search.q ? { q: search.q } : {}),
       }
@@ -93,13 +99,16 @@ export function CalendarPage() {
   const eventsQ = useEvents(params)
   const { data: tagsData } = useTags()
   const tagsById = useMemo(() => new Map<string, Tag>((tagsData?.tags ?? []).map((tg) => [tg.id, tg])), [tagsData])
+  const { data: typesData } = useEventTypes()
+  const titleOf = useEventTitle(fmt)
+  const typesById = useMemo(() => new Map<string, EventType>((typesData?.eventTypes ?? []).map((et) => [et.id, et])), [typesData])
   const glowing = useStore(glowStore)
 
   const events = useMemo(() => {
-    const list = (eventsQ.data?.events ?? []).map((ev) => toEventInput(ev, { tagsById, glowing, fmt, t }))
-    if (ghost) list.push(ghostInput(ghost, { tagsById, t }))
+    const list = (eventsQ.data?.events ?? []).map((ev) => toEventInput(ev, { tagsById, typesById, glowing, fmt, t, titleOf }))
+    if (ghost) list.push(ghostInput(ghost, { tagsById, typesById, t }))
     return list
-  }, [eventsQ.data, tagsById, glowing, fmt, t, ghost])
+  }, [eventsQ.data, tagsById, typesById, glowing, fmt, t, ghost, titleOf])
 
   const api = () => calRef.current?.getApi()
 
@@ -144,19 +153,17 @@ export function CalendarPage() {
     }
   }
 
-  const openNew = (init?: Partial<{ title: string; start: string; end: string; allDay: boolean }>) => {
+  const openNew = (init?: Partial<{ title: string; start: string; end: string; allDay: boolean }>, type?: EventType) => {
     void navigate({ search: (prev) => ({ ...prev, event: undefined, occurrence: undefined, tab: undefined }) })
     const base = defaultNewTimes(tz, search.date)
-    setDraft({
-      kind: 'create',
-      draft: {
-        title: init?.title ?? '',
-        allDay: init?.allDay ?? false,
-        start: init?.start ?? base.start,
-        end: init?.end ?? base.end,
-        timeZone: tz,
-      },
-    })
+    const draft = {
+      title: init?.title ?? '',
+      allDay: init?.allDay ?? false,
+      start: init?.start ?? base.start,
+      end: init?.end ?? base.end,
+      timeZone: tz,
+    }
+    setDraft({ kind: 'create', draft: type ? typedDraft(draft, type) : draft })
   }
 
   // --- Keyboard --------------------------------------------------------------
@@ -214,11 +221,22 @@ export function CalendarPage() {
           allDay: false,
         }
 
-  const quickCreate = async (title: string) => {
+  const quickCreate = async (title: string, type?: EventType) => {
     if (!slot) return
     setCreating(true)
     try {
       const body: EventWrite = { title, start: slot.start, end: slot.end, allDay: slot.allDay, timeZone: tz }
+      if (type) {
+        body.eventTypeId = type.id
+        if (type.defaultRrule) body.rrule = type.defaultRrule
+        if (type.defaultAllDay && !slot.allDay) {
+          body.allDay = true
+          body.start = dateInZone(Date.parse(slot.start), tz)
+          body.end = addDays(body.start, 1)
+        } else if (!body.allDay) {
+          body.end = toUtcString(Date.parse(slot.start) + type.defaultDurationMinutes * 60_000)
+        }
+      }
       const created = await endpoints.createEvent(body)
       markOwnWrite(created.id, created.version)
       storeEvent(qc, created)
@@ -332,12 +350,21 @@ export function CalendarPage() {
         onToday={() => api()?.today()}
         onPrev={() => api()?.prev()}
         onNext={() => api()?.next()}
+        date={search.date}
+        timeZone={tz}
+        weekStart={prefs.weekStart}
+        onPickDate={(d) => api()?.gotoDate(d)}
         query={search.q ?? ''}
         onQuery={(q) => void navigate({ search: (prev) => ({ ...prev, q: q || undefined }), replace: true })}
         filters={filters}
         onFilters={(f) =>
           void navigate({
-            search: (prev) => ({ ...prev, tags: f.tags.length ? f.tags : undefined, owners: f.owners.length ? f.owners : undefined }),
+            search: (prev) => ({
+              ...prev,
+              tags: f.tags.length ? f.tags : undefined,
+              types: f.types.length ? f.types : undefined,
+              owners: f.owners.length ? f.owners : undefined,
+            }),
             replace: true,
           })
         }
@@ -345,13 +372,15 @@ export function CalendarPage() {
         onNew={() => openNew()}
       />
 
-      {search.q || filters.tags.length || filters.owners.length ? (
+      {search.q || filters.tags.length || filters.types.length || filters.owners.length ? (
         <div className="flex items-center gap-2 px-4 pb-2 text-sm text-muted-foreground sm:px-6" role="status">
           {t('calendar.filteredResults', { count: eventsQ.data?.events.length ?? 0 })}
           <Button
             variant="ghost"
             size="xs"
-            onClick={() => void navigate({ search: (prev) => ({ ...prev, q: undefined, tags: undefined, owners: undefined }), replace: true })}
+            onClick={() =>
+              void navigate({ search: (prev) => ({ ...prev, q: undefined, tags: undefined, types: undefined, owners: undefined }), replace: true })
+            }
           >
             <XIcon aria-hidden />
             {t('calendar.clearAll')}
@@ -397,6 +426,8 @@ export function CalendarPage() {
             eventInteractive
             events={events}
             eventContent={renderEventContent}
+            // FullCalendar's typings for this option are too narrow for a comparison function.
+            eventOrder={compareEvents as unknown as undefined}
             eventDidMount={(info) => {
               const ev = (info.event.extendedProps as ChipProps).ev
               if (ev) info.el.dataset.eventId = ev.id
@@ -408,6 +439,7 @@ export function CalendarPage() {
             datesSet={onDatesSet}
             eventClick={onEventClick}
             select={onSelect}
+            eventAllow={(span, ev) => !((ev?.extendedProps as ChipProps | undefined)?.fixedAllDay && !span.allDay)}
             eventDrop={(i) => void onTimesChanged(i)}
             eventResize={(i) => void onTimesChanged(i)}
             noEventsText={t('calendar.noEvents')}
@@ -422,12 +454,13 @@ export function CalendarPage() {
         whenText={slot ? eventWhen({ allDay: slot.allDay, start: slot.start, end: slot.end, startUtc: slot.start, endUtc: slot.end }, fmt, t) : ''}
         pending={creating}
         onClose={closeSlot}
-        onCreate={(title) => void quickCreate(title)}
-        onMore={(title) => {
+        types={(typesData?.eventTypes ?? []).filter((et) => !et.adminOnly || me.user.role === 'admin')}
+        onCreate={(title, type) => void quickCreate(title, type)}
+        onMore={(title, type) => {
           if (!slot) return
           const d = slotToDraft(slot)
           closeSlot()
-          openNew({ title, ...d })
+          openNew({ title, ...d }, type)
         }}
       />
 

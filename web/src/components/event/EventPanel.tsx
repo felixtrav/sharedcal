@@ -20,6 +20,7 @@ import type { Draft } from './formModel'
 import { HistoryTab } from './HistoryTab'
 import { PresenceAvatars } from './PresenceAvatars'
 import { SuggestionsTab } from './SuggestionsTab'
+import { useEventTitle } from './useEventTitle'
 import { usePresence } from './usePresence'
 import type { ScopeAsk } from './ScopeDialog'
 import { EventForm } from './EventForm'
@@ -111,6 +112,7 @@ function ViewPanel({
   const deleted = useStore(deletedEventsStore).has(mode.id)
   const [dirty, setDirty] = useState(false)
   usePresence(deleted ? null : mode.id, dirty)
+  const titleOf = useEventTitle(fmt)
 
   const event: EventDetail | undefined = useMemo(() => {
     const d = detailQ.data
@@ -170,7 +172,7 @@ function ViewPanel({
 
   return (
     <>
-      <PanelHeader headingRef={headingRef} title={event.title || t('event.untitled')} onClose={onClose} extra={<PresenceAvatars eventId={event.id} />} />
+      <PanelHeader headingRef={headingRef} title={titleOf(event) || t('event.untitled')} onClose={onClose} extra={<PresenceAvatars eventId={event.id} />} />
       <Tabs value={tab} onValueChange={(v) => onTab(v as PanelTab)} className="flex min-h-0 flex-1 flex-col">
         <div className="px-5">
           <TabsList className="w-full">

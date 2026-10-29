@@ -1,7 +1,7 @@
 import { ChevronLeftIcon, ChevronRightIcon, FilterIcon, PlusIcon, SearchIcon, XIcon } from 'lucide-react'
 import { forwardRef, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDirectory, useTags } from '@/api/queries'
+import { useDirectory, useEventTypes, useTags } from '@/api/queries'
 import type { CalendarView } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import {
@@ -16,9 +16,11 @@ import {
 import { Input } from '@/components/ui/input'
 import { Segmented } from '@/components/ui/segmented'
 import { Tooltip } from '@/components/ui/tooltip'
+import { JumpToDate } from './JumpToDate'
+import { TypeGlyph } from '@/lib/typeIcons'
 import { cn } from '@/lib/utils'
 
-export type Filters = { tags: string[]; owners: string[] }
+export type Filters = { tags: string[]; types: string[]; owners: string[] }
 
 type Props = {
   title: string
@@ -27,6 +29,11 @@ type Props = {
   onToday: () => void
   onPrev: () => void
   onNext: () => void
+  /** The date the calendar is showing, today's date and the first day of the week, for the date picker. */
+  date?: string
+  timeZone: string
+  weekStart: number
+  onPickDate: (date: string) => void
   query: string
   onQuery: (q: string) => void
   filters: Filters
@@ -64,6 +71,7 @@ export const CalendarToolbar = forwardRef<HTMLInputElement, Props>(function Cale
             </Button>
           </Tooltip>
         </div>
+        <JumpToDate view={p.view} date={p.date} timeZone={p.timeZone} weekStart={p.weekStart} onPick={p.onPickDate} />
         <h1 className="truncate text-lg font-semibold tracking-tight sm:text-2xl" aria-live="polite">
           {p.title}
         </h1>
@@ -141,8 +149,9 @@ const SearchBox = forwardRef<HTMLInputElement, { value: string; onChange: (q: st
 function FilterMenu({ filters, onChange }: { filters: Filters; onChange: (f: Filters) => void }) {
   const { t } = useTranslation()
   const { data: tags } = useTags()
+  const { data: types } = useEventTypes()
   const { data: dir } = useDirectory()
-  const count = filters.tags.length + filters.owners.length
+  const count = filters.tags.length + filters.types.length + filters.owners.length
   const toggle = (list: string[], id: string) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id])
 
   return (
@@ -176,6 +185,23 @@ function FilterMenu({ filters, onChange }: { filters: Filters; onChange: (f: Fil
         ) : (
           <p className="px-2 py-1.5 text-sm text-muted-foreground">{t('calendar.noTags')}</p>
         )}
+        {types?.eventTypes.length ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>{t('calendar.filterTypes')}</DropdownMenuLabel>
+            {types.eventTypes.map((et) => (
+              <DropdownMenuCheckboxItem
+                key={et.id}
+                checked={filters.types.includes(et.id)}
+                onSelect={(e) => e.preventDefault()}
+                onCheckedChange={() => onChange({ ...filters, types: toggle(filters.types, et.id) })}
+              >
+                <TypeGlyph name={et.icon} className="size-3.5 shrink-0" style={{ color: `var(--${et.colorSlot})` }} aria-hidden />
+                {et.name}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuLabel>{t('calendar.filterOwners')}</DropdownMenuLabel>
         {dir?.users.map((u) => (
@@ -191,7 +217,7 @@ function FilterMenu({ filters, onChange }: { filters: Filters; onChange: (f: Fil
         {count > 0 ? (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => onChange({ tags: [], owners: [] })}>{t('calendar.clearFilters')}</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onChange({ tags: [], types: [], owners: [] })}>{t('calendar.clearFilters')}</DropdownMenuItem>
           </>
         ) : null}
       </DropdownMenuContent>

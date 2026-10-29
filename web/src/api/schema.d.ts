@@ -124,6 +124,59 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/event-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** All event types */
+        get: operations["listEventTypes"];
+        put?: never;
+        /** Create an event type */
+        post: operations["createEventType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/event-types/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set event type order */
+        post: operations["reorderEventTypes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/event-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an unused event type */
+        delete: operations["deleteEventType"];
+        options?: never;
+        head?: never;
+        /** Change an event type's name, look, defaults or fields */
+        patch: operations["updateEventType"];
+        trace?: never;
+    };
     "/api/events": {
         parameters: {
             query?: never;
@@ -808,7 +861,11 @@ export interface components {
             end: string;
             /** Format: date-time */
             endUtc: string;
+            eventTypeId: string | null;
             exdates: string[];
+            fields: {
+                [key: string]: unknown;
+            };
             id: string;
             location: string;
             /** Format: date-time */
@@ -829,6 +886,8 @@ export interface components {
             updatedAt: string;
             /** Format: int64 */
             version: number;
+            /** Format: int64 */
+            yearsSince?: number;
         };
         EventDetail: {
             allDay: boolean;
@@ -842,7 +901,11 @@ export interface components {
             end: string;
             /** Format: date-time */
             endUtc: string;
+            eventTypeId: string | null;
             exdates: string[];
+            fields: {
+                [key: string]: unknown;
+            };
             id: string;
             location: string;
             /** Format: date-time */
@@ -864,11 +927,20 @@ export interface components {
             updatedAt: string;
             /** Format: int64 */
             version: number;
+            /** Format: int64 */
+            yearsSince?: number;
         };
         EventInput: {
             allDay?: boolean;
+            /** @description Generic events only; typed events use fields */
             description?: string;
             end?: string;
+            /** @description Event type id; an empty string makes the event generic again */
+            eventTypeId?: string;
+            /** @description Values for the event type's fields, keyed by field key; replaces all values */
+            fields?: {
+                [key: string]: unknown;
+            };
             location?: string;
             /** @description Admins only: transfer ownership */
             ownerId?: string;
@@ -879,6 +951,68 @@ export interface components {
             tags?: string[];
             timeZone?: string;
             title?: string;
+        };
+        EventTypeDTO: {
+            /** @description Only admins can create events of this type or switch events to it */
+            adminOnly: boolean;
+            /** @enum {string} */
+            colorSlot: "tag-1" | "tag-2" | "tag-3" | "tag-4" | "tag-5" | "tag-6" | "tag-7" | "tag-8";
+            defaultAllDay: boolean;
+            /** Format: int64 */
+            defaultDurationMinutes: number;
+            /** @description When set, every event of the type repeats with exactly this rule */
+            defaultRrule: string;
+            fields: components["schemas"]["FieldDef"][];
+            /** @enum {string} */
+            icon: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell";
+            id: string;
+            /** @description Guidance shown while creating an event of this type */
+            instructions: string;
+            name: string;
+            /** @description Events of the type never repeat; excludes defaultRrule */
+            neverRepeats: boolean;
+            /** @description With defaultAllDay: events last a single date */
+            singleDay: boolean;
+            /** Format: int64 */
+            sortOrder: number;
+            /** @enum {string} */
+            style: "default" | "banner" | "outline" | "badge";
+            /** @description When set, event titles are generated from field values and cannot be set by hand */
+            titleTemplate: string;
+            yearCounter: boolean;
+        };
+        EventTypeInput: {
+            /** @description Only admins can create events of this type or switch events to it */
+            adminOnly?: boolean;
+            /** @enum {string} */
+            colorSlot?: "tag-1" | "tag-2" | "tag-3" | "tag-4" | "tag-5" | "tag-6" | "tag-7" | "tag-8";
+            defaultAllDay?: boolean;
+            /**
+             * Format: int64
+             * @description Length of new timed events; 0 for instants such as deadlines
+             */
+            defaultDurationMinutes?: number;
+            /** @description RRULE every event of this type must use */
+            defaultRrule?: string;
+            fields?: components["schemas"]["FieldDef"][];
+            /** @enum {string} */
+            icon?: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell";
+            /** @description Guidance shown while creating an event of this type */
+            instructions?: string;
+            name?: string;
+            /** @description Events of this type can't repeat; cannot be combined with defaultRrule */
+            neverRepeats?: boolean;
+            /** @description With defaultAllDay: events last a single date rather than a range */
+            singleDay?: boolean;
+            /** @enum {string} */
+            style?: "default" | "banner" | "outline" | "badge";
+            /** @description Generates event titles from {{field_key}} placeholders; empty turns it off */
+            titleTemplate?: string;
+            /** @description Show years since the first occurrence of a recurring event */
+            yearCounter?: boolean;
+        };
+        EventTypesBody: {
+            eventTypes: components["schemas"]["EventTypeDTO"][];
         };
         EventsBody: {
             events: components["schemas"]["EventDTO"][];
@@ -898,6 +1032,21 @@ export interface components {
             conflict: boolean;
             current: unknown;
             proposed: unknown;
+        };
+        FieldDef: {
+            /** @description Stable identifier used in event values */
+            key: string;
+            /**
+             * @description members: a list of user ids
+             * @enum {string}
+             */
+            kind: "text" | "longtext" | "number" | "date" | "time" | "select" | "url" | "checkbox" | "members";
+            label: string;
+            /** @description select and members fields: allow several selections. Unset means one choice for select and several people for members */
+            multiple?: boolean;
+            /** @description Choices for select fields */
+            options?: string[];
+            required?: boolean;
         };
         HistoryBody: {
             items: components["schemas"]["ActivityDTO"][];
@@ -953,6 +1102,10 @@ export interface components {
             end?: string;
             /** Format: date-time */
             endUtc?: string;
+            eventTypeId?: string;
+            fields?: {
+                [key: string]: unknown;
+            };
             id: string;
             location?: string;
             /** Format: date-time */
@@ -962,6 +1115,7 @@ export interface components {
             startUtc?: string;
             status?: string;
             title?: string;
+            typeOverridden?: boolean;
         };
         Permissions: {
             attach: boolean;
@@ -1079,7 +1233,7 @@ export interface components {
             readonly storageUsed: number;
         };
         SuggestionDTO: {
-            acceptedFields: ("title" | "description" | "location" | "start" | "end" | "timeZone" | "allDay" | "rrule" | "status" | "tags")[];
+            acceptedFields: ("title" | "description" | "location" | "start" | "end" | "timeZone" | "allDay" | "rrule" | "status" | "tags" | "eventTypeId" | "fields")[];
             author: components["schemas"]["UserRef"];
             /** Format: int64 */
             baseVersion: number;
@@ -1467,6 +1621,165 @@ export interface operations {
             };
         };
     };
+    listEventTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventTypesBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createEventType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventTypeInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventTypeDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    reorderEventTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderInBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventTypesBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteEventType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updateEventType: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EventTypeInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventTypeDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     listEvents: {
         parameters: {
             query: {
@@ -1475,6 +1788,8 @@ export interface operations {
                 /** @description Range end (exclusive), RFC 3339 */
                 to: string;
                 tag?: string[];
+                /** @description Event type ids */
+                type?: string[];
                 owner?: string[];
                 q?: string;
             };

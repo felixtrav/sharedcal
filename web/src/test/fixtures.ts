@@ -16,6 +16,8 @@ export function makeEvent(overrides: Partial<CalEvent> = {}): CalEvent {
     exdates: [],
     status: 'confirmed',
     tags: [],
+    eventTypeId: null,
+    fields: {},
     owner: { id: 'u-dana', name: 'Dana', avatarUrl: '' },
     version: 1,
     permissions: { edit: true, delete: true, suggest: false, comment: true, attach: true, review: true },

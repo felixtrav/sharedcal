@@ -77,6 +77,7 @@ type eventsQuery struct {
 	From  time.Time `query:"from" required:"true" doc:"Range start (inclusive), RFC 3339"`
 	To    time.Time `query:"to" required:"true" doc:"Range end (exclusive), RFC 3339"`
 	Tag   []string  `query:"tag,explode" maxItems:"50"`
+	Type  []string  `query:"type,explode" maxItems:"50" doc:"Event type ids"`
 	Owner []string  `query:"owner,explode" maxItems:"50"`
 	Q     string    `query:"q" maxLength:"200"`
 }
@@ -186,7 +187,7 @@ func (s *Server) registerEvents() {
 	tags := []string{"events"}
 	register(s, huma.Operation{OperationID: "listEvents", Method: http.MethodGet, Path: "/api/events", Tags: tags, Summary: "Occurrences in a range, recurrences expanded"},
 		withActor(func(ctx context.Context, a authz.Actor, in *eventsQuery) (*body[eventsBody], error) {
-			evs, err := d.ListEvents(ctx, a, domain.ListQuery{From: in.From, To: in.To, Tags: in.Tag, Owners: in.Owner, Q: in.Q})
+			evs, err := d.ListEvents(ctx, a, domain.ListQuery{From: in.From, To: in.To, Tags: in.Tag, Types: in.Type, Owners: in.Owner, Q: in.Q})
 			return ok(eventsBody{Events: evs}), err
 		}))
 	register(s, huma.Operation{OperationID: "getEvent", Method: http.MethodGet, Path: "/api/events/{id}", Tags: tags, Summary: "One event with overrides and attachments"},
@@ -472,6 +473,45 @@ func (s *Server) registerAdmin() {
 		withActor(func(ctx context.Context, a authz.Actor, in *reorderIn) (*body[tagsBody], error) {
 			t, err := d.ReorderTags(ctx, a, in.Body.IDs)
 			return ok(tagsBody{Tags: t}), err
+		}))
+
+	et := []string{"event types"}
+	type eventTypesBody struct {
+		EventTypes []domain.EventTypeDTO `json:"eventTypes"`
+	}
+	type eventTypeIn struct {
+		ID   string `path:"id" maxLength:"36"`
+		Body domain.EventTypeInput
+	}
+	register(s, huma.Operation{OperationID: "listEventTypes", Method: http.MethodGet, Path: "/api/event-types", Tags: et, Summary: "All event types"},
+		withActor(func(ctx context.Context, a authz.Actor, _ *empty) (*body[eventTypesBody], error) {
+			t, err := d.ListEventTypes(ctx, a)
+			return ok(eventTypesBody{EventTypes: t}), err
+		}))
+	register(s, huma.Operation{OperationID: "createEventType", Method: http.MethodPost, Path: "/api/event-types", Tags: et, Summary: "Create an event type", DefaultStatus: http.StatusCreated},
+		withActor(func(ctx context.Context, a authz.Actor, in *body[domain.EventTypeInput]) (*body[domain.EventTypeDTO], error) {
+			t, err := d.CreateEventType(ctx, a, in.Body)
+			if err != nil {
+				return nil, err
+			}
+			return ok(*t), nil
+		}))
+	register(s, huma.Operation{OperationID: "updateEventType", Method: http.MethodPatch, Path: "/api/event-types/{id}", Tags: et, Summary: "Change an event type's name, look, defaults or fields"},
+		withActor(func(ctx context.Context, a authz.Actor, in *eventTypeIn) (*body[domain.EventTypeDTO], error) {
+			t, err := d.UpdateEventType(ctx, a, in.ID, in.Body)
+			if err != nil {
+				return nil, err
+			}
+			return ok(*t), nil
+		}))
+	register(s, huma.Operation{OperationID: "deleteEventType", Method: http.MethodDelete, Path: "/api/event-types/{id}", Tags: et, Summary: "Delete an unused event type", DefaultStatus: http.StatusNoContent},
+		withActor(func(ctx context.Context, a authz.Actor, in *idPath) (*empty, error) {
+			return &empty{}, d.DeleteEventType(ctx, a, in.ID)
+		}))
+	register(s, huma.Operation{OperationID: "reorderEventTypes", Method: http.MethodPost, Path: "/api/event-types/reorder", Tags: et, Summary: "Set event type order"},
+		withActor(func(ctx context.Context, a authz.Actor, in *reorderIn) (*body[eventTypesBody], error) {
+			t, err := d.ReorderEventTypes(ctx, a, in.Body.IDs)
+			return ok(eventTypesBody{EventTypes: t}), err
 		}))
 
 	ut := []string{"users"}

@@ -625,6 +625,8 @@ Each milestone ends with a tagged image, so early adopters can run M2 as a plain
 
 #### Event categories
 
+> **Status:** implemented as **event types**, which also carry predefined fields in place of a free-form description. Styles, the year counter and the five presets are in. Still different from the text below: "delete leaves events uncategorized" (deletion is blocked), styles aren't theme tokens, and the picker sits below the title; see *Event types* in [docs/decisions.md](docs/decisions.md) and `/api/event-types` in [docs/api.md](docs/api.md).
+
 Admins define a small set of **categories** such as *Birthday*, *Holiday* or *Deadline*. Each one gives events a distinct, recognizable look and sensible defaults when they are created. Tags stay what they are (free labels that set the color and drive filters); a category is the event's *kind*.
 
 | | Tags (v1) | Categories |

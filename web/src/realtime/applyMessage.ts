@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import type { RangeParams } from '@/api/endpoints'
 import { keys } from '@/api/keys'
-import type { Attachment, CalEvent, Comment, EventDetail, Notification, PresenceViewer, Suggestion, Tag } from '@/api/types'
+import type { Attachment, CalEvent, Comment, EventDetail, EventType, Notification, PresenceViewer, Suggestion, Tag } from '@/api/types'
 
 type EventsData = { events: CalEvent[] }
 type CommentsData = { comments: Comment[] }
@@ -32,6 +32,7 @@ export function overlaps(ev: Pick<CalEvent, 'startUtc' | 'endUtc'>, range: Pick<
 export function matchesFilters(ev: CalEvent, p: RangeParams): boolean | null {
   if (p.q) return null
   if (p.tag?.length && !ev.tags.some((id) => p.tag?.includes(id))) return false
+  if (p.type?.length && !(ev.eventTypeId && p.type.includes(ev.eventTypeId))) return false
   if (p.owner?.length && !p.owner.includes(ev.owner.id)) return false
   return true
 }
@@ -236,6 +237,16 @@ export function applyStreamMessage(qc: QueryClient, type: string, payload: unkno
     case 'tag.changed':
       qc.setQueryData<{ tags: Tag[] }>(keys.tags, { tags: (payload as { tags: Tag[] }).tags })
       return
+    case 'eventtype.changed': {
+      const next = (payload as { eventTypes: EventType[] }).eventTypes
+      const prev = qc.getQueryData<{ eventTypes: EventType[] }>(keys.eventTypes)?.eventTypes
+      qc.setQueryData<{ eventTypes: EventType[] }>(keys.eventTypes, { eventTypes: next })
+      // Changing a title template retitles that type's events on the server.
+      if (prev && next.some((et) => et.titleTemplate && et.titleTemplate !== prev.find((p) => p.id === et.id)?.titleTemplate)) {
+        void qc.invalidateQueries({ queryKey: keys.eventsAll })
+      }
+      return
+    }
     case 'user.role_changed': {
       const p = payload as { userId: string }
       if (p.userId === ctx.meId) {
@@ -283,6 +294,7 @@ export const STREAM_TYPES = [
   'suggestion.created',
   'suggestion.resolved',
   'tag.changed',
+  'eventtype.changed',
   'user.role_changed',
   'inbox.item',
   'presence',

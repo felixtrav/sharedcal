@@ -60,6 +60,10 @@ export function useTags() {
   return useQuery({ queryKey: keys.tags, queryFn: endpoints.tags, staleTime: 5 * 60_000 })
 }
 
+export function useEventTypes() {
+  return useQuery({ queryKey: keys.eventTypes, queryFn: endpoints.eventTypes, staleTime: 5 * 60_000 })
+}
+
 export function useDirectory() {
   return useQuery({ queryKey: keys.directory, queryFn: endpoints.directory, staleTime: 5 * 60_000 })
 }

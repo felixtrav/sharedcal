@@ -45,8 +45,10 @@ function eventWhenUnsafe(ev: Timing, o: FormatOptions, t: TFunction): string {
 }
 
 /** Screen-reader label for an event chip. */
-export function eventAriaLabel(ev: CalEvent, o: FormatOptions, t: TFunction): string {
+export function eventAriaLabel(ev: CalEvent, o: FormatOptions, t: TFunction, typeName?: string): string {
   const parts = [ev.title || t('event.untitled'), eventWhen(ev, o, t), t('event.ownedBy', { name: ev.owner.name })]
+  if (typeName) parts.unshift(typeName)
+  if (ev.yearsSince) parts.push(t('event.yearsSince', { count: ev.yearsSince }))
   if (ev.status === 'tentative') parts.push(t('event.status.tentative'))
   if (ev.rrule || ev.occurrence) parts.push(t('event.recurring'))
   if (ev.counts.openSuggestions > 0 && ev.permissions.review) {

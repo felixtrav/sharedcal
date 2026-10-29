@@ -69,6 +69,12 @@ const tagsRoute = createRoute({
   component: adminOnly(lazyRouteComponent(() => import('@/pages/admin/TagsPage'), 'TagsPage')),
 })
 
+const eventTypesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/event-types',
+  component: adminOnly(lazyRouteComponent(() => import('@/pages/admin/EventTypesPage'), 'EventTypesPage')),
+})
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/settings',
@@ -89,6 +95,7 @@ const routeTree = rootRoute.addChildren([
   activityRoute,
   peopleRoute,
   tagsRoute,
+  eventTypesRoute,
   settingsRoute,
   trashRoute,
 ])

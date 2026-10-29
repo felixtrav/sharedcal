@@ -2,7 +2,9 @@ import { CalendarClockIcon } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import type { EventType } from '@/api/types'
+import { TypeInstructions } from '@/components/event/TypeInstructions'
+import { Input, NativeSelect } from '@/components/ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 
 export type Slot = {
@@ -19,6 +21,7 @@ export function QuickCreatePopover({
   slot,
   whenText,
   onClose,
+  types,
   onCreate,
   onMore,
   pending,
@@ -26,13 +29,16 @@ export function QuickCreatePopover({
   slot: Slot | null
   whenText: string
   onClose: () => void
-  onCreate: (title: string) => void
-  onMore: (title: string) => void
+  types: EventType[]
+  onCreate: (title: string, type: EventType | undefined) => void
+  onMore: (title: string, type: EventType | undefined) => void
   pending: boolean
 }) {
   const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [error, setError] = useState('')
+  const [typeId, setTypeId] = useState('')
+  const type = types.find((et) => et.id === typeId)
   const open = !!slot
 
   const submit = () => {
@@ -45,7 +51,7 @@ export function QuickCreatePopover({
       setError(t('validation.titleTooLong'))
       return
     }
-    onCreate(v)
+    onCreate(v, type)
   }
 
   return (
@@ -55,6 +61,7 @@ export function QuickCreatePopover({
         if (!o) {
           setTitle('')
           setError('')
+          setTypeId('')
           onClose()
         }
       }}
@@ -102,12 +109,37 @@ export function QuickCreatePopover({
               </p>
             ) : null}
           </div>
+          {types.length ? (
+            <div className="grid gap-1.5">
+              <label htmlFor="qc-type" className="sr-only">
+                {t('event.fields.eventTypeId')}
+              </label>
+              <NativeSelect
+                id="qc-type"
+                value={typeId}
+                onChange={(e) => {
+                  const chosen = types.find((et) => et.id === e.target.value)
+                  // Required fields can't be filled in here, and a generated title is built from them: open the full form.
+                  if (chosen && (chosen.titleTemplate || chosen.fields.some((f) => f.required))) onMore(chosen.titleTemplate ? '' : title.trim(), chosen)
+                  else setTypeId(e.target.value)
+                }}
+              >
+                <option value="">{t('eventTypes.generic')}</option>
+                {types.map((et) => (
+                  <option key={et.id} value={et.id}>
+                    {et.name}
+                  </option>
+                ))}
+              </NativeSelect>
+              {type ? <TypeInstructions type={type} /> : null}
+            </div>
+          ) : null}
           <p className="flex items-center gap-2 text-sm text-muted-foreground tabular-nums">
             <CalendarClockIcon className="size-4 shrink-0" aria-hidden />
             {whenText}
           </p>
           <div className="flex items-center justify-between gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={() => onMore(title.trim())}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => onMore(title.trim(), type)}>
               {t('calendar.moreOptions')}
             </Button>
             <Button type="submit" size="sm" disabled={pending}>

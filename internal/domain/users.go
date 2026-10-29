@@ -133,6 +133,11 @@ func (s *Service) Provision(ctx context.Context, id auth.Identity) (*store.User,
 		} else if err := tx.db.Save(&u).Error; err != nil {
 			return err
 		}
+		if !isNew && refOf(&before).Name != refOf(&u).Name {
+			if err := tx.retitleForPerson(u.ID); err != nil {
+				return err
+			}
+		}
 		if !isNew && before.Role != u.Role {
 			if err := tx.recordAs("", "user.role_changed", "user", u.ID, nil, map[string]string{"role": before.Role}, map[string]string{"role": u.Role, "source": "idp"}); err != nil {
 				return err
@@ -738,6 +743,9 @@ func (s *Service) EraseUser(ctx context.Context, actor authz.Actor, id, transfer
 			"oidc_issuer": "", "oidc_subject": "erased:" + id, "email": "", "display_name": ErasedName, "avatar_url": "",
 			"groups_json": "[]", "active": false, "role_source": store.RoleSourceManual, "erased_at": now, "updated_at": now,
 		}).Error; err != nil {
+			return err
+		}
+		if err := tx.retitleForPerson(id); err != nil {
 			return err
 		}
 		res.CommentsRemoved, res.AttachmentsRemoved, res.SuggestionsRemoved = len(comments), len(atts), len(sgs)
