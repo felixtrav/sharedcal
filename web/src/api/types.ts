@@ -97,6 +97,7 @@ export type Attachment = {
 export type EventDetail = CalEvent & {
   overrides: Override[]
   attachments: Attachment[]
+  watching: boolean
 }
 
 export type Comment = {
@@ -255,16 +256,21 @@ export type EventTypeWrite = Partial<
   >
 >
 
-type NotificationKind = 'suggestion.created' | 'suggestion.resolved' | 'comment.reply' | 'comment.mention'
+type NotificationKind =
+  'suggestion.created' | 'suggestion.resolved' | 'comment.reply' | 'comment.mention' | 'watch.updated' | 'watch.comments' | 'watch.deleted'
 
 export type Notification = {
   id: UUID
   kind: NotificationKind
-  subjectType: 'suggestion' | 'comment'
+  subjectType: 'suggestion' | 'comment' | 'event'
   subjectId: UUID
   eventId: UUID | null
   eventTitle: string
+  /** What a generated title depends on; null once the event is gone. */
+  event: { eventTypeId: UUID | null; fields: Record<string, unknown>; start: string; timeZone: string } | null
   actor: UserRef | null
+  /** How many updates a watch item stands for; 1 for everything else. */
+  count: number
   readAt: Instant | null
   createdAt: Instant
 }

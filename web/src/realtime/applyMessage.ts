@@ -191,13 +191,14 @@ function applyAttachmentRemoved(qc: QueryClient, p: { id: string; eventId: strin
   })
 }
 
-function applyInboxItem(qc: QueryClient, p: { item: Notification; unread: number }) {
+function applyInboxItem(qc: QueryClient, p: { item: Notification; unread: number; replaces?: string }) {
   const data = qc.getQueryData<InboxData>(keys.inbox)
   if (!data) {
     void qc.invalidateQueries({ queryKey: keys.inbox })
     return
   }
-  const items = data.items.some((x) => x.id === p.item.id) ? data.items : [p.item, ...data.items]
+  const rest = p.replaces ? data.items.filter((x) => x.id !== p.replaces) : data.items
+  const items = rest.some((x) => x.id === p.item.id) ? rest : [p.item, ...rest]
   qc.setQueryData<InboxData>(keys.inbox, { items, unread: p.unread })
 }
 
@@ -258,7 +259,7 @@ export function applyStreamMessage(qc: QueryClient, type: string, payload: unkno
       return
     }
     case 'inbox.item':
-      applyInboxItem(qc, payload as { item: Notification; unread: number })
+      applyInboxItem(qc, payload as { item: Notification; unread: number; replaces?: string })
       return
     case 'presence': {
       const p = payload as { eventId: string; viewers: PresenceViewer[] }

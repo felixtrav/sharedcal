@@ -207,6 +207,9 @@ func (s *Service) CreateComment(ctx context.Context, actor authz.Actor, eventID 
 				return err
 			}
 		}
+		if err := s.notifyWatchers(tx, eventID, kindWatchComments); err != nil {
+			return err
+		}
 		dtos, err := s.commentDTOs(tx.db, actor, []store.Comment{c}, ev)
 		if err != nil {
 			return err

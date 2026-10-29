@@ -71,6 +71,8 @@ export const endpoints = {
       headers: version !== undefined ? { 'If-Match': String(version) } : undefined,
       query: scopeQuery(scope),
     }),
+  watchEvent: (id: string) => api.put<void>(`/api/events/${enc(id)}/watch`),
+  unwatchEvent: (id: string) => api.del(`/api/events/${enc(id)}/watch`),
   restoreEvent: (id: string) => api.post<CalEvent>(`/api/events/${enc(id)}/restore`),
   trash: () => api.get<{ events: (CalEvent & { deletedAt: string })[] }>('/api/trash'),
   history: (id: string) => api.get<{ items: ActivityItem[] }>(`/api/events/${enc(id)}/history`),

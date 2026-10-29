@@ -301,6 +301,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/events/{id}/watch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Get inbox items when the event changes */
+        put: operations["watchEvent"];
+        post?: never;
+        /** Stop getting inbox items for the event */
+        delete: operations["unwatchEvent"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/import/ics": {
         parameters: {
             query?: never;
@@ -946,6 +964,7 @@ export interface components {
             updatedAt: string;
             /** Format: int64 */
             version: number;
+            watching: boolean;
             /** Format: int64 */
             yearsSince?: number;
         };
@@ -1150,18 +1169,29 @@ export interface components {
         };
         NotificationDTO: {
             actor: components["schemas"]["UserRef"];
+            /** Format: int64 */
+            count: number;
             /** Format: date-time */
             createdAt: string;
+            event: components["schemas"]["NotificationEvent"];
             eventId: string | null;
             eventTitle: string;
             id: string;
             /** @enum {string} */
-            kind: "suggestion.created" | "suggestion.resolved" | "comment.reply" | "comment.mention";
+            kind: "suggestion.created" | "suggestion.resolved" | "comment.reply" | "comment.mention" | "watch.updated" | "watch.comments" | "watch.deleted";
             /** Format: date-time */
             readAt: string | null;
             subjectId: string;
             /** @enum {string} */
-            subjectType: "suggestion" | "comment";
+            subjectType: "suggestion" | "comment" | "event";
+        };
+        NotificationEvent: {
+            eventTypeId: string | null;
+            fields: {
+                [key: string]: unknown;
+            };
+            start: string;
+            timeZone: string;
         };
         OverrideDTO: {
             allDay?: boolean;
@@ -2267,6 +2297,64 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SuggestionDTO"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    watchEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    unwatchEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

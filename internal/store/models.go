@@ -243,8 +243,19 @@ type Notification struct {
 	EventID     *string `gorm:"size:36"`
 	ActorID     *string `gorm:"size:36"`
 	ReadAt      *time.Time
-	CreatedAt   time.Time `gorm:"not null;index:ix_notifications_user,priority:2"`
-	UpdatedAt   time.Time `gorm:"not null"`
+	// ItemCount is how many events this item stands for; watch items fold
+	// repeated activity on one event into a single unread row.
+	ItemCount int       `gorm:"not null;default:1"`
+	CreatedAt time.Time `gorm:"not null;index:ix_notifications_user,priority:2"`
+	UpdatedAt time.Time `gorm:"not null"`
+}
+
+// EventWatch records that a user follows an event and wants inbox items when
+// it changes.
+type EventWatch struct {
+	UserID    string    `gorm:"primaryKey;size:36"`
+	EventID   string    `gorm:"primaryKey;size:36;index:ix_event_watches_event"`
+	CreatedAt time.Time `gorm:"not null"`
 }
 
 // Activity is the append-only audit log.
@@ -298,6 +309,6 @@ func AllModels() []any {
 	return []any{
 		&User{}, &UserPreference{}, &Session{}, &EventType{}, &Event{}, &EventOverride{},
 		&Tag{}, &EventTag{}, &Comment{}, &Attachment{}, &Suggestion{},
-		&Notification{}, &Activity{}, &ChangeLog{}, &FeedToken{}, &Setting{},
+		&Notification{}, &EventWatch{}, &Activity{}, &ChangeLog{}, &FeedToken{}, &Setting{},
 	}
 }

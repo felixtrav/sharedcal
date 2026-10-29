@@ -206,12 +206,34 @@ describe('applyStreamMessage', () => {
       subjectId: 'c1',
       eventId: 'ev1',
       eventTitle: 'X',
+      event: null,
       actor: null,
+      count: 1,
       readAt: null,
       createdAt: '2026-10-01T00:00:00Z',
     }
     applyStreamMessage(qc, 'inbox.item', { item, unread: 3 })
     expect(qc.getQueryData(keys.inbox)).toEqual({ items: [item], unread: 3 })
+  })
+
+  it('swaps a folded watch item for the one that replaces it', () => {
+    const old: Notification = {
+      id: 'n1',
+      kind: 'watch.comments',
+      subjectType: 'event',
+      subjectId: 'ev1',
+      eventId: 'ev1',
+      eventTitle: 'X',
+      event: null,
+      actor: null,
+      count: 2,
+      readAt: null,
+      createdAt: '2026-10-01T00:00:00Z',
+    }
+    qc.setQueryData(keys.inbox, { items: [old], unread: 1 })
+    const next = { ...old, id: 'n2', count: 3 }
+    applyStreamMessage(qc, 'inbox.item', { item: next, unread: 1, replaces: 'n1' })
+    expect(qc.getQueryData(keys.inbox)).toEqual({ items: [next], unread: 1 })
   })
 
   it('refetches me when my role changes', () => {

@@ -94,6 +94,8 @@ type EventDetail struct {
 	EventDTO
 	Overrides   []OverrideDTO   `json:"overrides"`
 	Attachments []AttachmentDTO `json:"attachments"`
+	// Watching is whether the caller gets inbox items for this event.
+	Watching bool `json:"watching"`
 }
 
 // EventInput is the body of create, update and suggestion requests. Nil
@@ -814,7 +816,11 @@ func (s *Service) eventDetail(db *gorm.DB, actor authz.Actor, e *store.Event) (*
 	if err != nil {
 		return nil, err
 	}
-	return &EventDetail{EventDTO: *dto, Overrides: ovDTOs, Attachments: atts}, nil
+	watching, err := s.isWatching(db, actor.ID, e.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &EventDetail{EventDTO: *dto, Overrides: ovDTOs, Attachments: atts, Watching: watching}, nil
 }
 
 // CreateEvent creates an event owned by the caller.
@@ -875,6 +881,9 @@ func (s *Service) createEventTx(tx *Tx, actor authz.Actor, in EventInput, source
 		if err := setEventTags(tx.db, e.ID, tags); err != nil {
 			return nil, err
 		}
+	}
+	if err := tx.addWatch(e.OwnerID, e.ID); err != nil {
+		return nil, err
 	}
 	if err := tx.record("event.created", "event", e.ID, &e.ID, nil, snapshot(&e, tags)); err != nil {
 		return nil, err
@@ -979,13 +988,25 @@ func (s *Service) applyUpdate(tx *Tx, e *store.Event, sc Scope, occurrence *time
 	if sc == ScopeFollowing && occurrence.Equal(e.StartAt) {
 		sc = ScopeAll
 	}
+	var out *EventDTO
+	var err error
 	switch sc {
 	case ScopeThis:
-		return s.updateOccurrence(tx, e, *occurrence, in)
+		out, err = s.updateOccurrence(tx, e, *occurrence, in)
 	case ScopeFollowing:
-		return s.splitAndUpdate(tx, e, *occurrence, in)
+		out, err = s.splitAndUpdate(tx, e, *occurrence, in)
+	default:
+		out, err = s.updateSeries(tx, e, occurrence, in, action)
 	}
-	return s.updateSeries(tx, e, occurrence, in, action)
+	if err != nil {
+		return nil, err
+	}
+	if in.OwnerID != nil {
+		if err := tx.addWatch(*in.OwnerID, e.ID); err != nil {
+			return nil, err
+		}
+	}
+	return out, s.notifyWatchers(tx, e.ID, kindWatchUpdated)
 }
 
 func (s *Service) updateSeries(tx *Tx, e *store.Event, occurrence *time.Time, in EventInput, action string) (*EventDTO, error) {
@@ -1347,6 +1368,9 @@ func (s *Service) applyDelete(tx *Tx, e *store.Event, sc Scope, occurrence *time
 	if err := s.closeSuggestions(tx, e.ID); err != nil {
 		return err
 	}
+	if err := s.notifyWatchers(tx, e.ID, kindWatchDeleted); err != nil {
+		return err
+	}
 	return tx.emit("event.deleted", e.ID, e.Version, map[string]string{"id": e.ID}, "")
 }
 
@@ -1390,6 +1414,9 @@ func (s *Service) deleteOccurrences(tx *Tx, e *store.Event, sc Scope, rid time.T
 	if err != nil {
 		return err
 	}
+	if err := s.notifyWatchers(tx, e.ID, kindWatchUpdated); err != nil {
+		return err
+	}
 	return tx.emit("event.updated", e.ID, e.Version, dto, "")
 }
 
@@ -1419,6 +1446,9 @@ func (s *Service) RestoreEvent(ctx context.Context, actor authz.Actor, id string
 			return err
 		}
 		if out, err = s.eventDTO(tx.db, actor, e); err != nil {
+			return err
+		}
+		if err := s.notifyWatchers(tx, e.ID, kindWatchUpdated); err != nil {
 			return err
 		}
 		return tx.emit("event.created", e.ID, e.Version, out, "")

@@ -22,6 +22,7 @@ import { PresenceAvatars } from './PresenceAvatars'
 import { SuggestionsTab } from './SuggestionsTab'
 import { useEventTitle } from './useEventTitle'
 import { usePresence } from './usePresence'
+import { WatchButton } from './WatchButton'
 import type { ScopeAsk } from './ScopeDialog'
 import { EventForm } from './EventForm'
 
@@ -172,7 +173,17 @@ function ViewPanel({
 
   return (
     <>
-      <PanelHeader headingRef={headingRef} title={titleOf(event) || t('event.untitled')} onClose={onClose} extra={<PresenceAvatars eventId={event.id} />} />
+      <PanelHeader
+        headingRef={headingRef}
+        title={titleOf(event) || t('event.untitled')}
+        onClose={onClose}
+        extra={
+          <div className="flex flex-wrap items-center gap-2">
+            <WatchButton eventId={event.id} watching={detailQ.data?.watching ?? false} />
+            <PresenceAvatars eventId={event.id} />
+          </div>
+        }
+      />
       <Tabs value={tab} onValueChange={(v) => onTab(v as PanelTab)} className="flex min-h-0 flex-1 flex-col">
         <div className="px-5">
           <TabsList className="w-full">

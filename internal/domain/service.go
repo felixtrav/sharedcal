@@ -77,6 +77,9 @@ type Tx struct {
 	now   time.Time
 	msgs  []realtime.Message
 	after []func()
+	// told holds "user|event" for everyone given a direct inbox item in this
+	// transaction, so their watch items are skipped as redundant.
+	told map[string]bool
 }
 
 // write runs fn in a transaction, then publishes its messages in order.
@@ -140,10 +143,20 @@ func (t *Tx) notify(userID, kind, subjectType, subjectID string, eventID *string
 	if userID == "" || userID == t.actor.ID || userID == store.SystemUserID {
 		return nil
 	}
-	n := store.Notification{
-		ID: store.NewID(), UserID: userID, Kind: kind, SubjectType: subjectType, SubjectID: subjectID,
-		EventID: eventID, CreatedAt: t.now, UpdatedAt: t.now,
+	n := store.Notification{UserID: userID, Kind: kind, SubjectType: subjectType, SubjectID: subjectID, EventID: eventID, ItemCount: 1}
+	if eventID != nil {
+		if t.told == nil {
+			t.told = map[string]bool{}
+		}
+		t.told[userID+"|"+*eventID] = true
 	}
+	return t.deliver(n, "")
+}
+
+// deliver stores a notification for n.UserID and pushes it live. replaces is
+// the ID of an item this one supersedes; clients drop it.
+func (t *Tx) deliver(n store.Notification, replaces string) error {
+	n.ID, n.CreatedAt, n.UpdatedAt = store.NewID(), t.now, t.now
 	if t.actor.ID != "" {
 		a := t.actor.ID
 		n.ActorID = &a
@@ -156,10 +169,14 @@ func (t *Tx) notify(userID, kind, subjectType, subjectID string, eventID *string
 		return err
 	}
 	var unread int64
-	if err := t.db.Model(&store.Notification{}).Where("user_id = ? AND read_at IS NULL", userID).Count(&unread).Error; err != nil {
+	if err := t.db.Model(&store.Notification{}).Where("user_id = ? AND read_at IS NULL", n.UserID).Count(&unread).Error; err != nil {
 		return err
 	}
-	return t.emit("inbox.item", n.ID, 0, map[string]any{"item": item[0], "unread": unread}, userID)
+	payload := map[string]any{"item": item[0], "unread": unread}
+	if replaces != "" {
+		payload["replaces"] = replaces
+	}
+	return t.emit("inbox.item", n.ID, 0, payload, n.UserID)
 }
 
 func jsonOrNull(v any) string {

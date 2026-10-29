@@ -142,6 +142,11 @@
     "untitled": "Untitled event",
     "newTitle": "New event",
     "closePanel": "Close event details",
+    "watch": "Watch",
+    "watching": "Watching",
+    "stopHint": "Watching: you'll get an inbox item when this event changes or gets comments. Select to stop.",
+    "startHint": "Get an inbox item when this event changes or gets comments. Repeated activity is grouped into one item.",
+    "watchFailed": "Couldn't update your watch",
     "ownedBy": "owned by {{name}}",
     "systemOwner": "System",
     "recurring": "recurring",
@@ -427,12 +432,18 @@
     "markFailed": "Couldn't update the inbox",
     "unread": "Unread",
     "emptyTitle": "You're all caught up",
-    "emptyBody": "Replies, mentions and suggestions will show up here.",
+    "emptyBody": "Replies, mentions, suggestions and activity on events you watch will show up here.",
     "kinds": {
       "suggestion_created": "{{name}} suggested a change to “{{title}}”",
       "suggestion_resolved": "{{name}} reviewed your suggestion on “{{title}}”",
       "comment_reply": "{{name}} replied on “{{title}}”",
-      "comment_mention": "{{name}} mentioned you on “{{title}}”"
+      "comment_mention": "{{name}} mentioned you on “{{title}}”",
+      "watch_updated_one": "{{name}} changed “{{title}}”",
+      "watch_updated_other": "“{{title}}” was changed {{count}} times, most recently by {{name}}",
+      "watch_comments_one": "{{name}} commented on “{{title}}”",
+      "watch_comments_other": "{{count}} new comments on “{{title}}”, most recently by {{name}}",
+      "watch_deleted_one": "{{name}} deleted “{{title}}”",
+      "watch_deleted_other": "{{name}} deleted “{{title}}”"
     }
   },
   "preferences": {

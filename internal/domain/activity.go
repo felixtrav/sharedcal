@@ -115,15 +115,28 @@ func (s *Service) EventHistory(ctx context.Context, actor authz.Actor, eventID s
 
 // NotificationDTO is one inbox item.
 type NotificationDTO struct {
-	ID          string     `json:"id"`
-	Kind        string     `json:"kind" enum:"suggestion.created,suggestion.resolved,comment.reply,comment.mention"`
-	SubjectType string     `json:"subjectType" enum:"suggestion,comment"`
-	SubjectID   string     `json:"subjectId"`
-	EventID     *string    `json:"eventId"`
-	EventTitle  string     `json:"eventTitle"`
-	Actor       *UserRef   `json:"actor"`
-	ReadAt      *time.Time `json:"readAt"`
-	CreatedAt   time.Time  `json:"createdAt"`
+	ID          string  `json:"id"`
+	Kind        string  `json:"kind" enum:"suggestion.created,suggestion.resolved,comment.reply,comment.mention,watch.updated,watch.comments,watch.deleted"`
+	SubjectType string  `json:"subjectType" enum:"suggestion,comment,event"`
+	SubjectID   string  `json:"subjectId"`
+	EventID     *string `json:"eventId"`
+	EventTitle  string  `json:"eventTitle"`
+	// Event is what a client needs to rebuild a generated title in the
+	// reader\'s own time zone; null when the event is gone.
+	Event *NotificationEvent `json:"event"`
+	Actor *UserRef           `json:"actor"`
+	// Count is how many updates a watch item stands for (1 for all others).
+	Count     int        `json:"count"`
+	ReadAt    *time.Time `json:"readAt"`
+	CreatedAt time.Time  `json:"createdAt"`
+}
+
+// NotificationEvent is the part of an event that titles depend on.
+type NotificationEvent struct {
+	TypeID   *string        `json:"eventTypeId"`
+	Fields   map[string]any `json:"fields"`
+	Start    string         `json:"start"`
+	TimeZone string         `json:"timeZone"`
 }
 
 func (s *Service) notificationDTOs(db *gorm.DB, rows []store.Notification) ([]NotificationDTO, error) {
@@ -140,21 +153,24 @@ func (s *Service) notificationDTOs(db *gorm.DB, rows []store.Notification) ([]No
 	if err != nil {
 		return nil, err
 	}
-	titles := map[string]string{}
+	byID := map[string]*store.Event{}
 	if ids := uniq(events); len(ids) > 0 {
 		var evs []store.Event
-		if err := db.Select("id", "title").Where("id IN ?", ids).Find(&evs).Error; err != nil {
+		if err := db.Where("id IN ?", ids).Find(&evs).Error; err != nil {
 			return nil, err
 		}
-		for _, e := range evs {
-			titles[e.ID] = e.Title
+		for i := range evs {
+			byID[evs[i].ID] = &evs[i]
 		}
 	}
 	out := make([]NotificationDTO, len(rows))
 	for i, n := range rows {
-		d := NotificationDTO{ID: n.ID, Kind: n.Kind, SubjectType: n.SubjectType, SubjectID: n.SubjectID, EventID: n.EventID, ReadAt: n.ReadAt, CreatedAt: n.CreatedAt}
+		d := NotificationDTO{ID: n.ID, Kind: n.Kind, SubjectType: n.SubjectType, SubjectID: n.SubjectID, EventID: n.EventID, Count: max(n.ItemCount, 1), ReadAt: n.ReadAt, CreatedAt: n.CreatedAt}
 		if n.EventID != nil {
-			d.EventTitle = titles[*n.EventID]
+			if e := byID[*n.EventID]; e != nil {
+				d.EventTitle = e.Title
+				d.Event = &NotificationEvent{TypeID: e.EventTypeID, Fields: parseFieldValues(e.FieldsJSON), Start: formatEventTime(e.StartAt, eventLoc(e), e.AllDay), TimeZone: e.TimeZone}
+			}
 		}
 		if n.ActorID != nil {
 			r := refs[*n.ActorID]

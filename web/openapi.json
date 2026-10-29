@@ -740,6 +740,9 @@
             "format": "int64",
             "type": "integer"
           },
+          "watching": {
+            "type": "boolean"
+          },
           "yearsSince": {
             "format": "int64",
             "type": "integer"
@@ -748,6 +751,7 @@
         "required": [
           "overrides",
           "attachments",
+          "watching",
           "id",
           "title",
           "description",
@@ -1457,9 +1461,16 @@
           "actor": {
             "$ref": "#/components/schemas/UserRef"
           },
+          "count": {
+            "format": "int64",
+            "type": "integer"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
+          },
+          "event": {
+            "$ref": "#/components/schemas/NotificationEvent"
           },
           "eventId": {
             "type": [
@@ -1478,7 +1489,10 @@
               "suggestion.created",
               "suggestion.resolved",
               "comment.reply",
-              "comment.mention"
+              "comment.mention",
+              "watch.updated",
+              "watch.comments",
+              "watch.deleted"
             ],
             "type": "string"
           },
@@ -1495,7 +1509,8 @@
           "subjectType": {
             "enum": [
               "suggestion",
-              "comment"
+              "comment",
+              "event"
             ],
             "type": "string"
           }
@@ -1507,9 +1522,39 @@
           "subjectId",
           "eventId",
           "eventTitle",
+          "event",
           "actor",
+          "count",
           "readAt",
           "createdAt"
+        ],
+        "type": "object"
+      },
+      "NotificationEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "eventTypeId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fields": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "start": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "eventTypeId",
+          "fields",
+          "start",
+          "timeZone"
         ],
         "type": "object"
       },
@@ -3851,6 +3896,84 @@
         "summary": "Propose an edit or deletion",
         "tags": [
           "suggestions"
+        ]
+      }
+    },
+    "/api/events/{id}/watch": {
+      "delete": {
+        "operationId": "unwatchEvent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Stop getting inbox items for the event",
+        "tags": [
+          "events"
+        ]
+      },
+      "put": {
+        "operationId": "watchEvent",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Get inbox items when the event changes",
+        "tags": [
+          "events"
         ]
       }
     },

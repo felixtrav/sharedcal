@@ -197,6 +197,7 @@ checks foreground/background contrast ≥ 4.5:1 in both modes.
 | POST | `/api/events` | `{ title, start, end, timeZone, allDay, rrule?, location?, description?, tags?, status?, eventTypeId?, fields? }` | 201 `Event` |
 | PATCH | `/api/events/{id}` | header `If-Match: <version>`; query `scope=this\|following\|all`, `occurrence=<UTC instant>` for recurring events; body: any subset of the POST fields, plus `ownerId` (admins only; always applies to the whole series) | 200 `Event` (409 with `current` on conflict) |
 | DELETE | `/api/events/{id}` | optional `If-Match`; same `scope`/`occurrence` | 204 |
+| PUT, DELETE | `/api/events/{id}/watch` | | 204 — start or stop watching (PUT twice is fine). `GET /api/events/{id}` returns `watching` |
 | POST | `/api/events/{id}/restore` | | 200 `Event` — admins any time within 30 days; the owner within 60 s (the "Undo" toast) |
 | GET | `/api/trash` | | admin: `{ events: (Event & {deletedAt})[] }` |
 | GET | `/api/events/{id}/history` | | `{ items: ActivityItem[] }` |
@@ -347,6 +348,6 @@ data: {"seq":1042,"type":"event.updated","id":"<subject id>","version":5,"payloa
 | `tag.changed` | `{ tags: Tag[] }` | replace the tags cache |
 | `eventtype.changed` | `{ eventTypes: EventType[] }` | replace the event types cache |
 | `user.role_changed` | `{ userId, role, active }` | if it is me, refetch `/api/me` (and event ranges, since permissions change) |
-| `inbox.item` | `{ item: Notification, unread: number }` | prepend to the inbox, update the badge |
+| `inbox.item` | `{ item: Notification, unread: number, replaces?: string }` | prepend to the inbox (dropping `replaces`, the folded watch item it supersedes), update the badge |
 | `presence` | `{ eventId, viewers: (UserRef & { state: "viewing" \| "editing" })[] }`; the recipient is left out of their own copy | show avatars on the event chip and the open panel |
 | `settings.changed` | `{}` | refetch `/api/me` and themes |

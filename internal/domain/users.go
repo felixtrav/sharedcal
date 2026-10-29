@@ -725,6 +725,10 @@ func (s *Service) EraseUser(ctx context.Context, actor authz.Actor, id, transfer
 			return q
 		}
 
+		if err := tx.db.Where("user_id = ?", id).Delete(&store.EventWatch{}).Error; err != nil {
+			return err
+		}
+
 		// Inbox items addressed to them or about content that is now gone;
 		// elsewhere they stop being named as the actor.
 		nq := tx.db.Where("user_id = ?", id)
