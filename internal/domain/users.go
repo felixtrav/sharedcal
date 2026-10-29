@@ -480,7 +480,7 @@ type Preferences struct {
 }
 
 func defaultPreferences() Preferences {
-	return Preferences{ThemeID: "default", ColorMode: "system", WeekStart: 1, DefaultView: "month", Density: "comfortable"}
+	return Preferences{ThemeID: "default", ColorMode: "system", WeekStart: 0, DefaultView: "month", Density: "comfortable"}
 }
 
 func (s *Service) preferences(db *gorm.DB, userID string) (Preferences, error) {
