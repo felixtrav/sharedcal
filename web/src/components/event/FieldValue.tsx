@@ -1,9 +1,11 @@
 import type { TFunction } from 'i18next'
 import { useTranslation } from 'react-i18next'
-import type { SuggestionField } from '@/api/types'
+import { useEventTypes } from '@/api/queries'
+import type { EventFieldValues, SuggestionField } from '@/api/types'
 import { formatDateTime, formatPlainDate, type FormatOptions } from '@/lib/time'
 import { describeRRule } from './recurrenceText'
 import { TagChips } from './TagChips'
+import { TypedFields } from './TypedFields'
 
 /** Format a date/time value as the API returns it: date, wall time, or instant. */
 function formatTimeValue(v: string, fmt: FormatOptions): string {
@@ -42,9 +44,34 @@ export function FieldValue({ field, value, fmt, startDate }: { field: Suggestion
       return <span>{describeRRule(String(value), startDate ?? new Date().toISOString().slice(0, 10), t)}</span>
     case 'timeZone':
       return <span>{String(value).replace(/_/g, ' ')}</span>
+    case 'eventTypeId':
+      return <EventTypeName id={String(value)} />
+    case 'fields':
+      return typeof value === 'object' ? (
+        <FieldsDiff values={value as EventFieldValues} />
+      ) : (
+        <span className="text-muted-foreground italic">{t('common.empty')}</span>
+      )
     case 'description':
       return <span className="line-clamp-6 break-words whitespace-pre-wrap">{String(value)}</span>
     default:
       return <span className="break-words whitespace-pre-wrap">{typeof value === 'string' ? value : JSON.stringify(value)}</span>
   }
+}
+
+function EventTypeName({ id }: { id: string }) {
+  const { data } = useEventTypes()
+  return <span>{data?.eventTypes.find((et) => et.id === id)?.name ?? id}</span>
+}
+
+/** Field values in a diff. Labels come from whichever type declares the key; unknown keys fall back to the key. */
+function FieldsDiff({ values }: { values: EventFieldValues }) {
+  const { t } = useTranslation()
+  const { data } = useEventTypes()
+  const defs = Object.keys(values).map((key) => {
+    const def = data?.eventTypes.flatMap((et) => et.fields).find((d) => d.key === key)
+    return def ?? { key, label: key, kind: 'text' as const }
+  })
+  if (!defs.length) return <span className="text-muted-foreground italic">{t('common.empty')}</span>
+  return <TypedFields defs={defs} values={values} />
 }

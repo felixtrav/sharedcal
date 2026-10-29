@@ -137,7 +137,7 @@ func (t *Tx) recordAs(actorID, action, subjectType, subjectID string, eventID *s
 // notify creates an inbox notification and pushes it to its recipient.
 // Users never notify themselves.
 func (t *Tx) notify(userID, kind, subjectType, subjectID string, eventID *string) error {
-	if userID == "" || userID == t.actor.ID {
+	if userID == "" || userID == t.actor.ID || userID == store.SystemUserID {
 		return nil
 	}
 	n := store.Notification{

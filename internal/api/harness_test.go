@@ -340,6 +340,9 @@ type Event struct {
 	RRule       string            `json:"rrule"`
 	Version     int64             `json:"version"`
 	Tags        []string          `json:"tags"`
+	Description string            `json:"description"`
+	EventTypeID *string           `json:"eventTypeId"`
+	Fields      map[string]any    `json:"fields"`
 	Owner       domain.UserRef    `json:"owner"`
 	Permissions authz.Permissions `json:"permissions"`
 	Occurrence  *time.Time        `json:"occurrence"`

@@ -1,9 +1,10 @@
 import { z } from 'zod'
-import type { CalEvent, EventStatus, EventWrite } from '@/api/types'
+import type { CalEvent, EventFieldValues, EventStatus, EventType, EventWrite } from '@/api/types'
 import { addDays, fromWall, isValidTimeZone, parseWallIso } from '@/lib/time'
+import { allowsMany } from './fieldKinds'
 
 /** A new event before it exists: all-day → dates (end exclusive); timed → wall times in `timeZone`. */
-export type Draft = { title: string; start: string; end: string; allDay: boolean; timeZone: string }
+export type Draft = { title: string; start: string; end: string; allDay: boolean; timeZone: string; eventTypeId?: string; rrule?: string }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
@@ -24,6 +25,10 @@ export const eventFormSchema = z
     description: z.string().max(20000, 'validation.descriptionTooLong'),
     tags: z.array(z.string()),
     status: z.enum(['confirmed', 'tentative']),
+    /** '' = generic event (free-form description). */
+    eventTypeId: z.string(),
+    /** Raw inputs for the type's fields: strings, or booleans for checkboxes. Untouched inputs are absent. */
+    fields: z.record(z.string(), z.union([z.string(), z.boolean(), z.array(z.string())]).optional()),
   })
   .superRefine((v, ctx) => {
     if (!v.allDay) {
@@ -73,7 +78,56 @@ export function formFromEvent(ev: CalEvent): EventFormValues {
     description: ev.description,
     tags: [...ev.tags],
     status: ev.status,
+    eventTypeId: ev.eventTypeId ?? '',
+    fields: fieldsToForm(ev.fields),
   }
+}
+
+function fieldsToForm(values: EventFieldValues): EventFormValues['fields'] {
+  return Object.fromEntries(Object.entries(values).map(([k, v]) => [k, typeof v === 'boolean' || Array.isArray(v) ? v : String(v)]))
+}
+
+/** Form inputs → API values, dropping empty ones. Keys are sorted so before/after compare equal. */
+export function fieldsToPayload(raw: EventFormValues['fields'], type: EventType | undefined): EventFieldValues {
+  const out: EventFieldValues = {}
+  if (!type) return out
+  for (const def of [...type.fields].sort((a, b) => a.key.localeCompare(b.key))) {
+    const v = raw[def.key]
+    if (v === undefined || v === false) continue
+    if (def.kind === 'members' || def.kind === 'select') {
+      // Values saved before a field was switched between one and several arrive in the other shape.
+      let list = typeof v === 'string' ? (v.trim() ? [v.trim()] : []) : Array.isArray(v) ? v : []
+      if (def.kind === 'select') {
+        const valid = list.filter((o) => def.options?.includes(o))
+        // Several keep option order; one keeps the first value that was saved.
+        list = allowsMany(def) ? (def.options ?? []).filter((o) => valid.includes(o)) : valid
+      }
+      if (!list.length) continue
+      if (!allowsMany(def)) list = list.slice(0, 1)
+      // Several → a list; one choice → a plain string, one person → a one-element list.
+      out[def.key] = def.kind === 'select' && !allowsMany(def) ? list[0]! : [...list]
+      continue
+    }
+    if (Array.isArray(v)) continue
+    if (def.kind === 'checkbox') {
+      if (v === true) out[def.key] = true
+      continue
+    }
+    const s = String(v).trim()
+    if (s === '') continue
+    if (def.kind === 'number') {
+      const n = Number(s)
+      out[def.key] = Number.isFinite(n) ? n : s
+    } else out[def.key] = s
+  }
+  return out
+}
+
+/** Fields that are required but empty, as `[key, label]`. Mirrors the server's check so the form can say so early. */
+export function missingRequired(raw: EventFormValues['fields'], type: EventType | undefined): EventType['fields'] {
+  if (!type) return []
+  const have = fieldsToPayload(raw, type)
+  return type.fields.filter((d) => d.required && have[d.key] === undefined)
 }
 
 export function formFromDraft(d: Draft): EventFormValues {
@@ -82,16 +136,18 @@ export function formFromDraft(d: Draft): EventFormValues {
     allDay: d.allDay,
     ...timesToForm(d.allDay, d.start, d.end),
     timeZone: d.timeZone,
-    rrule: '',
+    rrule: d.rrule ?? '',
     location: '',
     description: '',
     tags: [],
     status: 'confirmed',
+    eventTypeId: d.eventTypeId ?? '',
+    fields: {},
   }
 }
 
 /** Form values → API body. All-day end dates become exclusive. */
-export function formToPayload(v: EventFormValues): EventWrite {
+export function formToPayload(v: EventFormValues, type?: EventType): EventWrite {
   return {
     title: v.title.trim(),
     allDay: v.allDay,
@@ -100,9 +156,12 @@ export function formToPayload(v: EventFormValues): EventWrite {
     timeZone: v.timeZone,
     rrule: v.rrule,
     location: v.location,
-    description: v.description,
+    // Typed events have fields instead of a description.
+    description: v.eventTypeId ? '' : v.description,
     tags: v.tags,
     status: v.status as EventStatus,
+    eventTypeId: v.eventTypeId,
+    fields: v.eventTypeId ? fieldsToPayload(v.fields, type) : {},
   }
 }
 

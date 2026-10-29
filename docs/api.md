@@ -28,15 +28,17 @@ huma (`GET /api/openapi.json`, or `sharedcal openapi > web/openapi.json`);
 ## Shared objects
 
 ```ts
-type UserRef = { id: string; name: string; avatarUrl: string };
+type UserRef = { id: string; name: string; avatarUrl: string; system?: true };  // system: the calendar itself, owner of ownerless-type events (never listed or manageable)
 
 type Permissions = { edit: boolean; delete: boolean; suggest: boolean; comment: boolean; attach: boolean; review: boolean };
 
 type Event = {
   id: string;
   title: string;
-  description: string;          // Markdown source; render with a strict sanitizer
+  description: string;          // Markdown source; render with a strict sanitizer. Always "" on typed events
   location: string;
+  eventTypeId: string | null;   // set on typed events
+  fields: Record<string, string | number | boolean | string[]>; // values of the type's fields by key; {} on generic events
   start: string; end: string;   // wall time (or date) in timeZone
   startUtc: string; endUtc: string;
   timeZone: string;             // IANA
@@ -53,6 +55,7 @@ type Event = {
   // Present on items returned by the range list:
   occurrence?: string | null;   // original start (UTC) of this instance for recurring events (RECURRENCE-ID), else null
   overridden?: boolean;         // this occurrence has its own override row
+  yearsSince?: number;          // whole years since the series' first occurrence; only when the type has yearCounter, from the second year on
 };
 
 type EventDetail = Event & { overrides: Override[]; attachments: Attachment[] };
@@ -61,6 +64,8 @@ type Override = {
   id: string; recurrenceId: string; cancelled: boolean;
   title?: string; description?: string; location?: string; start?: string; end?: string; startUtc?: string; endUtc?: string;
   allDay?: boolean; status?: string;
+  typeOverridden?: boolean;     // this occurrence has its own type (eventTypeId, null = generic) and fields
+  eventTypeId?: string | null; fields?: Record<string, string | number | boolean | string[]>;
 };
 
 type Attachment = {
@@ -85,7 +90,7 @@ type Comment = {
   permissions: { edit: boolean; delete: boolean; attach: boolean };
 };
 
-type SuggestionField = "title" | "description" | "location" | "start" | "end" | "timeZone" | "allDay" | "rrule" | "status" | "tags";
+type SuggestionField = "title" | "description" | "location" | "start" | "end" | "timeZone" | "allDay" | "rrule" | "status" | "tags" | "eventTypeId" | "fields";
 
 type Suggestion = {
   id: string; eventId: string; author: UserRef;
@@ -101,6 +106,36 @@ type Suggestion = {
 };
 
 type Tag = { id: string; name: string; colorSlot: "tag-1" | "tag-2" | "tag-3" | "tag-4" | "tag-5" | "tag-6" | "tag-7" | "tag-8"; sortOrder: number };
+
+type FieldKind = "text" | "longtext" | "number" | "date" | "time" | "select" | "url" | "checkbox" | "members";
+
+type EventTypeField = {
+  key: string;                  // ^[a-z][a-z0-9_]{0,31}$, stable: stored values are keyed by it
+  label: string;                // 1–64 chars
+  kind: FieldKind;
+  required?: boolean;           // not allowed for checkbox
+  options?: string[];           // select only: 1–20 choices
+  multiple?: boolean;           // select/members: several selections. Unset = one choice (select), several people (members)
+};
+
+type EventType = {
+  id: string; name: string;
+  icon: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase"
+      | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell";
+  colorSlot: "tag-1" | "tag-2" | "tag-3" | "tag-4" | "tag-5" | "tag-6" | "tag-7" | "tag-8";
+  style: "default" | "banner" | "outline" | "badge"; // how the calendar draws it
+  yearCounter: boolean;         // events get `yearsSince` (see Event)
+  defaultAllDay: boolean;       // clients pre-fill new events with these defaults; the server stores what it is sent
+  defaultDurationMinutes: number; // 0–1440; 0 = instants, e.g. deadlines. Ignored for all-day
+  singleDay: boolean;           // with defaultAllDay: events last one date (end = start + 1 day)
+  ownerless: boolean;           // true: new events get owner = the calendar (UserRef.system) and only admins edit them; `ownerId` in create is 422
+  adminOnly: boolean;           // true: only admins can create events of the type or switch events to it (403 otherwise)
+  neverRepeats: boolean;        // true: events of the type can't repeat (releases); excludes defaultRrule
+  defaultRrule: string;         // non-empty: every event of the type repeats with exactly this rule (422 otherwise)
+  titleTemplate: string;        // {{#field}}…{{/field}} shows its part only when the field has a value; '' = titles are typed; else {{field_key}} placeholders fill the title and a title in event writes is ignored
+  fields: EventTypeField[];     // up to 20, in display order
+  sortOrder: number;
+};
 
 type Notification = {
   id: string;
@@ -146,6 +181,7 @@ checks foreground/background contrast ≥ 4.5:1 in both modes.
 | GET | `/auth/login?return=/path` | | 302 to the provider |
 | GET | `/auth/callback` | | 302 to `return` |
 | POST | `/auth/logout` | | `{ logoutUrl: string \| null }` — navigate there if set, else to `/` |
+| POST | `/api/import/ics` | `{ ics: string (≤2 MB, ≤500 events), eventTypeId?: string, dryRun?: boolean }` | admins. Creates one event per VEVENT in one transaction (`dryRun` validates and rolls back). Skips UIDs imported before (`duplicate`), cancelled events and RECURRENCE-ID overrides (`ignored`), and rows the type's rules reject (`invalid`, with `error`). → `{ dryRun, created, duplicates, invalid, ignored, entries: [{uid, title, start, end, allDay, rrule, outcome, error?}] }` |
 | GET | `/api/me` | | `{ user: UserRef & {email, role}, preferences: Preferences, csrfToken, permissions: {createEvent, attachToComments, admin}, instance: { calendarName, defaultTimeZone, accentColor, hasLogo, logoUrl, limits: {maxSize, maxPerEvent, maxPerComment} } }` |
 | PUT | `/api/me/preferences` | `Preferences` | `Preferences` |
 | GET | `/api/me/feed-token` | | `{ exists, createdAt, lastUsedAt }` |
@@ -156,14 +192,29 @@ checks foreground/background contrast ≥ 4.5:1 in both modes.
 
 | Method | Path | Body / query | Response |
 | --- | --- | --- | --- |
-| GET | `/api/events` | `from`, `to` (instants, max 400 days apart), optional `tag` (repeatable), `owner` (repeatable), `q` | `{ events: Event[] }` — occurrences, recurrences expanded |
+| GET | `/api/events` | `from`, `to` (instants, max 400 days apart), optional `tag` (repeatable), `type` (event type ids, repeatable), `owner` (repeatable), `q` (also searches field values) | `{ events: Event[] }` — occurrences, recurrences expanded |
 | GET | `/api/events/{id}` | | `EventDetail` (deleted events: admins only, with `deletedAt`) |
-| POST | `/api/events` | `{ title, start, end, timeZone, allDay, rrule?, location?, description?, tags?, status? }` | 201 `Event` |
+| POST | `/api/events` | `{ title, start, end, timeZone, allDay, rrule?, location?, description?, tags?, status?, eventTypeId?, fields? }` | 201 `Event` |
 | PATCH | `/api/events/{id}` | header `If-Match: <version>`; query `scope=this\|following\|all`, `occurrence=<UTC instant>` for recurring events; body: any subset of the POST fields, plus `ownerId` (admins only; always applies to the whole series) | 200 `Event` (409 with `current` on conflict) |
 | DELETE | `/api/events/{id}` | optional `If-Match`; same `scope`/`occurrence` | 204 |
 | POST | `/api/events/{id}/restore` | | 200 `Event` — admins any time within 30 days; the owner within 60 s (the "Undo" toast) |
 | GET | `/api/trash` | | admin: `{ events: (Event & {deletedAt})[] }` |
 | GET | `/api/events/{id}/history` | | `{ items: ActivityItem[] }` |
+
+Typed events: `eventTypeId` makes an event use that type's `fields` instead of a
+`description` (a non-empty description is refused; becoming typed clears it).
+`fields` replaces all values and is validated against the type: unknown keys,
+wrong kinds (`number` is a JSON number, `date` is `YYYY-MM-DD`, `url` is http(s),
+`select` is one of `options` (or, with `multiple`, a list of them), `checkbox` is `true`, `members` is a list of up to 50 existing user ids, duplicates removed), over-long text (200 /
+5,000 for `longtext`) and missing required fields are 422s. Empty values and
+`false` are dropped. Changing the type resets the values, so send `fields` along
+with it. `eventTypeId: ""` makes the event generic again. A plain edit that
+sends neither leaves the stored values untouched, even if the type has since
+gained required fields. A single occurrence (`scope=this`) can have its own
+type and fields (a movie release in a weekly series): it then replaces the
+series' type and values as a unit, a typed occurrence has no description, and
+`eventTypeId: ""` makes it generic again, inheriting the series' description.
+The `type` filter and `q` match occurrences by their own type and values.
 
 Validation: title 1–200 chars; description ≤ 20,000; location ≤ 1,000;
 `end ≥ start`; events ≤ 366 days long; RRULE `FREQ` is DAILY/WEEKLY/MONTHLY/YEARLY,
@@ -213,6 +264,19 @@ Accepting a conflicting field requires a resolution for it (422 otherwise).
 | POST | `/api/inbox/read` | `{ ids?: string[], all?: boolean }` | `{ unread: number }` |
 | POST | `/api/presence` | `{ eventId, state: "viewing" \| "editing" \| "left" }` | 204 |
 | GET | `/api/stream` | `Last-Event-ID` header on reconnect | `text/event-stream` |
+
+### Event types
+
+Reading is open to every signed-in user; changes are admin-only. See *Event types* in
+[decisions](decisions.md) for the behavior around deletion and changed fields.
+
+| Method | Path | Who | Body | Response |
+| --- | --- | --- | --- | --- |
+| GET | `/api/event-types` | all | | `{ eventTypes: EventType[] }` sorted |
+| POST | `/api/event-types` | admin | `{ name, colorSlot, icon?, style?, yearCounter?, defaultAllDay?, defaultDurationMinutes?, defaultRrule?, titleTemplate?, fields? }` | 201 `EventType` |
+| PATCH | `/api/event-types/{id}` | admin | any subset of the POST fields; `fields` replaces the list | `EventType` |
+| DELETE | `/api/event-types/{id}` | admin | | 204; 409 while any event or occurrence (trashed events too) uses the type |
+| POST | `/api/event-types/reorder` | admin | `{ ids: string[] }` | `{ eventTypes: EventType[] }` |
 
 ### Tags, users, activity, settings, themes
 
@@ -281,6 +345,7 @@ data: {"seq":1042,"type":"event.updated","id":"<subject id>","version":5,"payloa
 | `attachment.removed` | `{ id, eventId, commentId }` | remove |
 | `suggestion.created`, `suggestion.resolved` | `Suggestion` | invalidate suggestions for `eventId` and that event's counts |
 | `tag.changed` | `{ tags: Tag[] }` | replace the tags cache |
+| `eventtype.changed` | `{ eventTypes: EventType[] }` | replace the event types cache |
 | `user.role_changed` | `{ userId, role, active }` | if it is me, refetch `/api/me` (and event ranges, since permissions change) |
 | `inbox.item` | `{ item: Notification, unread: number }` | prepend to the inbox, update the badge |
 | `presence` | `{ eventId, viewers: (UserRef & { state: "viewing" \| "editing" })[] }`; the recipient is left out of their own copy | show avatars on the event chip and the open panel |

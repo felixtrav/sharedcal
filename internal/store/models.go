@@ -12,6 +12,10 @@ import (
 
 // NewID returns a new UUIDv7 string: time-ordered, safe to expose, and valid
 // as an iCalendar UID.
+// SystemUserID identifies the reserved inactive user that owns events of
+// ownerless types. It never signs in and is hidden from user lists.
+const SystemUserID = "00000000-0000-0000-0000-000000000000"
+
 func NewID() string { return uuid.Must(uuid.NewV7()).String() }
 
 // Enumerations stored as short strings with check constraints.
@@ -83,16 +87,22 @@ type Session struct {
 }
 
 type Event struct {
-	ID          string    `gorm:"primaryKey;size:36"`
-	OwnerID     string    `gorm:"size:36;not null;index:ix_events_owner"`
-	Title       string    `gorm:"size:200;not null"`
-	Description string    `gorm:"type:text;not null"`
-	Location    string    `gorm:"size:1000;not null;default:''"`
+	ID          string `gorm:"primaryKey;size:36"`
+	OwnerID     string `gorm:"size:36;not null;index:ix_events_owner"`
+	Title       string `gorm:"size:200;not null"`
+	Description string `gorm:"type:text;not null"`
+	Location    string `gorm:"size:1000;not null;default:''"`
+	// EventTypeID, when set, makes the event typed: FieldsJSON holds values
+	// for the type's fields and Description stays empty.
+	EventTypeID *string   `gorm:"size:36;index:ix_events_type"`
+	FieldsJSON  string    `gorm:"column:fields_json;type:text;not null"`
 	StartAt     time.Time `gorm:"not null;index:ix_events_range,priority:1"`
 	EndAt       time.Time `gorm:"not null;index:ix_events_range,priority:2"`
 	AllDay      bool      `gorm:"not null"`
 	TimeZone    string    `gorm:"size:64;not null"`
 	RRule       string    `gorm:"column:rrule;size:1000;not null;default:''"`
+	// SourceUID is the iCalendar UID the event was imported from; re-imports skip UIDs already present.
+	SourceUID string `gorm:"column:source_uid;size:255;not null;default:'';index:ix_events_source_uid"`
 	// SeriesEndAt is the end of the last occurrence for recurring events
 	// (nil = unbounded); it lets range queries skip finished series.
 	SeriesEndAt *time.Time
@@ -117,8 +127,48 @@ type EventOverride struct {
 	StartAt      *time.Time
 	EndAt        *time.Time
 	AllDay       *bool
-	Status       *string   `gorm:"size:16"`
-	Cancelled    bool      `gorm:"not null"`
+	Status       *string `gorm:"size:16"`
+	// TypeOverridden makes EventTypeID (nil = generic) and FieldsJSON replace
+	// the master's type and field values for this occurrence.
+	TypeOverridden bool      `gorm:"not null"`
+	EventTypeID    *string   `gorm:"size:36"`
+	FieldsJSON     string    `gorm:"column:fields_json;type:text;not null"`
+	Cancelled      bool      `gorm:"not null"`
+	CreatedAt      time.Time `gorm:"not null"`
+	UpdatedAt      time.Time `gorm:"not null"`
+}
+
+// EventType is an admin-defined kind of event with a calendar look (icon and
+// color slot), creation defaults and a list of predefined fields.
+type EventType struct {
+	ID            string `gorm:"primaryKey;size:36"`
+	Name          string `gorm:"size:64;not null;uniqueIndex:ux_event_types_name"`
+	Icon          string `gorm:"size:32;not null"`
+	ColorSlot     string `gorm:"size:16;not null"`
+	DefaultAllDay bool   `gorm:"not null"`
+	// Style is how the calendar draws the type: default, banner, outline or badge.
+	Style string `gorm:"size:16;not null;default:'default'"`
+	// YearCounter shows the years since the series' first occurrence (birthdays, anniversaries).
+	YearCounter bool `gorm:"not null"`
+	// DefaultDurationMinutes is the length of new timed events; 0 makes them instants (deadlines).
+	// No gorm default tag: it would turn an explicit 0 into 60 on insert.
+	DefaultDurationMinutes int    `gorm:"not null"`
+	DefaultRRule           string `gorm:"column:default_rrule;size:500;not null;default:''"`
+	// TitleTemplate, when set, generates event titles from field values ("{{person}}'s birthday").
+	TitleTemplate string `gorm:"size:200;not null;default:''"`
+	// NeverRepeats forbids repetition for events of this type; it excludes DefaultRRule.
+	NeverRepeats bool `gorm:"not null"`
+	// SingleDay limits an always-all-day type to one date. It only applies with DefaultAllDay.
+	SingleDay bool `gorm:"not null"`
+	// AdminOnly reserves the type for admins: only they can create events of it or switch events to it.
+	AdminOnly bool `gorm:"not null"`
+	// Ownerless gives the type's events no personal owner: they belong to the calendar (SystemUserID)
+	// and only admins edit them.
+	Ownerless bool `gorm:"not null"`
+	// Instructions are shown to writers while they create an event of this type.
+	Instructions string    `gorm:"size:1000;not null;default:''"`
+	FieldsJSON   string    `gorm:"column:fields_json;type:text;not null"`
+	SortOrder    int       `gorm:"not null"`
 	CreatedAt    time.Time `gorm:"not null"`
 	UpdatedAt    time.Time `gorm:"not null"`
 }
@@ -246,7 +296,7 @@ type Setting struct {
 // export/import.
 func AllModels() []any {
 	return []any{
-		&User{}, &UserPreference{}, &Session{}, &Event{}, &EventOverride{},
+		&User{}, &UserPreference{}, &Session{}, &EventType{}, &Event{}, &EventOverride{},
 		&Tag{}, &EventTag{}, &Comment{}, &Attachment{}, &Suggestion{},
 		&Notification{}, &Activity{}, &ChangeLog{}, &FeedToken{}, &Setting{},
 	}

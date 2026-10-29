@@ -129,6 +129,38 @@ func (s *Service) Feed(ctx context.Context, raw string) (*ics.Calendar, error) {
 	for _, t := range tags {
 		tagName[t.ID] = t.Name
 	}
+	var types []store.EventType
+	if err := db.Find(&types).Error; err != nil {
+		return nil, err
+	}
+	typeByID := map[string]store.EventType{}
+	for _, t := range types {
+		typeByID[t.ID] = t
+	}
+	// Names for members fields, so the description reads "Guests: Dana, Sam".
+	var memberIDs []string
+	for i := range evs {
+		if evs[i].EventTypeID == nil {
+			continue
+		}
+		for _, v := range parseFieldValues(evs[i].FieldsJSON) {
+			if list, ok := v.([]any); ok {
+				for _, id := range list {
+					if s, _ := id.(string); s != "" {
+						memberIDs = append(memberIDs, s)
+					}
+				}
+			}
+		}
+	}
+	refs, err := userRefs(db, memberIDs)
+	if err != nil {
+		return nil, err
+	}
+	names := map[string]string{}
+	for id, r := range refs {
+		names[id] = r.Name
+	}
 	overrides := map[string][]store.EventOverride{}
 	if len(ids) > 0 {
 		var rows []store.EventOverride
@@ -144,6 +176,7 @@ func (s *Service) Feed(ctx context.Context, raw string) (*ics.Calendar, error) {
 		return nil, err
 	}
 	cal := &ics.Calendar{Name: st.CalendarName}
+	viewer := viewerClockFor(db, u.ID)
 	for i := range evs {
 		e := &evs[i]
 		if e.DeletedAt != nil {
@@ -159,14 +192,39 @@ func (s *Service) Feed(ctx context.Context, raw string) (*ics.Calendar, error) {
 			ExDates: exdates(e), Status: e.Status, Sequence: e.Version, Created: e.CreatedAt, Updated: e.UpdatedAt,
 			URL: s.Opts.AppURL + "/?event=" + e.ID,
 		}
+		if e.EventTypeID != nil {
+			// Typed events have no free-form description: show their field
+			// values instead, and file them under the type's name.
+			if t, ok := typeByID[*e.EventTypeID]; ok {
+				ie.Description = fieldSummary(parseFieldDefs(t.FieldsJSON), parseFieldValues(e.FieldsJSON), names)
+				ie.Categories = append(ie.Categories, t.Name)
+				// Times in a generated title follow this subscriber's zone and clock.
+				if t.TitleTemplate != "" {
+					ie.Title = renderTitle(t, parseFieldValues(e.FieldsJSON), names, viewerTimeText(e, e.StartAt, viewer))
+				}
+			}
+		}
 		for _, t := range tagIDs[e.ID] {
 			if n := tagName[t]; n != "" {
 				ie.Categories = append(ie.Categories, n)
 			}
 		}
 		for _, o := range overrides[e.ID] {
+			desc := o.Description
+			if o.TypeOverridden {
+				// An occurrence with its own type shows its own field values.
+				if t, ok := typeByID[deref(o.EventTypeID)]; ok {
+					desc = ptr(fieldSummary(parseFieldDefs(t.FieldsJSON), parseFieldValues(o.FieldsJSON), names))
+				} else if desc == nil && e.EventTypeID != nil {
+					desc = ptr("")
+				}
+			}
+			title := o.Title
+			if t, ok := typeByID[deref(o.EventTypeID)]; ok && o.TypeOverridden && t.TitleTemplate != "" {
+				title = ptr(renderTitle(t, parseFieldValues(o.FieldsJSON), names, viewerTimeText(e, o.RecurrenceID, viewer)))
+			}
 			ie.Overrides = append(ie.Overrides, ics.Override{
-				RecurrenceID: o.RecurrenceID.UTC(), Cancelled: o.Cancelled, Title: o.Title, Description: o.Description,
+				RecurrenceID: o.RecurrenceID.UTC(), Cancelled: o.Cancelled, Title: title, Description: desc,
 				Location: o.Location, Start: o.StartAt, End: o.EndAt, AllDay: o.AllDay, Status: o.Status,
 			})
 		}

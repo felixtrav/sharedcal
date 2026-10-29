@@ -162,6 +162,30 @@
   ) !important;
 }
 
+/*
+ * Event type styles. FullCalendar only exposes the classes we hand it, so a
+ * type's style arrives as `sc-style-*` on the event and the rules reach its
+ * parts with descendant selectors. Colors come from the type's theme slot via
+ * --fc-event-color / --fc-event-contrast-color, so every theme stays readable.
+ */
+.sc-style-banner {
+  background-color: var(--fc-event-color) !important;
+  color: var(--fc-event-contrast-color) !important;
+  font-weight: 700;
+  min-block-size: 1.5rem;
+}
+.sc-style-banner * {
+  color: var(--fc-event-contrast-color) !important;
+}
+.sc-style-outline {
+  background: transparent !important;
+  box-shadow: inset 0 0 0 2px var(--fc-event-color);
+}
+.sc-style-outline,
+.sc-style-outline * {
+  color: var(--foreground) !important;
+}
+
 /* The proposed position of an event a writer dragged but can't edit. */
 .sc-ghost {
   opacity: 0.7;

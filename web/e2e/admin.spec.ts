@@ -36,7 +36,7 @@ test('admins manage tags and settings, and changes reach everyone', async ({ bro
 
 test('non-admins cannot reach admin pages', async ({ browser }) => {
   const bob = await signedInContext(browser, 'bob')
-  for (const path of ['/admin/people', '/admin/tags', '/admin/settings', '/admin/trash']) {
+  for (const path of ['/admin/people', '/admin/tags', '/admin/event-types', '/admin/settings', '/admin/trash']) {
     await bob.page.goto(path)
     await expect(bob.page.getByRole('heading', { level: 1 })).toHaveText(NOT_FOUND)
   }

@@ -5,7 +5,8 @@ type UUID = string
 /** RFC 3339 instant in UTC, e.g. `2026-10-30T23:00:00Z`. */
 type Instant = string
 
-export type UserRef = { id: UUID; name: string; avatarUrl: string }
+/** `system` marks the calendar itself, the owner of events whose type has no personal owner. */
+export type UserRef = { id: UUID; name: string; avatarUrl: string; system?: boolean }
 
 export type Role = 'viewer' | 'writer' | 'admin'
 
@@ -19,6 +20,9 @@ type Permissions = {
 }
 
 export type EventStatus = 'confirmed' | 'tentative'
+
+/** Values of a typed event's fields, keyed by field key. Checkboxes are `true`, members are user ids; empty values are absent. */
+export type EventFieldValues = Record<string, string | number | boolean | string[]>
 
 export type CalEvent = {
   id: UUID
@@ -35,6 +39,9 @@ export type CalEvent = {
   exdates: Instant[]
   status: EventStatus
   tags: UUID[]
+  /** Set on typed events, which use `fields` instead of `description`. */
+  eventTypeId: UUID | null
+  fields: EventFieldValues
   owner: UserRef
   version: number
   permissions: Permissions
@@ -42,12 +49,18 @@ export type CalEvent = {
   createdAt: Instant
   updatedAt: Instant
   occurrence?: Instant | null
+  /** Whole years since the series' first occurrence; set when the event's type has a year counter. */
+  yearsSince?: number
   overridden?: boolean
   deletedAt?: Instant
 }
 
 type Override = {
   id: UUID
+  /** This occurrence has its own type (`eventTypeId`, null = generic) and `fields`. */
+  typeOverridden?: boolean
+  eventTypeId?: UUID | null
+  fields?: EventFieldValues
   recurrenceId: Instant
   cancelled: boolean
   title?: string
@@ -100,7 +113,20 @@ export type Comment = {
   permissions: { edit: boolean; delete: boolean; attach: boolean }
 }
 
-export const SUGGESTION_FIELDS = ['title', 'description', 'location', 'start', 'end', 'timeZone', 'allDay', 'rrule', 'status', 'tags'] as const
+export const SUGGESTION_FIELDS = [
+  'title',
+  'description',
+  'location',
+  'start',
+  'end',
+  'timeZone',
+  'allDay',
+  'rrule',
+  'status',
+  'tags',
+  'eventTypeId',
+  'fields',
+] as const
 export type SuggestionField = (typeof SUGGESTION_FIELDS)[number]
 
 type SuggestionChange = {
@@ -137,6 +163,97 @@ export type Tag = {
   colorSlot: TagSlot
   sortOrder: number
 }
+
+export const FIELD_KINDS = ['text', 'longtext', 'number', 'date', 'time', 'select', 'url', 'checkbox', 'members'] as const
+export type FieldKind = (typeof FIELD_KINDS)[number]
+
+export type EventTypeField = {
+  key: string
+  label: string
+  kind: FieldKind
+  required?: boolean
+  /** Choices for `select` fields. */
+  options?: string[]
+  /** `select` and `members` fields: several may be picked. Unset means one choice for select, several people for members. */
+  multiple?: boolean
+}
+
+/** Keep in sync with `typeIcons` in internal/domain/eventtypes.go and src/lib/typeIcons.ts. */
+export const EVENT_TYPE_STYLES = ['default', 'banner', 'outline', 'badge'] as const
+export type EventTypeStyle = (typeof EVENT_TYPE_STYLES)[number]
+
+export const TYPE_ICONS = [
+  'calendar',
+  'cake',
+  'gift',
+  'party-popper',
+  'flag',
+  'plane',
+  'heart',
+  'star',
+  'briefcase',
+  'graduation-cap',
+  'utensils',
+  'music',
+  'trophy',
+  'stethoscope',
+  'home',
+  'users',
+  'bell',
+] as const
+export type TypeIcon = (typeof TYPE_ICONS)[number]
+
+/** An admin-defined kind of event: calendar look, creation defaults and predefined fields. */
+export type EventType = {
+  id: UUID
+  name: string
+  icon: TypeIcon
+  colorSlot: TagSlot
+  /** How the calendar draws events of this type. */
+  style: EventTypeStyle
+  /** Show the years since the series' first occurrence (birthdays, anniversaries). */
+  yearCounter: boolean
+  defaultAllDay: boolean
+  /** Length of new timed events in minutes; 0 for instants such as deadlines. */
+  defaultDurationMinutes: number
+  /** RRULE pre-filled for new events of this type, e.g. `FREQ=YEARLY`. */
+  defaultRrule: string
+  /** Events of this type never repeat; excludes `defaultRrule`. */
+  /** With `defaultAllDay`: events last a single date rather than a range. */
+  singleDay: boolean
+  neverRepeats: boolean
+  /** Only admins can create events of this type or switch events to it. */
+  adminOnly: boolean
+  /** Events of this type belong to the calendar, not a person; only admins edit them. */
+  ownerless: boolean
+  /** Generates event titles from `{{field_key}}` placeholders; empty means titles are typed by hand. */
+  titleTemplate: string
+  /** Guidance shown while creating an event of this type. */
+  instructions: string
+  fields: EventTypeField[]
+  sortOrder: number
+}
+
+export type EventTypeWrite = Partial<
+  Pick<
+    EventType,
+    | 'name'
+    | 'icon'
+    | 'colorSlot'
+    | 'style'
+    | 'yearCounter'
+    | 'defaultAllDay'
+    | 'defaultDurationMinutes'
+    | 'defaultRrule'
+    | 'singleDay'
+    | 'neverRepeats'
+    | 'adminOnly'
+    | 'ownerless'
+    | 'titleTemplate'
+    | 'instructions'
+    | 'fields'
+  >
+>
 
 type NotificationKind = 'suggestion.created' | 'suggestion.resolved' | 'comment.reply' | 'comment.mention'
 
@@ -273,6 +390,10 @@ export type EventWrite = {
   description?: string
   tags?: UUID[]
   status?: EventStatus
+  /** Empty string turns a typed event back into a generic one. */
+  eventTypeId?: UUID | ''
+  /** Replaces all field values; only for typed events. */
+  fields?: EventFieldValues
   /** Admins only: hand the event to another writer or admin. */
   ownerId?: UUID
 }
@@ -280,3 +401,26 @@ export type EventWrite = {
 export type EditScope = 'this' | 'following' | 'all'
 
 export type PresenceViewer = UserRef & { state: 'viewing' | 'editing' }
+
+export type IcsImportRequest = { ics: string; eventTypeId?: string; dryRun?: boolean }
+
+export type IcsImportEntry = {
+  uid: string
+  title: string
+  start: string
+  end: string
+  allDay: boolean
+  rrule: string
+  outcome: 'new' | 'duplicate' | 'invalid'
+  error?: string
+}
+
+/** Outcome of an .ics import, or of its dry run. */
+export type IcsImportResult = {
+  dryRun: boolean
+  created: number
+  duplicates: number
+  invalid: number
+  ignored: number
+  entries: IcsImportEntry[]
+}

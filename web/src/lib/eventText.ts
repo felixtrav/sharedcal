@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next'
 import type { CalEvent } from '@/api/types'
 import { addDays, dateInZone, formatDateMedium, formatPlainDate, formatTimeShort, formatWeekday, type FormatOptions } from './time'
+import { ownerLabel } from '@/lib/owner'
 
 type Timing = Pick<CalEvent, 'allDay' | 'start' | 'end' | 'startUtc' | 'endUtc'>
 
@@ -45,8 +46,10 @@ function eventWhenUnsafe(ev: Timing, o: FormatOptions, t: TFunction): string {
 }
 
 /** Screen-reader label for an event chip. */
-export function eventAriaLabel(ev: CalEvent, o: FormatOptions, t: TFunction): string {
-  const parts = [ev.title || t('event.untitled'), eventWhen(ev, o, t), t('event.ownedBy', { name: ev.owner.name })]
+export function eventAriaLabel(ev: CalEvent, o: FormatOptions, t: TFunction, typeName?: string): string {
+  const parts = [ev.title || t('event.untitled'), eventWhen(ev, o, t), ownerLabel(ev.owner, t)]
+  if (typeName) parts.unshift(typeName)
+  if (ev.yearsSince) parts.push(t('event.yearsSince', { count: ev.yearsSince }))
   if (ev.status === 'tentative') parts.push(t('event.status.tentative'))
   if (ev.rrule || ev.occurrence) parts.push(t('event.recurring'))
   if (ev.counts.openSuggestions > 0 && ev.permissions.review) {

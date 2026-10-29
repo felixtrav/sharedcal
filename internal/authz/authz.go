@@ -131,6 +131,10 @@ func CanRestoreEvent(a Actor, e Event, withinUndoWindow bool) bool {
 // CanTransferOwnership: admins only.
 func CanTransferOwnership(a Actor) bool { return a.admin() }
 
+// CanUseAdminOnlyTypes: only admins may create events of, or switch events to,
+// an admin-only event type.
+func CanUseAdminOnlyTypes(a Actor) bool { return a.admin() }
+
 // CanManageEventAttachments: add/remove attachments on an event. Writers on
 // their own events, admins on any.
 func CanManageEventAttachments(a Actor, e Event) bool { return CanEditEvent(a, e) }

@@ -16,7 +16,7 @@ import (
 )
 
 // Suggestion fields, in display order.
-var suggestionFields = []string{"title", "description", "location", "start", "end", "timeZone", "allDay", "rrule", "status", "tags"}
+var suggestionFields = []string{"title", "description", "location", "start", "end", "timeZone", "allDay", "rrule", "status", "tags", "eventTypeId", "fields"}
 
 const maxReviewNote = 2000
 
@@ -39,7 +39,7 @@ type SuggestionDTO struct {
 	Status         string                      `json:"status" enum:"open,accepted,partially_accepted,rejected,withdrawn,closed"`
 	Reviewer       *UserRef                    `json:"reviewer"`
 	ReviewNote     string                      `json:"reviewNote"`
-	AcceptedFields []string                    `json:"acceptedFields" enum:"title,description,location,start,end,timeZone,allDay,rrule,status,tags"`
+	AcceptedFields []string                    `json:"acceptedFields" enum:"title,description,location,start,end,timeZone,allDay,rrule,status,tags,eventTypeId,fields"`
 	CreatedAt      time.Time                   `json:"createdAt"`
 	ResolvedAt     *time.Time                  `json:"resolvedAt"`
 	EventOwnerID   string                      `json:"eventOwnerId"`
@@ -55,7 +55,7 @@ type SuggestionInput struct {
 
 // AcceptInput selects which fields to apply and how to resolve conflicts.
 type AcceptInput struct {
-	Fields      []string          `json:"fields,omitempty" maxItems:"10"`
+	Fields      []string          `json:"fields,omitempty" maxItems:"12"`
 	Resolutions map[string]string `json:"resolutions,omitempty"`
 }
 
@@ -78,7 +78,12 @@ func canonical(e *store.Event, tags []string) map[string]any {
 	if tags == nil {
 		tags = []string{}
 	}
+	typeID := ""
+	if e.EventTypeID != nil {
+		typeID = *e.EventTypeID
+	}
 	return map[string]any{
+		"eventTypeId": typeID, "fields": parseFieldValues(e.FieldsJSON),
 		"title": e.Title, "description": e.Description, "location": e.Location,
 		"start": t(e.StartAt), "end": t(e.EndAt), "timeZone": e.TimeZone, "allDay": e.AllDay,
 		"rrule": e.RRule, "status": e.Status, "tags": tags,
@@ -198,6 +203,9 @@ func (s *Service) CreateSuggestion(ctx context.Context, actor authz.Actor, event
 			}
 			// Validate the proposal exactly as an edit would be validated.
 			probe := *ev
+			if err := checkTypeAllowed(tx.db, actor, ev.EventTypeID, in.Changes.EventTypeID); err != nil {
+				return err
+			}
 			resolved, err := s.resolveInput(tx.db, &probe, in.Changes, false)
 			if err != nil {
 				return err
@@ -404,6 +412,14 @@ func patchToInput(changes map[string]any, fields []string) EventInput {
 		case "allDay":
 			b, _ := v.(bool)
 			in.AllDay = &b
+		case "eventTypeId":
+			in.EventTypeID = str(v)
+		case "fields":
+			vals, _ := v.(map[string]any)
+			if vals == nil {
+				vals = map[string]any{}
+			}
+			in.Fields = &vals
 		case "tags":
 			var tags []string
 			if list, ok := v.([]any); ok {

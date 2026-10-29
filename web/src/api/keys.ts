@@ -12,6 +12,7 @@ export const keys = {
   suggestions: (eventId: string, status: 'open' | 'all') => ['suggestions', eventId, status] as const,
   history: (eventId: string) => ['history', eventId] as const,
   tags: ['tags'] as const,
+  eventTypes: ['eventTypes'] as const,
   directory: ['directory'] as const,
   inbox: ['inbox'] as const,
   themes: (all: boolean) => ['themes', all] as const,

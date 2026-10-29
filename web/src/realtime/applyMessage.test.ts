@@ -2,7 +2,7 @@ import { QueryClient } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RangeParams } from '@/api/endpoints'
 import { keys } from '@/api/keys'
-import type { CalEvent, Comment, EventDetail, Notification, Tag } from '@/api/types'
+import type { CalEvent, Comment, EventDetail, EventType, Notification, Tag } from '@/api/types'
 import { makeComment, makeDetail, makeEvent } from '@/test/fixtures'
 import { applyStreamMessage, matchesFilters, overlaps } from './applyMessage'
 
@@ -169,6 +169,32 @@ describe('applyStreamMessage', () => {
     const tags: Tag[] = [{ id: 't', name: 'Social', colorSlot: 'tag-3', sortOrder: 0 }]
     applyStreamMessage(qc, 'tag.changed', { tags })
     expect(qc.getQueryData(keys.tags)).toEqual({ tags })
+  })
+
+  it('replaces event types', () => {
+    const eventTypes: EventType[] = [
+      {
+        id: 'b',
+        name: 'Birthday',
+        icon: 'cake',
+        colorSlot: 'tag-3',
+        style: 'banner',
+        yearCounter: true,
+        titleTemplate: '',
+        instructions: '',
+        singleDay: false,
+        neverRepeats: false,
+        adminOnly: false,
+        ownerless: false,
+        defaultAllDay: true,
+        defaultDurationMinutes: 60,
+        defaultRrule: 'FREQ=YEARLY',
+        fields: [],
+        sortOrder: 0,
+      },
+    ]
+    applyStreamMessage(qc, 'eventtype.changed', { eventTypes })
+    expect(qc.getQueryData(keys.eventTypes)).toEqual({ eventTypes })
   })
 
   it('prepends inbox items and updates the badge', () => {

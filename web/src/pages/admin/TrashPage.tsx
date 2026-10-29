@@ -17,6 +17,7 @@ import { eventWhen, formatFileSize } from '@/lib/eventText'
 import { formatRelative } from '@/lib/time'
 import { useFmt } from '@/lib/useFmt'
 import { applyStreamMessage } from '@/realtime/applyMessage'
+import { ownerName } from '@/lib/owner'
 
 export function TrashPage() {
   const { t } = useTranslation()
@@ -80,8 +81,8 @@ function EventTrash() {
                   <p className="text-sm text-muted-foreground tabular-nums">{eventWhen(ev, fmt, t)}</p>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <UserAvatar name={ev.owner.name} src={ev.owner.avatarUrl} className="size-5" />
-                  {ev.owner.name}
+                  {ev.owner.system ? null : <UserAvatar name={ev.owner.name} src={ev.owner.avatarUrl} className="size-5" />}
+                  {ownerName(ev.owner, t)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   <time dateTime={ev.deletedAt}>

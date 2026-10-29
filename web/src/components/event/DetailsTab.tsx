@@ -16,6 +16,7 @@ import { Attachments } from './Attachments'
 import { deleteEventWithUndo } from './deleteEvent'
 import { EventForm } from './EventForm'
 import { EventView } from './EventView'
+import { ownerName } from '@/lib/owner'
 
 export function DetailsTab({
   event,
@@ -71,7 +72,7 @@ export function DetailsTab({
     try {
       await endpoints.suggestDelete(event.id, event.version)
       void qc.invalidateQueries({ queryKey: keys.suggestionsAll(event.id) })
-      toast.success(t('suggestions.deleteSent'), t('suggestions.sentBody', { name: event.owner.name }))
+      toast.success(t('suggestions.deleteSent'), t('suggestions.sentBody', { name: ownerName(event.owner, t) }))
     } catch (err) {
       toast.error(t('suggestions.sendFailed'), errorMessage(err, t))
     }
@@ -128,7 +129,7 @@ export function DetailsTab({
         open={confirmSuggestDelete}
         onOpenChange={setConfirmSuggestDelete}
         title={t('suggestions.suggestDeletionTitle')}
-        description={t('suggestions.suggestDeletionBody', { name: event.owner.name })}
+        description={t('suggestions.suggestDeletionBody', { name: ownerName(event.owner, t) })}
         confirmLabel={t('suggestions.suggestDeletion')}
         onConfirm={() => void suggestDelete()}
       />

@@ -12,6 +12,7 @@ type CalendarSearch = {
   tab?: PanelTab
   q?: string
   tags?: string[]
+  types?: string[]
   owners?: string[]
 }
 
@@ -34,6 +35,7 @@ export function validateCalendarSearch(raw: Record<string, unknown>): CalendarSe
     tab,
     q: str(raw.q),
     tags: strList(raw.tags),
+    types: strList(raw.types),
     owners: strList(raw.owners),
   }
 }

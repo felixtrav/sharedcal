@@ -19,6 +19,9 @@ PostgreSQL or MySQL/MariaDB work as drop-in alternatives. MIT licensed.
 - **Attachments, treated as hostile.** The server checks the real file type,
   re-encodes images, strips metadata and serves files so they can't run in the
   browser. ClamAV scanning is optional.
+- **Event types.** Admins define kinds of events such as birthdays or holidays,
+  each with a color, an icon, creation defaults and predefined fields that
+  replace the free-form description.
 - **Calm UI.** Month/week/day/agenda views, drag to create, move and resize,
   light and dark themes, keyboard shortcuts, WCAG 2.2 AA.
 - **Read-only ICS feed** per user, for Apple/Google/Thunderbird calendars.

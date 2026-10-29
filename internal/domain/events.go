@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"encoding/json"
 	"sort"
 	"strings"
 	"time"
@@ -42,6 +43,8 @@ type EventDTO struct {
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
 	Location    string            `json:"location"`
+	EventTypeID *string           `json:"eventTypeId"`
+	Fields      map[string]any    `json:"fields"`
 	Start       string            `json:"start"`
 	End         string            `json:"end"`
 	StartUTC    time.Time         `json:"startUtc"`
@@ -60,7 +63,10 @@ type EventDTO struct {
 	UpdatedAt   time.Time         `json:"updatedAt"`
 	DeletedAt   *time.Time        `json:"deletedAt,omitempty"`
 	Occurrence  *time.Time        `json:"occurrence,omitempty"`
-	Overridden  bool              `json:"overridden,omitempty"`
+	// YearsSince counts whole years since the series' first occurrence, for
+	// recurring events whose type has a year counter (omitted for the first year).
+	YearsSince *int `json:"yearsSince,omitempty"`
+	Overridden bool `json:"overridden,omitempty"`
 }
 
 // OverrideDTO describes one modified occurrence.
@@ -77,6 +83,10 @@ type OverrideDTO struct {
 	EndUTC       *time.Time `json:"endUtc,omitempty"`
 	AllDay       *bool      `json:"allDay,omitempty"`
 	Status       *string    `json:"status,omitempty"`
+	// TypeOverridden says this occurrence has its own type (nil = generic) and field values.
+	TypeOverridden bool           `json:"typeOverridden,omitempty"`
+	EventTypeID    *string        `json:"eventTypeId,omitempty"`
+	Fields         map[string]any `json:"fields,omitempty"`
 }
 
 // EventDetail is a master event with its overrides and attachments.
@@ -89,22 +99,24 @@ type EventDetail struct {
 // EventInput is the body of create, update and suggestion requests. Nil
 // fields are left unchanged.
 type EventInput struct {
-	Title       *string   `json:"title,omitempty" maxLength:"200"`
-	Start       *string   `json:"start,omitempty" maxLength:"40"`
-	End         *string   `json:"end,omitempty" maxLength:"40"`
-	TimeZone    *string   `json:"timeZone,omitempty" maxLength:"64"`
-	AllDay      *bool     `json:"allDay,omitempty"`
-	RRule       *string   `json:"rrule,omitempty" maxLength:"500"`
-	Location    *string   `json:"location,omitempty" maxLength:"1000"`
-	Description *string   `json:"description,omitempty" maxLength:"20000"`
-	Tags        *[]string `json:"tags,omitempty" maxItems:"20"`
-	Status      *string   `json:"status,omitempty" enum:"confirmed,tentative"`
-	OwnerID     *string   `json:"ownerId,omitempty" maxLength:"36" doc:"Admins only: transfer ownership"`
+	Title       *string         `json:"title,omitempty" maxLength:"200"`
+	Start       *string         `json:"start,omitempty" maxLength:"40"`
+	End         *string         `json:"end,omitempty" maxLength:"40"`
+	TimeZone    *string         `json:"timeZone,omitempty" maxLength:"64"`
+	AllDay      *bool           `json:"allDay,omitempty"`
+	RRule       *string         `json:"rrule,omitempty" maxLength:"500"`
+	Location    *string         `json:"location,omitempty" maxLength:"1000"`
+	Description *string         `json:"description,omitempty" maxLength:"20000" doc:"Generic events only; typed events use fields"`
+	EventTypeID *string         `json:"eventTypeId,omitempty" maxLength:"36" doc:"Event type id; an empty string makes the event generic again"`
+	Fields      *map[string]any `json:"fields,omitempty" doc:"Values for the event type's fields, keyed by field key; replaces all values"`
+	Tags        *[]string       `json:"tags,omitempty" maxItems:"20"`
+	Status      *string         `json:"status,omitempty" enum:"confirmed,tentative"`
+	OwnerID     *string         `json:"ownerId,omitempty" maxLength:"36" doc:"Admins only: transfer ownership"`
 }
 
 func (in EventInput) empty() bool {
 	return in.Title == nil && in.Start == nil && in.End == nil && in.TimeZone == nil && in.AllDay == nil &&
-		in.RRule == nil && in.Location == nil && in.Description == nil && in.Tags == nil && in.Status == nil && in.OwnerID == nil
+		in.RRule == nil && in.Location == nil && in.Description == nil && in.EventTypeID == nil && in.Fields == nil && in.Tags == nil && in.Status == nil && in.OwnerID == nil
 }
 
 func authzEvent(e *store.Event) authz.Event {
@@ -152,27 +164,111 @@ type eventPatch struct {
 	allDay                                                *bool
 	tags                                                  *[]string
 	ownerID                                               *string
+	// typeSet reports that eventTypeID (nil = generic) replaces the type.
+	typeSet     bool
+	eventTypeID *string
+	fields      *string // encoded field values
+	// titleGenerated marks a title produced by the type's template rather than given by the user.
+	titleGenerated bool
 }
 
 // resolveInput validates in against base (the event being changed, or a
 // zero event when creating) and returns the resolved patch.
 func (s *Service) resolveInput(db *gorm.DB, base *store.Event, in EventInput, creating bool) (*eventPatch, error) {
+	return s.resolveInputWith(db, base, in, creating, true)
+}
+
+// resolveInputWith is resolveInput; enforceType false skips the event type's
+// fixed all-day and repeat rules, for internal probes that build partial inputs.
+func (s *Service) resolveInputWith(db *gorm.DB, base *store.Event, in EventInput, creating, enforceType bool) (*eventPatch, error) {
 	var fe fieldErrors
 	p := &eventPatch{}
-	if in.Title != nil {
+	typeID := base.EventTypeID
+	if in.EventTypeID != nil {
+		p.typeSet = true
+		if *in.EventTypeID == "" {
+			typeID = nil
+		} else {
+			typeID = in.EventTypeID
+		}
+		p.eventTypeID = typeID
+	}
+	typeChanged := p.typeSet && !sameStrPtr(typeID, base.EventTypeID)
+	if in.Description != nil {
+		switch {
+		case utf8.RuneCountInString(*in.Description) > maxDescription:
+			fe.add("description", "description is limited to %d characters", maxDescription)
+		case typeID != nil && strings.TrimSpace(*in.Description) != "":
+			fe.add("description", "events with a type use the type's fields instead of a description")
+		}
+		p.description = in.Description
+	}
+	if typeID != nil && typeChanged {
+		// Switching to a type replaces the free-form description.
+		p.description = ptr("")
+	}
+	var et store.EventType
+	typeFound := false
+	if typeID != nil {
+		if err := db.Where("id = ?", *typeID).Take(&et).Error; err != nil {
+			if !isNotFound(err) {
+				return nil, err
+			}
+			fe.add("eventTypeId", "unknown event type")
+		} else {
+			typeFound = true
+		}
+	}
+	if typeID != nil && (typeChanged || in.Fields != nil) {
+		if typeFound {
+			// Values never carry over to a different type.
+			vals := map[string]any{}
+			if in.Fields != nil {
+				vals = *in.Fields
+			} else if !typeChanged {
+				vals = parseFieldValues(base.FieldsJSON)
+			}
+			norm, ferrs, err := normalizeFields(db, parseFieldDefs(et.FieldsJSON), vals)
+			if err != nil {
+				return nil, err
+			}
+			fe = append(fe, ferrs...)
+			p.fields = ptr(encodeFieldValues(norm))
+			if et.TitleTemplate != "" {
+				names, err := memberNames(db, et, norm)
+				if err != nil {
+					return nil, err
+				}
+				p.title, p.titleGenerated = ptr(renderTitle(et, norm, names, nil)), true
+			}
+		}
+	} else if typeID == nil {
+		if in.Fields != nil && len(*in.Fields) > 0 {
+			fe.add("fields", "fields need an event type")
+		}
+		if in.Fields != nil || typeChanged {
+			p.fields = ptr("{}")
+		}
+	}
+	switch {
+	case typeFound && et.TitleTemplate != "":
+		// Titles of templated types are generated; a title in the request is ignored.
+		if p.title == nil {
+			vals := parseFieldValues(base.FieldsJSON)
+			names, err := memberNames(db, et, vals)
+			if err != nil {
+				return nil, err
+			}
+			p.title, p.titleGenerated = ptr(renderTitle(et, vals, names, nil)), true
+		}
+	case in.Title != nil:
 		t := strings.TrimSpace(*in.Title)
 		if t == "" || utf8.RuneCountInString(t) > maxTitle {
 			fe.add("title", "title must be 1–%d characters", maxTitle)
 		}
 		p.title = &t
-	} else if creating {
+	case creating:
 		fe.add("title", "title is required")
-	}
-	if in.Description != nil {
-		if utf8.RuneCountInString(*in.Description) > maxDescription {
-			fe.add("description", "description is limited to %d characters", maxDescription)
-		}
-		p.description = in.Description
 	}
 	if in.Location != nil {
 		l := strings.TrimSpace(*in.Location)
@@ -262,6 +358,11 @@ func (s *Service) resolveInput(db *gorm.DB, base *store.Event, in EventInput, cr
 		p.rrule = &norm
 	}
 
+	// A type with fixed all-day or repeat settings holds every event of that type to them.
+	if enforceType && typeFound && len(fe) == 0 && (creating || typeChanged || in.AllDay != nil || in.RRule != nil || in.Start != nil || in.End != nil) {
+		fe = append(fe, typeRuleErrors(et, allDay, rr, start, end, loc)...)
+	}
+
 	if in.Tags != nil {
 		tags := uniq(*in.Tags)
 		if len(tags) > maxTagsPerEvt {
@@ -296,6 +397,13 @@ func (s *Service) resolveInput(db *gorm.DB, base *store.Event, in EventInput, cr
 	return p, nil
 }
 
+func sameStrPtr(a, b *string) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
 func reinterpret(t time.Time, from, to *time.Location) time.Time {
 	w := t.In(from)
 	return time.Date(w.Year(), w.Month(), w.Day(), w.Hour(), w.Minute(), w.Second(), 0, to).UTC()
@@ -315,6 +423,10 @@ func (p *eventPatch) apply(e *store.Event) {
 	set(&e.TimeZone, p.timeZone)
 	set(&e.RRule, p.rrule)
 	set(&e.OwnerID, p.ownerID)
+	set(&e.FieldsJSON, p.fields)
+	if p.typeSet {
+		e.EventTypeID = p.eventTypeID
+	}
 	if p.allDay != nil {
 		e.AllDay = *p.allDay
 	}
@@ -338,13 +450,19 @@ type eventSnapshot struct {
 	RRule       string    `json:"rrule"`
 	Status      string    `json:"status"`
 	Tags        []string  `json:"tags"`
+	EventTypeID *string   `json:"eventTypeId,omitempty"`
+	Fields      any       `json:"fields,omitempty"`
 	OwnerID     string    `json:"ownerId"`
 	Version     int64     `json:"version"`
 }
 
 func snapshot(e *store.Event, tags []string) eventSnapshot {
-	return eventSnapshot{Title: e.Title, Description: e.Description, Location: e.Location, Start: e.StartAt, End: e.EndAt,
-		TimeZone: e.TimeZone, AllDay: e.AllDay, RRule: e.RRule, Status: e.Status, Tags: tags, OwnerID: e.OwnerID, Version: e.Version}
+	snap := eventSnapshot{Title: e.Title, Description: e.Description, Location: e.Location, Start: e.StartAt, End: e.EndAt,
+		TimeZone: e.TimeZone, AllDay: e.AllDay, RRule: e.RRule, Status: e.Status, Tags: tags, EventTypeID: e.EventTypeID, OwnerID: e.OwnerID, Version: e.Version}
+	if e.EventTypeID != nil {
+		snap.Fields = parseFieldValues(e.FieldsJSON)
+	}
+	return snap
 }
 
 func (s *Service) loadEvent(db *gorm.DB, id string, includeDeleted bool) (*store.Event, error) {
@@ -450,6 +568,7 @@ func (s *Service) eventDTOs(db *gorm.DB, actor authz.Actor, evs []store.Event) (
 		}
 		out[i] = EventDTO{
 			ID: e.ID, Title: e.Title, Description: e.Description, Location: e.Location,
+			EventTypeID: e.EventTypeID, Fields: parseFieldValues(e.FieldsJSON),
 			Start: formatEventTime(e.StartAt, loc, e.AllDay), End: formatEventTime(e.EndAt, loc, e.AllDay),
 			StartUTC: e.StartAt.UTC(), EndUTC: e.EndAt.UTC(), TimeZone: e.TimeZone, AllDay: e.AllDay,
 			RRule: e.RRule, Exdates: exdates(e), Status: e.Status, Tags: t, Owner: refs[e.OwnerID],
@@ -476,6 +595,7 @@ func (s *Service) eventDTO(db *gorm.DB, actor authz.Actor, e *store.Event) (*Eve
 type ListQuery struct {
 	From, To time.Time
 	Tags     []string
+	Types    []string
 	Owners   []string
 	Q        string
 }
@@ -509,13 +629,20 @@ func (s *Service) ListEvents(ctx context.Context, actor authz.Actor, q ListQuery
 	if len(q.Tags) > 0 {
 		tx = tx.Where("id IN (?)", db.Model(&store.EventTag{}).Select("event_id").Where("tag_id IN ?", q.Tags))
 	}
+	if len(q.Types) > 0 {
+		// A series matches through its own type or an occurrence's; occurrences are filtered after expansion.
+		tx = tx.Where("event_type_id IN ? OR id IN (?)", q.Types,
+			db.Model(&store.EventOverride{}).Select("event_id").Where("type_overridden = ? AND event_type_id IN ?", true, q.Types))
+	}
 	if term := strings.TrimSpace(q.Q); term != "" {
 		if utf8.RuneCountInString(term) > 200 {
 			return nil, invalidField("q", "search is limited to 200 characters")
 		}
 		pat := likeEscape(term)
-		tx = tx.Where("(LOWER(title) LIKE ? ESCAPE '!' OR LOWER(description) LIKE ? ESCAPE '!' OR LOWER(location) LIKE ? ESCAPE '!')", pat, pat, pat)
+		tx = tx.Where("(LOWER(title) LIKE ? ESCAPE '!' OR LOWER(description) LIKE ? ESCAPE '!' OR LOWER(location) LIKE ? ESCAPE '!' OR (event_type_id IS NOT NULL AND LOWER(fields_json) LIKE ? ESCAPE '!') OR id IN (?))", pat, pat, pat, pat,
+			db.Model(&store.EventOverride{}).Select("event_id").Where("type_overridden = ? AND LOWER(fields_json) LIKE ? ESCAPE '!'", true, pat))
 	}
+	term := strings.ToLower(strings.TrimSpace(q.Q))
 	var masters []store.Event
 	if err := tx.Order("start_at, id").Limit(maxListMasters).Find(&masters).Error; err != nil {
 		return nil, err
@@ -540,6 +667,18 @@ func (s *Service) ListEvents(ctx context.Context, actor authz.Actor, q ListQuery
 	if err != nil {
 		return nil, err
 	}
+	var counterRows []store.EventType
+	if err := db.Select("id").Where("year_counter = ?", true).Find(&counterRows).Error; err != nil {
+		return nil, err
+	}
+	counters := map[string]bool{}
+	for _, r := range counterRows {
+		counters[r.ID] = true
+	}
+	wanted := map[string]bool{}
+	for _, id := range q.Types {
+		wanted[id] = true
+	}
 	out := make([]EventDTO, 0, len(masters))
 	for i := range masters {
 		m := &masters[i]
@@ -549,14 +688,45 @@ func (s *Service) ListEvents(ctx context.Context, actor authz.Actor, q ListQuery
 			continue
 		}
 		for _, o := range occs {
-			out = append(out, occurrenceDTO(dtos[i], m, o))
+			d := occurrenceDTO(dtos[i], m, o, counters)
+			if len(wanted) > 0 && (d.EventTypeID == nil || !wanted[*d.EventTypeID]) {
+				continue
+			}
+			if term != "" && typeOverridden(overrides[m.ID]) && !occurrenceMatches(d, term) {
+				// The series matched through another occurrence's type or fields.
+				continue
+			}
+			out = append(out, d)
 		}
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].StartUTC.Before(out[j].StartUTC) })
 	return out, nil
 }
 
-func occurrenceDTO(master EventDTO, e *store.Event, o Occurrence) EventDTO {
+func typeOverridden(ovs []store.EventOverride) bool {
+	for i := range ovs {
+		if ovs[i].TypeOverridden {
+			return true
+		}
+	}
+	return false
+}
+
+// occurrenceMatches reports whether an occurrence's own text (which an override may have replaced) contains the lowercased term.
+func occurrenceMatches(d EventDTO, term string) bool {
+	has := func(s string) bool { return strings.Contains(strings.ToLower(s), term) }
+	if has(d.Title) || has(d.Description) || has(d.Location) {
+		return true
+	}
+	if d.EventTypeID != nil {
+		b, _ := json.Marshal(d.Fields)
+		return has(string(b))
+	}
+	return false
+}
+
+// occurrenceDTO builds one occurrence's DTO from its master. counters holds the ids of types with a year counter.
+func occurrenceDTO(master EventDTO, e *store.Event, o Occurrence, counters map[string]bool) EventDTO {
 	d := master
 	loc := eventLoc(e)
 	allDay := e.AllDay
@@ -574,6 +744,9 @@ func occurrenceDTO(master EventDTO, e *store.Event, o Occurrence) EventDTO {
 		if ov.Status != nil {
 			d.Status = *ov.Status
 		}
+		if ov.TypeOverridden {
+			d.EventTypeID, d.Fields = ov.EventTypeID, parseFieldValues(ov.FieldsJSON)
+		}
 		if ov.AllDay != nil {
 			allDay = *ov.AllDay
 			d.AllDay = allDay
@@ -582,6 +755,15 @@ func occurrenceDTO(master EventDTO, e *store.Event, o Occurrence) EventDTO {
 	d.Start, d.End = formatEventTime(o.Start, loc, allDay), formatEventTime(o.End, loc, allDay)
 	d.StartUTC, d.EndUTC = o.Start, o.End
 	d.Occurrence = o.RecurrenceID
+	if d.EventTypeID != nil && counters[*d.EventTypeID] && e.RRule != "" {
+		first, cur := e.StartAt, o.Start
+		if !allDay {
+			first, cur = first.In(loc), cur.In(loc)
+		}
+		if n := cur.Year() - first.Year(); n > 0 {
+			d.YearsSince = &n
+		}
+	}
 	return d
 }
 
@@ -617,6 +799,9 @@ func (s *Service) eventDetail(db *gorm.DB, actor authz.Actor, e *store.Event) (*
 		}
 		d := OverrideDTO{ID: o.ID, RecurrenceID: o.RecurrenceID.UTC(), Cancelled: o.Cancelled, Title: o.Title, Description: o.Description,
 			Location: o.Location, AllDay: o.AllDay, Status: o.Status, StartUTC: o.StartAt, EndUTC: o.EndAt}
+		if o.TypeOverridden {
+			d.TypeOverridden, d.EventTypeID, d.Fields = true, o.EventTypeID, parseFieldValues(o.FieldsJSON)
+		}
 		if o.StartAt != nil {
 			d.Start = ptr(formatEventTime(*o.StartAt, loc, allDay))
 		}
@@ -641,36 +826,64 @@ func (s *Service) CreateEvent(ctx context.Context, actor authz.Actor, in EventIn
 		return nil, forbidden("only admins can set the owner")
 	}
 	var out *EventDTO
-	err := s.write(ctx, actor, func(tx *Tx) error {
-		base := &store.Event{Status: store.StatusConfirmed}
-		p, err := s.resolveInput(tx.db, base, in, true)
-		if err != nil {
-			return err
-		}
-		e := store.Event{ID: store.NewID(), OwnerID: actor.ID, Status: store.StatusConfirmed, Version: 1, ExdatesJSON: "[]", CreatedAt: tx.now, UpdatedAt: tx.now}
-		p.apply(&e)
-		if e.SeriesEndAt, err = seriesEnd(&e); err != nil {
-			return invalidField("rrule", "%v", err)
-		}
-		if err := tx.db.Create(&e).Error; err != nil {
-			return err
-		}
-		var tags []string
-		if p.tags != nil {
-			tags = *p.tags
-			if err := setEventTags(tx.db, e.ID, tags); err != nil {
-				return err
-			}
-		}
-		if err := tx.record("event.created", "event", e.ID, &e.ID, nil, snapshot(&e, tags)); err != nil {
-			return err
-		}
-		if out, err = s.eventDTO(tx.db, actor, &e); err != nil {
-			return err
-		}
-		return tx.emit("event.created", e.ID, e.Version, out, "")
+	err := s.write(ctx, actor, func(tx *Tx) (err error) {
+		out, err = s.createEventTx(tx, actor, in, "")
+		return err
 	})
 	return out, err
+}
+
+// createEventTx creates one event inside tx. Events of an ownerless type
+// belong to the system user instead of the actor. sourceUID records the
+// iCalendar UID of imported events.
+func (s *Service) createEventTx(tx *Tx, actor authz.Actor, in EventInput, sourceUID string) (*EventDTO, error) {
+	base := &store.Event{Status: store.StatusConfirmed}
+	if err := checkTypeAllowed(tx.db, actor, nil, in.EventTypeID); err != nil {
+		return nil, err
+	}
+	p, err := s.resolveInput(tx.db, base, in, true)
+	if err != nil {
+		return nil, err
+	}
+	owner := actor.ID
+	if p.eventTypeID != nil {
+		var n int64
+		if err := tx.db.Model(&store.EventType{}).Where("id = ? AND ownerless = ?", *p.eventTypeID, true).Count(&n).Error; err != nil {
+			return nil, err
+		}
+		if n > 0 {
+			if in.OwnerID != nil {
+				return nil, invalidField("ownerId", "events of this type have no owner")
+			}
+			if err := ensureSystemUser(tx); err != nil {
+				return nil, err
+			}
+			owner = store.SystemUserID
+		}
+	}
+	e := store.Event{ID: store.NewID(), OwnerID: owner, SourceUID: sourceUID, Status: store.StatusConfirmed, Version: 1, ExdatesJSON: "[]", FieldsJSON: "{}", CreatedAt: tx.now, UpdatedAt: tx.now}
+	p.apply(&e)
+	if e.SeriesEndAt, err = seriesEnd(&e); err != nil {
+		return nil, invalidField("rrule", "%v", err)
+	}
+	if err := tx.db.Create(&e).Error; err != nil {
+		return nil, err
+	}
+	var tags []string
+	if p.tags != nil {
+		tags = *p.tags
+		if err := setEventTags(tx.db, e.ID, tags); err != nil {
+			return nil, err
+		}
+	}
+	if err := tx.record("event.created", "event", e.ID, &e.ID, nil, snapshot(&e, tags)); err != nil {
+		return nil, err
+	}
+	out, err := s.eventDTO(tx.db, actor, &e)
+	if err != nil {
+		return nil, err
+	}
+	return out, tx.emit("event.created", e.ID, e.Version, out, "")
 }
 
 // Scope selects which occurrences of a recurring event a change affects.
@@ -738,6 +951,9 @@ func (s *Service) UpdateEvent(ctx context.Context, actor authz.Actor, id string,
 		if ifMatch == nil {
 			return &Error{Kind: KindPrecondition, Msg: "If-Match with the event version is required"}
 		}
+		if err := checkTypeAllowed(tx.db, actor, e.EventTypeID, in.EventTypeID); err != nil {
+			return err
+		}
 		out, err = s.applyUpdate(tx, e, sc, occurrence, in, "event.updated")
 		return err
 	})
@@ -795,12 +1011,21 @@ func (s *Service) updateSeries(tx *Tx, e *store.Event, occurrence *time.Time, in
 		}
 		probe := *e
 		probe.StartAt, probe.EndAt = occStart, occEnd
-		p, err := s.resolveInput(tx.db, &probe, EventInput{Start: in.Start, End: in.End, TimeZone: in.TimeZone, AllDay: in.AllDay, RRule: ptr("")}, false)
+		p, err := s.resolveInputWith(tx.db, &probe, EventInput{Start: in.Start, End: in.End, TimeZone: in.TimeZone, AllDay: in.AllDay, RRule: ptr("")}, false, false)
 		if err != nil {
 			return nil, err
 		}
 		shift = p.start.Sub(occStart)
 		newStart := e.StartAt.Add(shift)
+		if years := yearsMoved(tx.db, e, occStart, *p.start); years != 0 {
+			// Counting years from the series start: a new year on an occurrence is the year the
+			// series began, not a shift of the whole series, which would add to the old count.
+			// Exceptions and overrides keep their place, so only the day within the year moves.
+			loc := eventLoc(e)
+			o, n := occStart.In(loc), p.start.In(loc)
+			shift = n.AddDate(-years, 0, 0).Sub(o)
+			newStart = time.Date(n.Year(), n.Month(), n.Day(), n.Hour(), n.Minute(), n.Second(), 0, loc).UTC()
+		}
 		newEnd := newStart.Add(p.end.Sub(*p.start))
 		in.Start, in.End = ptr(newStart.Format(time.RFC3339)), ptr(newEnd.Format(time.RFC3339))
 		if allDay := e.AllDay; (in.AllDay != nil && *in.AllDay) || (in.AllDay == nil && allDay) {
@@ -877,7 +1102,7 @@ func (s *Service) updateSeries(tx *Tx, e *store.Event, occurrence *time.Time, in
 
 func (s *Service) updateOccurrence(tx *Tx, e *store.Event, rid time.Time, in EventInput) (*EventDTO, error) {
 	if in.TimeZone != nil || in.RRule != nil || in.Tags != nil || in.OwnerID != nil || in.AllDay != nil {
-		return nil, invalid("a single occurrence can change only title, description, location, status, start and end")
+		return nil, invalid("a single occurrence can change only title, description (generic events), location, status, start, end, type and fields")
 	}
 	var ov store.EventOverride
 	err := tx.db.Where("event_id = ? AND recurrence_id = ?", e.ID, rid).Take(&ov).Error
@@ -895,15 +1120,16 @@ func (s *Service) updateOccurrence(tx *Tx, e *store.Event, rid time.Time, in Eve
 	if ov.EndAt != nil {
 		probe.EndAt = *ov.EndAt
 	}
+	if ov.TypeOverridden {
+		// Validate against what this occurrence is now, not against the master.
+		probe.EventTypeID, probe.FieldsJSON = ov.EventTypeID, ov.FieldsJSON
+	}
 	p, err := s.resolveInput(tx.db, &probe, in, false)
 	if err != nil {
 		return nil, err
 	}
 	if isNew {
-		ov = store.EventOverride{ID: store.NewID(), EventID: e.ID, RecurrenceID: rid, CreatedAt: tx.now}
-	}
-	if p.title != nil {
-		ov.Title = p.title
+		ov = store.EventOverride{ID: store.NewID(), EventID: e.ID, RecurrenceID: rid, FieldsJSON: "{}", CreatedAt: tx.now}
 	}
 	if p.description != nil {
 		ov.Description = p.description
@@ -916,6 +1142,27 @@ func (s *Service) updateOccurrence(tx *Tx, e *store.Event, rid time.Time, in Eve
 	}
 	if p.start != nil {
 		ov.StartAt, ov.EndAt = p.start, p.end
+	}
+	if p.typeSet || p.fields != nil {
+		// The occurrence now carries its own type and values: the new ones, or what it had.
+		if !ov.TypeOverridden {
+			ov.EventTypeID, ov.FieldsJSON = e.EventTypeID, e.FieldsJSON
+		}
+		if p.typeSet {
+			ov.EventTypeID = p.eventTypeID
+			if p.eventTypeID == nil && p.description == nil {
+				ov.Description = nil // generic again: inherit the master's description
+			}
+		}
+		if p.fields != nil {
+			ov.FieldsJSON = *p.fields
+		}
+		ov.TypeOverridden = true
+	}
+	// A generated title only needs storing when the occurrence has its own values;
+	// otherwise it equals the series' title and keeps following it.
+	if p.title != nil && (!p.titleGenerated || ov.TypeOverridden) {
+		ov.Title = p.title
 	}
 	ov.UpdatedAt = tx.now
 	if err := tx.db.Save(&ov).Error; err != nil {
@@ -1199,4 +1446,18 @@ func (s *Service) EventExists(ctx context.Context, id string) bool {
 	}
 	_, err := s.loadEvent(s.DB.R.WithContext(ctx), id, false)
 	return err == nil
+}
+
+// yearsMoved is how many calendar years an edit moves a yearly occurrence of
+// a year-counting type, or 0 when the counter does not apply.
+func yearsMoved(db *gorm.DB, e *store.Event, from, to time.Time) int {
+	if e.EventTypeID == nil || !strings.Contains(e.RRule, "FREQ=YEARLY") {
+		return 0
+	}
+	var counts int64
+	if err := db.Model(&store.EventType{}).Where("id = ? AND year_counter = ?", *e.EventTypeID, true).Count(&counts).Error; err != nil || counts == 0 {
+		return 0
+	}
+	loc := eventLoc(e)
+	return to.In(loc).Year() - from.In(loc).Year()
 }

@@ -24,7 +24,8 @@ func TestAdminEndpointsForbiddenToOthers(t *testing.T) {
 		for _, r := range []struct{ method, path string }{
 			{"GET", "/api/users"}, {"PATCH", "/api/users/" + alice.ID}, {"GET", "/api/users/" + alice.ID + "/sessions"},
 			{"DELETE", "/api/users/" + alice.ID + "/sessions"}, {"POST", "/api/users/" + alice.ID + "/transfer"},
-			{"POST", "/api/tags"}, {"GET", "/api/settings"}, {"PUT", "/api/settings"}, {"GET", "/api/trash"},
+			{"POST", "/api/tags"}, {"POST", "/api/event-types"}, {"PATCH", "/api/event-types/x"}, {"DELETE", "/api/event-types/x"},
+			{"POST", "/api/event-types/reorder"}, {"GET", "/api/settings"}, {"PUT", "/api/settings"}, {"GET", "/api/trash"},
 			{"POST", "/api/themes"}, {"DELETE", "/api/settings/logo"},
 		} {
 			var body any

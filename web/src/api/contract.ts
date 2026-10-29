@@ -13,7 +13,8 @@ type Extends<A, B> = [A] extends [B] ? true : false
 
 // Responses: what the server sends must satisfy what the UI reads.
 export type ResponseContract = [
-  Assert<Extends<S['EventDTO'], Omit<T.CalEvent, 'occurrence' | 'overridden' | 'deletedAt'>>>,
+  // `fields` is an open map on the server (its shape depends on the event type), so the UI narrows it itself.
+  Assert<Extends<S['EventDTO'], Omit<T.CalEvent, 'occurrence' | 'overridden' | 'deletedAt' | 'fields'>>>,
   Assert<Extends<S['AttachmentDTO'], T.Attachment>>,
   Assert<Extends<S['CommentDTO'], T.Comment>>,
   Assert<Extends<S['SuggestionDTO'], Omit<T.Suggestion, 'changes'>>>,

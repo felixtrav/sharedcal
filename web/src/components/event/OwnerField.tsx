@@ -12,6 +12,7 @@ import { NativeSelect } from '@/components/ui/input'
 import { toast } from '@/components/ui/toast'
 import { errorMessage } from '@/lib/errors'
 import { clearOwnWrite, markOwnWrite } from '@/realtime/stores'
+import { ownerLabel, ownerName } from '@/lib/owner'
 
 /**
  * The owner line of an event. Admins can hand the event (the whole series,
@@ -23,8 +24,8 @@ export function OwnerField({ event, canChange }: { event: CalEvent; canChange: b
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="inline-flex items-center gap-2">
-        <UserAvatar name={event.owner.name} src={event.owner.avatarUrl} className="size-5" />
-        {t('event.ownedBy', { name: event.owner.name })}
+        {event.owner.system ? null : <UserAvatar name={event.owner.name} src={event.owner.avatarUrl} className="size-5" />}
+        {ownerLabel(event.owner, t)}
       </span>
       {canChange && !editing ? (
         <Button variant="link" size="xs" className="h-auto p-0" onClick={() => setEditing(true)} aria-label={t('event.changeOwnerFor', { title: event.title })}>
@@ -53,7 +54,7 @@ function OwnerPicker({ event, onDone }: { event: CalEvent; onDone: () => void })
       const updated = await endpoints.updateEvent(event.id, event.version, { ownerId: to })
       markOwnWrite(updated.id, updated.version)
       storeEvent(qc, updated)
-      toast.success(t('event.ownerChanged', { name: updated.owner.name }))
+      toast.success(t('event.ownerChanged', { name: ownerName(updated.owner, t) }))
       onDone()
     } catch (err) {
       if (isApiError(err) && err.status === 409) {
@@ -74,7 +75,7 @@ function OwnerPicker({ event, onDone }: { event: CalEvent; onDone: () => void })
         {t('event.newOwner')}
       </label>
       <NativeSelect id={`owner-${event.id}`} value={to} onChange={(e) => setTo(e.target.value)} className="min-w-0 flex-1" disabled={!data}>
-        {candidates.some((u) => u.id === event.owner.id) ? null : <option value={event.owner.id}>{event.owner.name}</option>}
+        {candidates.some((u) => u.id === event.owner.id) ? null : <option value={event.owner.id}>{ownerName(event.owner, t)}</option>}
         {candidates.map((u) => (
           <option key={u.id} value={u.id}>
             {u.name}

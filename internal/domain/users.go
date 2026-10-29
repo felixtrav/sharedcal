@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/felixtrav/sharedcal/internal/auth"
 	"github.com/felixtrav/sharedcal/internal/authz"
@@ -18,6 +19,7 @@ type UserRef struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	AvatarURL string `json:"avatarUrl"`
+	System    bool   `json:"system,omitempty" doc:"The calendar itself, owner of events whose type has no personal owner"`
 }
 
 func refOf(u *store.User) UserRef {
@@ -28,7 +30,7 @@ func refOf(u *store.User) UserRef {
 	if name == "" {
 		name = u.Email
 	}
-	return UserRef{ID: u.ID, Name: name, AvatarURL: u.AvatarURL}
+	return UserRef{ID: u.ID, Name: name, AvatarURL: u.AvatarURL, System: u.ID == store.SystemUserID}
 }
 
 // userRefs loads refs for a set of user IDs.
@@ -133,6 +135,11 @@ func (s *Service) Provision(ctx context.Context, id auth.Identity) (*store.User,
 		} else if err := tx.db.Save(&u).Error; err != nil {
 			return err
 		}
+		if !isNew && refOf(&before).Name != refOf(&u).Name {
+			if err := tx.retitleForPerson(u.ID); err != nil {
+				return err
+			}
+		}
 		if !isNew && before.Role != u.Role {
 			if err := tx.recordAs("", "user.role_changed", "user", u.ID, nil, map[string]string{"role": before.Role}, map[string]string{"role": u.Role, "source": "idp"}); err != nil {
 				return err
@@ -224,7 +231,7 @@ func (s *Service) ListUsers(ctx context.Context, actor authz.Actor) ([]AdminUser
 	}
 	db := s.DB.R.WithContext(ctx)
 	var users []store.User
-	if err := db.Order("display_name, id").Find(&users).Error; err != nil {
+	if err := db.Where("id <> ?", store.SystemUserID).Order("display_name, id").Find(&users).Error; err != nil {
 		return nil, err
 	}
 	type cnt struct {
@@ -259,6 +266,9 @@ type UserPatch struct {
 func (s *Service) UpdateUser(ctx context.Context, actor authz.Actor, id string, p UserPatch) (*AdminUser, error) {
 	if !authz.CanAdminister(actor) {
 		return nil, forbidden("admins only")
+	}
+	if id == store.SystemUserID {
+		return nil, notFound("user")
 	}
 	var out AdminUser
 	var revoke bool
@@ -404,6 +414,15 @@ func (s *Service) TransferOwnership(ctx context.Context, actor authz.Actor, from
 		return err
 	})
 	return moved, err
+}
+
+// ensureSystemUser creates the reserved owner of ownerless events on first use.
+func ensureSystemUser(tx *Tx) error {
+	u := store.User{
+		ID: store.SystemUserID, OIDCIssuer: "system", OIDCSubject: "system", Role: string(authz.Viewer), RoleSource: store.RoleSourceManual,
+		GroupsJSON: "[]", Active: false, CreatedAt: tx.now, UpdatedAt: tx.now,
+	}
+	return tx.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&u).Error
 }
 
 // transferEvents moves fromID's live events to toID inside tx.
@@ -563,6 +582,9 @@ func (s *Service) EraseUser(ctx context.Context, actor authz.Actor, id, transfer
 			return nil, invalid("you cannot erase your own account")
 		}
 		return nil, forbidden("admins only")
+	}
+	if id == store.SystemUserID {
+		return nil, notFound("user")
 	}
 	var res EraseResult
 	var keys, sessions []string
@@ -738,6 +760,9 @@ func (s *Service) EraseUser(ctx context.Context, actor authz.Actor, id, transfer
 			"oidc_issuer": "", "oidc_subject": "erased:" + id, "email": "", "display_name": ErasedName, "avatar_url": "",
 			"groups_json": "[]", "active": false, "role_source": store.RoleSourceManual, "erased_at": now, "updated_at": now,
 		}).Error; err != nil {
+			return err
+		}
+		if err := tx.retitleForPerson(id); err != nil {
 			return err
 		}
 		res.CommentsRemoved, res.AttachmentsRemoved, res.SuggestionsRemoved = len(comments), len(atts), len(sgs)
