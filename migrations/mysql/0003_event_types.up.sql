@@ -19,7 +19,7 @@ CREATE TABLE `event_types` (
   CONSTRAINT `ck_event_types_1` CHECK (color_slot IN ('tag-1', 'tag-2', 'tag-3', 'tag-4', 'tag-5', 'tag-6', 'tag-7', 'tag-8')),
   CONSTRAINT `ck_event_types_2` CHECK (style IN ('default', 'banner', 'outline', 'badge')),
   CONSTRAINT `ck_event_types_3` CHECK (default_duration_minutes BETWEEN 0 AND 1440)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE UNIQUE INDEX `ux_event_types_name` ON `event_types` (`name`);
 
