@@ -2,9 +2,9 @@ import { useEffect, useRef, type RefObject } from 'react'
 
 /** Horizontal travel, in px, that counts as a swipe. */
 const TOUCH_DISTANCE = 60
-const WHEEL_DISTANCE = 120
-/** A trackpad swipe keeps firing wheel events as momentum; the next swipe can start after this quiet gap. */
-const WHEEL_QUIET_MS = 160
+const WHEEL_DISTANCE = 60
+/** A pause in wheel events this long ends a trackpad swipe. */
+const WHEEL_QUIET_MS = 100
 
 /** Elements that handle their own horizontal drags. */
 const IGNORED = '.fc-event, .fc-event-mirror, .fc-highlight, input, textarea, select, [role="slider"]'
@@ -41,16 +41,31 @@ export function useSwipe(ref: RefObject<HTMLElement | null>, onSwipe: (dir: 1 | 
       fire(dx)
     }
 
+    // Trackpads keep sending decaying "momentum" wheel events after the fingers lift, so one physical swipe
+    // is a stream of events. Fire once per stream, and treat a direction change, a rise in speed or a pause
+    // as the start of the next swipe so quick repeated swipes all register.
     let acc = 0
     let spent = false
-    let timer: ReturnType<typeof setTimeout> | undefined
+    let lastAt = 0
+    let lastAbs = 0
+    let lastSign = 0
     const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || Math.abs(e.deltaX) < Math.abs(e.deltaY) * 1.5) return
-      clearTimeout(timer)
-      timer = setTimeout(() => {
+      if (e.ctrlKey) return
+      const abs = Math.abs(e.deltaX)
+      if (abs < Math.abs(e.deltaY)) {
+        acc = 0
+        return
+      }
+      if (abs === 0) return
+      const now = Date.now()
+      const sign = Math.sign(e.deltaX)
+      if (now - lastAt > WHEEL_QUIET_MS || sign !== lastSign || abs > lastAbs * 1.3 + 1) {
         acc = 0
         spent = false
-      }, WHEEL_QUIET_MS)
+      }
+      lastAt = now
+      lastAbs = abs
+      lastSign = sign
       if (spent) return
       acc += e.deltaX
       if (Math.abs(acc) < WHEEL_DISTANCE) return
@@ -66,7 +81,6 @@ export function useSwipe(ref: RefObject<HTMLElement | null>, onSwipe: (dir: 1 | 
     el.addEventListener('touchcancel', cancel, { passive: true })
     el.addEventListener('wheel', onWheel, { passive: true })
     return () => {
-      clearTimeout(timer)
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchend', onTouchEnd)
       el.removeEventListener('touchcancel', cancel)

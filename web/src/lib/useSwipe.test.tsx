@@ -47,12 +47,28 @@ describe('useSwipe', () => {
     const fn = vi.fn()
     const { getByTestId } = render(<Harness onSwipe={fn} />)
     const area = getByTestId('area')
-    for (let i = 0; i < 10; i++) fireEvent.wheel(area, { deltaX: 40, deltaY: 2 })
+    for (const dx of [30, 28, 25, 20, 15, 10, 6, 3, 2, 1]) {
+      fireEvent.wheel(area, { deltaX: dx, deltaY: 1 })
+      vi.advanceTimersByTime(16)
+    }
     expect(fn).toHaveBeenCalledTimes(1)
     expect(fn).toHaveBeenLastCalledWith(1)
-    vi.advanceTimersByTime(300)
-    for (let i = 0; i < 10; i++) fireEvent.wheel(area, { deltaX: -40, deltaY: 2 })
+  })
+
+  it('registers a quick second swipe while the first is still coasting', () => {
+    const fn = vi.fn()
+    const { getByTestId } = render(<Harness onSwipe={fn} />)
+    const area = getByTestId('area')
+    const stream = (dxs: number[]) =>
+      dxs.forEach((dx) => {
+        fireEvent.wheel(area, { deltaX: dx, deltaY: 1 })
+        vi.advanceTimersByTime(16)
+      })
+    stream([30, 28, 24, 18, 12, 8, 5])
+    stream([4, 20, 30, 28, 22])
     expect(fn).toHaveBeenCalledTimes(2)
+    stream([-30, -28, -24])
+    expect(fn).toHaveBeenCalledTimes(3)
     expect(fn).toHaveBeenLastCalledWith(-1)
   })
 
