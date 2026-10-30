@@ -209,7 +209,7 @@ func TestSettingsAndThemes(t *testing.T) {
 		t.Errorf("delete uploaded: %d", code)
 	}
 	// Preferences round trip and validation.
-	prefs := map[string]any{"themeId": "nord", "colorMode": "dark", "timeZone": "Europe/Berlin", "weekStart": 0, "clock24h": true, "defaultView": "week", "density": "compact"}
+	prefs := map[string]any{"themeId": "nord", "colorMode": "dark", "timeZone": "Europe/Berlin", "weekStart": 0, "clock24h": true, "defaultView": "week"}
 	carol.mustJSON("PUT", "/api/me/preferences", prefs, 200, nil)
 	prefs["timeZone"] = "Nowhere/Land"
 	if code := carol.status("PUT", "/api/me/preferences", prefs); code != 422 {

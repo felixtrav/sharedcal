@@ -154,7 +154,6 @@ type ActivityItem = {
 type Preferences = {
   themeId: string; colorMode: "light" | "dark" | "system"; timeZone: string; // "" = browser
   weekStart: 0|1|2|3|4|5|6; clock24h: boolean; defaultView: "month" | "week" | "day" | "agenda";
-  density: "comfortable" | "compact";
 };
 
 type Theme = { id: string; name: string; author: string; builtin: boolean;

@@ -68,7 +68,6 @@ type UserPreference struct {
 	WeekStart   int       `gorm:"not null"`
 	Clock24h    bool      `gorm:"column:clock_24h;not null"`
 	DefaultView string    `gorm:"size:16;not null"`
-	Density     string    `gorm:"size:16;not null"`
 	CreatedAt   time.Time `gorm:"not null"`
 	UpdatedAt   time.Time `gorm:"not null"`
 }
