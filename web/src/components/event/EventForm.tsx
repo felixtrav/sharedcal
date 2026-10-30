@@ -97,6 +97,9 @@ export function EventForm({
   const typeId = useWatch({ control, name: 'eventTypeId' })
   const timeZone = useWatch({ control, name: 'timeZone' })
   const eventType = typeById(typeId)
+  const location = useWatch({ control, name: 'location' })
+  // Hide the field for types that don't want one, but never hide a location an event already has.
+  const showLocation = !eventType?.hideLocation || !!location
   const fieldValues = useWatch({ control, name: 'fields' })
   const { data: directory } = useDirectory()
   // Types with a title template generate the title from their fields, so it is shown but not typed.
@@ -375,15 +378,17 @@ export function EventForm({
         </Field>
       )}
 
-      <Field id="ev-location" label={t('event.fields.location')} error={msg(errors.location?.message)} hint={t('event.locationHint')}>
-        <Input
-          id="ev-location"
-          maxLength={1000}
-          autoComplete="off"
-          aria-describedby={describedBy('ev-location', errors.location?.message, true)}
-          {...register('location')}
-        />
-      </Field>
+      {showLocation ? (
+        <Field id="ev-location" label={t('event.fields.location')} error={msg(errors.location?.message)} hint={t('event.locationHint')}>
+          <Input
+            id="ev-location"
+            maxLength={1000}
+            autoComplete="off"
+            aria-describedby={describedBy('ev-location', errors.location?.message, true)}
+            {...register('location')}
+          />
+        </Field>
+      ) : null}
 
       {eventType ? (
         <TypeFieldsEditor type={eventType} control={control} errors={errors} timeZone={timeZone} />

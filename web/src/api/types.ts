@@ -229,6 +229,8 @@ export type EventType = {
   adminOnly: boolean
   /** Events of this type belong to the calendar, not a person; only admins edit them. */
   ownerless: boolean
+  /** The event form leaves out the location field for this type. */
+  hideLocation: boolean
   /** Generates event titles from `{{field_key}}` placeholders; empty means titles are typed by hand. */
   titleTemplate: string
   /** Guidance shown while creating an event of this type. */
@@ -252,6 +254,7 @@ export type EventTypeWrite = Partial<
     | 'neverRepeats'
     | 'adminOnly'
     | 'ownerless'
+    | 'hideLocation'
     | 'titleTemplate'
     | 'instructions'
     | 'fields'

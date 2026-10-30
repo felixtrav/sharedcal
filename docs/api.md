@@ -129,6 +129,7 @@ type EventType = {
   defaultDurationMinutes: number; // 0–1440; 0 = instants, e.g. deadlines. Ignored for all-day
   singleDay: boolean;           // with defaultAllDay: events last one date (end = start + 1 day)
   ownerless: boolean;           // true: new events get owner = the calendar (UserRef.system) and only admins edit them; `ownerId` in create is 422
+  hideLocation: boolean;        // true: clients leave the location field out of the event form (the server still accepts one)
   adminOnly: boolean;           // true: only admins can create events of the type or switch events to it (403 otherwise)
   neverRepeats: boolean;        // true: events of the type can't repeat (releases); excludes defaultRrule
   defaultRrule: string;         // non-empty: every event of the type repeats with exactly this rule (422 otherwise)

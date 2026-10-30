@@ -90,6 +90,7 @@ type EventTypeDTO struct {
 	NeverRepeats           bool       `json:"neverRepeats" doc:"Events of the type never repeat; excludes defaultRrule"`
 	AdminOnly              bool       `json:"adminOnly" doc:"Only admins can create events of this type or switch events to it"`
 	Ownerless              bool       `json:"ownerless" doc:"Events of this type belong to the calendar rather than a person; only admins edit them"`
+	HideLocation           bool       `json:"hideLocation" doc:"Clients leave the location field out when creating or editing events of this type"`
 	TitleTemplate          string     `json:"titleTemplate" doc:"When set, event titles are generated from field values and cannot be set by hand"`
 	Instructions           string     `json:"instructions" doc:"Guidance shown while creating an event of this type"`
 	Fields                 []FieldDef `json:"fields"`
@@ -111,6 +112,7 @@ type EventTypeInput struct {
 	NeverRepeats           *bool       `json:"neverRepeats,omitempty" doc:"Events of this type can't repeat; cannot be combined with defaultRrule"`
 	AdminOnly              *bool       `json:"adminOnly,omitempty" doc:"Only admins can create events of this type or switch events to it"`
 	Ownerless              *bool       `json:"ownerless,omitempty" doc:"New events of this type get no personal owner (holidays); only admins edit them"`
+	HideLocation           *bool       `json:"hideLocation,omitempty" doc:"Clients leave the location field out of the event form for this type"`
 	TitleTemplate          *string     `json:"titleTemplate,omitempty" maxLength:"200" doc:"Generates event titles from {{field_key}} placeholders; empty turns it off"`
 	Instructions           *string     `json:"instructions,omitempty" maxLength:"1000" doc:"Guidance shown while creating an event of this type"`
 	Fields                 *[]FieldDef `json:"fields,omitempty" maxItems:"20"`
@@ -147,6 +149,9 @@ func applyLook(t *store.EventType, in EventTypeInput) error {
 	}
 	if in.Ownerless != nil {
 		t.Ownerless = *in.Ownerless
+	}
+	if in.HideLocation != nil {
+		t.HideLocation = *in.HideLocation
 	}
 	if in.DefaultAllDay != nil {
 		t.DefaultAllDay = *in.DefaultAllDay
@@ -247,7 +252,7 @@ func parseFieldDefs(raw string) []FieldDef {
 func eventTypeDTO(t store.EventType) EventTypeDTO {
 	return EventTypeDTO{
 		ID: t.ID, Name: t.Name, Icon: t.Icon, ColorSlot: t.ColorSlot, Style: t.Style, YearCounter: t.YearCounter, TitleTemplate: t.TitleTemplate, Instructions: t.Instructions, DefaultAllDay: t.DefaultAllDay, DefaultDurationMinutes: t.DefaultDurationMinutes,
-		DefaultRRule: t.DefaultRRule, NeverRepeats: t.NeverRepeats, AdminOnly: t.AdminOnly, Ownerless: t.Ownerless, SingleDay: t.SingleDay, Fields: parseFieldDefs(t.FieldsJSON), SortOrder: t.SortOrder,
+		DefaultRRule: t.DefaultRRule, NeverRepeats: t.NeverRepeats, AdminOnly: t.AdminOnly, Ownerless: t.Ownerless, HideLocation: t.HideLocation, SingleDay: t.SingleDay, Fields: parseFieldDefs(t.FieldsJSON), SortOrder: t.SortOrder,
 	}
 }
 

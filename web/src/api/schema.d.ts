@@ -1009,6 +1009,8 @@ export interface components {
             name: string;
             /** @description Events of the type never repeat; excludes defaultRrule */
             neverRepeats: boolean;
+            /** @description Clients leave the location field out when creating or editing events of this type */
+            hideLocation: boolean;
             /** @description Events of this type belong to the calendar rather than a person; only admins edit them */
             ownerless: boolean;
             /** @description With defaultAllDay: events last a single date */
@@ -1042,6 +1044,8 @@ export interface components {
             name?: string;
             /** @description Events of this type can't repeat; cannot be combined with defaultRrule */
             neverRepeats?: boolean;
+            /** @description Clients leave the location field out of the event form for this type */
+            hideLocation?: boolean;
             /** @description New events of this type get no personal owner (holidays); only admins edit them */
             ownerless?: boolean;
             /** @description With defaultAllDay: events last a single date rather than a range */

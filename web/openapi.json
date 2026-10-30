@@ -919,6 +919,10 @@
             "description": "Events of the type never repeat; excludes defaultRrule",
             "type": "boolean"
           },
+          "hideLocation": {
+            "description": "Clients leave the location field out when creating or editing events of this type",
+            "type": "boolean"
+          },
           "ownerless": {
             "description": "Events of this type belong to the calendar rather than a person; only admins edit them",
             "type": "boolean"
@@ -961,6 +965,7 @@
           "singleDay",
           "neverRepeats",
           "adminOnly",
+          "hideLocation",
           "ownerless",
           "titleTemplate",
           "instructions",
@@ -1046,6 +1051,10 @@
           },
           "neverRepeats": {
             "description": "Events of this type can't repeat; cannot be combined with defaultRrule",
+            "type": "boolean"
+          },
+          "hideLocation": {
+            "description": "Clients leave the location field out of the event form for this type",
             "type": "boolean"
           },
           "ownerless": {

@@ -164,6 +164,8 @@ type EventType struct {
 	// Ownerless gives the type's events no personal owner: they belong to the calendar (SystemUserID)
 	// and only admins edit them.
 	Ownerless bool `gorm:"not null"`
+	// HideLocation leaves the location field out of the event form for types where it makes no sense (video games).
+	HideLocation bool `gorm:"not null"`
 	// Instructions are shown to writers while they create an event of this type.
 	Instructions string    `gorm:"size:1000;not null;default:''"`
 	FieldsJSON   string    `gorm:"column:fields_json;type:text;not null"`

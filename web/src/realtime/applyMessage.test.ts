@@ -186,6 +186,7 @@ describe('applyStreamMessage', () => {
         neverRepeats: false,
         adminOnly: false,
         ownerless: false,
+        hideLocation: false,
         defaultAllDay: true,
         defaultDurationMinutes: 60,
         defaultRrule: 'FREQ=YEARLY',

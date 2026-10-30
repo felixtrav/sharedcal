@@ -20,6 +20,7 @@ type typeDTO struct {
 	Icon          string           `json:"icon"`
 	ColorSlot     string           `json:"colorSlot"`
 	DefaultAllDay bool             `json:"defaultAllDay"`
+	HideLocation  bool             `json:"hideLocation"`
 	DefaultRRule  string           `json:"defaultRrule"`
 	Fields        []map[string]any `json:"fields"`
 }
@@ -1106,5 +1107,21 @@ func TestImportICSAndOwnerlessTypes(t *testing.T) {
 	}
 	if st := alice.status("POST", "/api/import/ics", map[string]any{"ics": "nonsense"}); st != 422 {
 		t.Errorf("garbage: %d, want 422", st)
+	}
+}
+
+func TestHideLocationTypes(t *testing.T) {
+	t.Parallel()
+	e := newEnv(t, options{})
+	alice := e.login(t, "alice")
+
+	var game typeDTO
+	alice.mustJSON("POST", "/api/event-types", map[string]any{"name": "Game night", "colorSlot": "tag-2", "icon": "gamepad", "hideLocation": true}, 201, &game)
+	if !game.HideLocation || game.Icon != "gamepad" {
+		t.Fatalf("created: %+v", game)
+	}
+	alice.mustJSON("PATCH", "/api/event-types/"+game.ID, map[string]any{"hideLocation": false, "icon": "film"}, 200, &game)
+	if game.HideLocation || game.Icon != "film" {
+		t.Fatalf("patched: %+v", game)
 	}
 }
