@@ -14,7 +14,6 @@ export function ThemeController() {
   const themeId = me?.preferences.themeId || 'default'
   const mode = me?.preferences.colorMode ?? 'system'
   const accent = me?.instance.accentColor || undefined
-  const density = me?.preferences.density ?? 'comfortable'
 
   const compiled = useMemo(() => {
     const list = themesData?.themes ?? BUILTIN_THEMES
@@ -27,10 +26,6 @@ export function ThemeController() {
     applyTheme(compiled, mode)
     persistTheme(compiled, mode)
   }, [compiled, mode, systemDark, me])
-
-  useEffect(() => {
-    document.documentElement.dataset.density = density
-  }, [density])
 
   return null
 }

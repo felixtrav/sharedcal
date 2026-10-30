@@ -63,7 +63,7 @@ func seed(t *testing.T, db *store.DB, blobs attachments.BlobStore) {
 		&store.User{ID: u2, OIDCIssuer: "https://id.example.com", OIDCSubject: "b", Role: "writer", RoleSource: store.RoleSourceManual,
 			GroupsJSON: `[]`, Active: false, CreatedAt: ts, UpdatedAt: ts},
 		&store.UserPreference{UserID: u1, ThemeID: "default", ColorMode: "dark", TimeZone: "Europe/Berlin", WeekStart: 1, Clock24h: true,
-			DefaultView: "week", Density: "compact", CreatedAt: ts, UpdatedAt: ts},
+			DefaultView: "week", CreatedAt: ts, UpdatedAt: ts},
 		&store.Session{ID: strings.Repeat("f", 64), UserID: u1, ExpiresAt: ts.Add(time.Hour), IdleExpiresAt: ts.Add(time.Hour), LastSeenAt: ts, CreatedAt: ts, UpdatedAt: ts},
 		&store.Event{ID: ev, OwnerID: u1, Title: "Board game night", Description: "Bring *snacks*. Ünïcødé ✓", Location: "Dana's",
 			StartAt: ts, EndAt: ts.Add(4 * time.Hour), TimeZone: "America/New_York", RRule: "FREQ=WEEKLY;BYDAY=FR", SeriesEndAt: nil,

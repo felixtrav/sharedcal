@@ -476,11 +476,10 @@ type Preferences struct {
 	WeekStart   int    `json:"weekStart" enum:"0,1,2,3,4,5,6"`
 	Clock24h    bool   `json:"clock24h"`
 	DefaultView string `json:"defaultView" enum:"month,week,day,agenda"`
-	Density     string `json:"density" enum:"comfortable,compact"`
 }
 
 func defaultPreferences() Preferences {
-	return Preferences{ThemeID: "default", ColorMode: "system", WeekStart: 0, DefaultView: "month", Density: "comfortable"}
+	return Preferences{ThemeID: "default", ColorMode: "system", WeekStart: 0, DefaultView: "month"}
 }
 
 func (s *Service) preferences(db *gorm.DB, userID string) (Preferences, error) {
@@ -492,7 +491,7 @@ func (s *Service) preferences(db *gorm.DB, userID string) (Preferences, error) {
 	if err != nil {
 		return Preferences{}, err
 	}
-	return Preferences{ThemeID: row.ThemeID, ColorMode: row.ColorMode, TimeZone: row.TimeZone, WeekStart: row.WeekStart, Clock24h: row.Clock24h, DefaultView: row.DefaultView, Density: row.Density}, nil
+	return Preferences{ThemeID: row.ThemeID, ColorMode: row.ColorMode, TimeZone: row.TimeZone, WeekStart: row.WeekStart, Clock24h: row.Clock24h, DefaultView: row.DefaultView}, nil
 }
 
 // SavePreferences validates and stores the caller's preferences.
@@ -512,9 +511,6 @@ func (s *Service) SavePreferences(ctx context.Context, actor authz.Actor, p Pref
 	if !oneOf(p.DefaultView, "month", "week", "day", "agenda") {
 		fe.add("defaultView", "unknown view")
 	}
-	if !oneOf(p.Density, "comfortable", "compact") {
-		fe.add("density", "must be comfortable or compact")
-	}
 	if p.WeekStart < 0 || p.WeekStart > 6 {
 		fe.add("weekStart", "must be 0–6")
 	}
@@ -525,7 +521,7 @@ func (s *Service) SavePreferences(ctx context.Context, actor authz.Actor, p Pref
 		return Preferences{}, err
 	}
 	now := s.now()
-	row := store.UserPreference{UserID: actor.ID, ThemeID: p.ThemeID, ColorMode: p.ColorMode, TimeZone: p.TimeZone, WeekStart: p.WeekStart, Clock24h: p.Clock24h, DefaultView: p.DefaultView, Density: p.Density, CreatedAt: now, UpdatedAt: now}
+	row := store.UserPreference{UserID: actor.ID, ThemeID: p.ThemeID, ColorMode: p.ColorMode, TimeZone: p.TimeZone, WeekStart: p.WeekStart, Clock24h: p.Clock24h, DefaultView: p.DefaultView, CreatedAt: now, UpdatedAt: now}
 	err := s.write(ctx, actor, func(tx *Tx) error {
 		var existing store.UserPreference
 		err := tx.db.Where("user_id = ?", actor.ID).Take(&existing).Error

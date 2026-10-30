@@ -85,18 +85,6 @@ export function PreferencesPage() {
             ))}
           </div>
         </div>
-        <div className="grid gap-2">
-          <span className="text-sm font-medium">{t('preferences.density')}</span>
-          <Segmented<Preferences['density']>
-            label={t('preferences.density')}
-            value={prefs.density}
-            onChange={(v) => void save({ density: v })}
-            options={[
-              { value: 'comfortable', label: t('preferences.densities.comfortable') },
-              { value: 'compact', label: t('preferences.densities.compact') },
-            ]}
-          />
-        </div>
       </Section>
 
       <Section id="pref-time" title={t('preferences.dateTime')}>

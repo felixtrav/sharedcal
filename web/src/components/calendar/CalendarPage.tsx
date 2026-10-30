@@ -435,7 +435,7 @@ export function CalendarPage() {
             }}
             eventTimeFormat={{ hour: 'numeric', minute: '2-digit', hour12: !prefs.clock24h, meridiem: 'short' }}
             slotHeaderFormat={{ hour: 'numeric', minute: '2-digit', omitZeroMinute: !prefs.clock24h, hour12: !prefs.clock24h }}
-            slotMinHeight={prefs.density === 'compact' ? 28 : 40}
+            slotMinHeight={40}
             scrollTime="07:30:00"
             datesSet={onDatesSet}
             eventClick={onEventClick}

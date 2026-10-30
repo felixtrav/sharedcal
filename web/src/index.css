@@ -216,10 +216,6 @@
   }
 }
 
-[data-density='compact'] .sc-calendar {
-  font-size: 0.8125rem;
-}
-
 /* Side panel slide-in (150 ms). */
 @keyframes sc-panel-in {
   from {

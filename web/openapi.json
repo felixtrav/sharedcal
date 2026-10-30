@@ -1673,13 +1673,6 @@
             ],
             "type": "string"
           },
-          "density": {
-            "enum": [
-              "comfortable",
-              "compact"
-            ],
-            "type": "string"
-          },
           "themeId": {
             "maxLength": 64,
             "type": "string"
@@ -1708,8 +1701,7 @@
           "timeZone",
           "weekStart",
           "clock24h",
-          "defaultView",
-          "density"
+          "defaultView"
         ],
         "type": "object"
       },

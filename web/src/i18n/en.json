@@ -459,11 +459,6 @@
     },
     "theme": "Theme",
     "themeBy": "by {{author}}",
-    "density": "Density",
-    "densities": {
-      "comfortable": "Comfortable",
-      "compact": "Compact"
-    },
     "dateTime": "Date and time",
     "timeZone": "Time zone",
     "browserTimeZone": "Browser default ({{zone}})",
