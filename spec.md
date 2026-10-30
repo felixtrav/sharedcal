@@ -242,7 +242,7 @@ As described under Roles and permissions: field-level patches with diff review, 
 | --- | --- | --- |
 | Calendar | All | Landing page. |
 | Inbox | All | Replies and mentions; suggestions on my events and decisions on mine. |
-| Preferences | All | Theme, light/dark/system, time zone, week start day, 12/24-hour clock, default view, density. |
+| Preferences | All | Theme, light/dark/system, time zone, week start day, 12/24-hour clock, default view. |
 | Subscribe | All | Personal ICS feed URL with copy button and reset. |
 | People | Admins | Users, roles, role source, sessions, deactivate. |
 | Tags | Admins | Create, rename, recolor, reorder tags. |
@@ -403,7 +403,7 @@ Fifteen tables, all with UUIDv7 primary keys (time-ordered, safe to expose, vali
 | Table | Key fields | Notes |
 | --- | --- | --- |
 | `users` | `id`, `oidc_issuer`, `oidc_subject`, `email`, `display_name`, `avatar_url`, `role`, `role_source` (`idp`/`manual`), `groups_json`, `active`, `last_login_at` | Unique on `(oidc_issuer, oidc_subject)`. |
-| `user_preferences` | `user_id`, `theme_id`, `color_mode`, `time_zone`, `week_start`, `clock_24h`, `default_view`, `density` | One row per user. |
+| `user_preferences` | `user_id`, `theme_id`, `color_mode`, `time_zone`, `week_start`, `clock_24h`, `default_view` | One row per user. |
 | `sessions` | `id` (hashed), `user_id`, `expires_at`, `idle_expires_at`, `ip`, `user_agent`, `created_at` | Session ID stored as SHA-256 hash only. |
 | `events` | `id`, `owner_id`, `title`, `description`, `location`, `start_at`, `end_at`, `all_day`, `time_zone`, `rrule`, `exdates_json`, `status` (`confirmed`/`tentative`), `version`, `deleted_at` | `version` drives optimistic concurrency. Index on `(start_at, end_at)` and `deleted_at`. |
 | `event_overrides` | `id`, `event_id`, `recurrence_id` (original start), fields as `events`, `cancelled` | One row per modified or cancelled occurrence. |

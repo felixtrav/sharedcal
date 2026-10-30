@@ -84,14 +84,12 @@ table(
         ("week_start", "int", True),
         ("clock_24h", "bool", True),
         ("default_view", "str:16", True),
-        ("density", "str:16", True),
     ],
     ["user_id"],
     checks=[
         inlist("color_mode", ["light", "dark", "system"]),
         "week_start BETWEEN 0 AND 6",
         inlist("default_view", ["month", "week", "day", "agenda"]),
-        inlist("density", ["comfortable", "compact"]),
     ],
     fks=[("user_id", "users", "id", "CASCADE")],
 )

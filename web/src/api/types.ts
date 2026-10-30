@@ -299,7 +299,6 @@ export type Preferences = {
   weekStart: 0 | 1 | 2 | 3 | 4 | 5 | 6
   clock24h: boolean
   defaultView: CalendarView
-  density: 'comfortable' | 'compact'
 }
 
 export type ThemeTokens = Record<string, string>
