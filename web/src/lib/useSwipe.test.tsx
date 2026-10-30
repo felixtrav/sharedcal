@@ -65,11 +65,24 @@ describe('useSwipe', () => {
         vi.advanceTimersByTime(16)
       })
     stream([30, 28, 24, 18, 12, 8, 5])
-    stream([4, 20, 30, 28, 22])
+    vi.advanceTimersByTime(300)
+    stream([4, 1, 30, 40, 28, 22])
     expect(fn).toHaveBeenCalledTimes(2)
-    stream([-30, -28, -24])
+    vi.advanceTimersByTime(400)
+    stream([-40, -38, -30])
     expect(fn).toHaveBeenCalledTimes(3)
     expect(fn).toHaveBeenLastCalledWith(-1)
+  })
+
+  it('does not skip periods when the momentum stream is noisy', () => {
+    const fn = vi.fn()
+    const { getByTestId } = render(<Harness onSwipe={fn} />)
+    const area = getByTestId('area')
+    for (const dx of [20, 45, 60, 38, 52, 30, 41, 22, 30, 12, 20, 6, 9, 3, 5, 2, 4, 1, 3]) {
+      fireEvent.wheel(area, { deltaX: dx, deltaY: 2 })
+      vi.advanceTimersByTime(16)
+    }
+    expect(fn).toHaveBeenCalledTimes(1)
   })
 
   it('leaves vertical scrolling alone', () => {
