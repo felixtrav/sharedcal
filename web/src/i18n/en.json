@@ -804,7 +804,9 @@
       "stethoscope": "Health",
       "home": "Home",
       "users": "People",
-      "bell": "Bell"
+      "bell": "Bell",
+      "gamepad": "Video games",
+      "film": "Movies"
     },
     "defaultRepeat": "Repetition",
     "repeats": {

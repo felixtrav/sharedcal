@@ -3,7 +3,9 @@ import {
   BriefcaseIcon,
   CakeIcon,
   CalendarIcon,
+  FilmIcon,
   FlagIcon,
+  Gamepad2Icon,
   GiftIcon,
   GraduationCapIcon,
   HeartIcon,
@@ -40,6 +42,8 @@ const ICONS: Record<TypeIcon, LucideIcon> = {
   home: HomeIcon,
   users: UsersIcon,
   bell: BellIcon,
+  gamepad: Gamepad2Icon,
+  film: FilmIcon,
 }
 
 /** An event type's icon. Unknown names (from a newer server) fall back to a calendar. */

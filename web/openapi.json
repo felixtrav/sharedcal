@@ -899,7 +899,9 @@
               "stethoscope",
               "home",
               "users",
-              "bell"
+              "bell",
+              "gamepad",
+              "film"
             ],
             "type": "string"
           },
@@ -1027,7 +1029,9 @@
               "stethoscope",
               "home",
               "users",
-              "bell"
+              "bell",
+              "gamepad",
+              "film"
             ],
             "type": "string"
           },

@@ -121,7 +121,7 @@ type EventTypeField = {
 type EventType = {
   id: string; name: string;
   icon: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase"
-      | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell";
+      | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell" | "gamepad" | "film";
   colorSlot: "tag-1" | "tag-2" | "tag-3" | "tag-4" | "tag-5" | "tag-6" | "tag-7" | "tag-8";
   style: "default" | "banner" | "outline" | "badge"; // how the calendar draws it
   yearCounter: boolean;         // events get `yearsSince` (see Event)

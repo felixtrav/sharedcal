@@ -47,7 +47,7 @@ const (
 // glyph. Keep in sync with web/src/lib/typeIcons.ts.
 var typeIcons = []string{
 	"calendar", "cake", "gift", "party-popper", "flag", "plane", "heart", "star", "briefcase",
-	"graduation-cap", "utensils", "music", "trophy", "stethoscope", "home", "users", "bell",
+	"graduation-cap", "utensils", "music", "trophy", "stethoscope", "home", "users", "bell", "gamepad", "film",
 }
 
 // Styles an event type can use on the calendar.
@@ -79,7 +79,7 @@ func (d FieldDef) allowsMany() bool {
 type EventTypeDTO struct {
 	ID                     string     `json:"id"`
 	Name                   string     `json:"name"`
-	Icon                   string     `json:"icon" enum:"calendar,cake,gift,party-popper,flag,plane,heart,star,briefcase,graduation-cap,utensils,music,trophy,stethoscope,home,users,bell"`
+	Icon                   string     `json:"icon" enum:"calendar,cake,gift,party-popper,flag,plane,heart,star,briefcase,graduation-cap,utensils,music,trophy,stethoscope,home,users,bell,gamepad,film"`
 	ColorSlot              string     `json:"colorSlot" enum:"tag-1,tag-2,tag-3,tag-4,tag-5,tag-6,tag-7,tag-8"`
 	Style                  string     `json:"style" enum:"default,banner,outline,badge"`
 	YearCounter            bool       `json:"yearCounter"`
@@ -100,7 +100,7 @@ type EventTypeDTO struct {
 // unchanged (creation requires name and colorSlot).
 type EventTypeInput struct {
 	Name                   *string     `json:"name,omitempty" maxLength:"64"`
-	Icon                   *string     `json:"icon,omitempty" enum:"calendar,cake,gift,party-popper,flag,plane,heart,star,briefcase,graduation-cap,utensils,music,trophy,stethoscope,home,users,bell"`
+	Icon                   *string     `json:"icon,omitempty" enum:"calendar,cake,gift,party-popper,flag,plane,heart,star,briefcase,graduation-cap,utensils,music,trophy,stethoscope,home,users,bell,gamepad,film"`
 	ColorSlot              *string     `json:"colorSlot,omitempty" enum:"tag-1,tag-2,tag-3,tag-4,tag-5,tag-6,tag-7,tag-8"`
 	Style                  *string     `json:"style,omitempty" enum:"default,banner,outline,badge"`
 	YearCounter            *bool       `json:"yearCounter,omitempty" doc:"Show years since the first occurrence of a recurring event"`

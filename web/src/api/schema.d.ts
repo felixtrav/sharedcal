@@ -1002,7 +1002,7 @@ export interface components {
             defaultRrule: string;
             fields: components["schemas"]["FieldDef"][];
             /** @enum {string} */
-            icon: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell";
+            icon: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell" | "gamepad" | "film";
             id: string;
             /** @description Guidance shown while creating an event of this type */
             instructions: string;
@@ -1036,7 +1036,7 @@ export interface components {
             defaultRrule?: string;
             fields?: components["schemas"]["FieldDef"][];
             /** @enum {string} */
-            icon?: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell";
+            icon?: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell" | "gamepad" | "film";
             /** @description Guidance shown while creating an event of this type */
             instructions?: string;
             name?: string;
