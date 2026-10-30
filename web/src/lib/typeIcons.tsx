@@ -3,7 +3,6 @@ import {
   BriefcaseIcon,
   CakeIcon,
   CalendarIcon,
-  FilmIcon,
   FlagIcon,
   Gamepad2Icon,
   GiftIcon,
@@ -18,10 +17,19 @@ import {
   TrophyIcon,
   UsersIcon,
   UtensilsIcon,
+  createLucideIcon,
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react'
 import type { TypeIcon } from '@/api/types'
+
+/** An old movie camera with two film reels on top, which Lucide doesn't ship. */
+const MovieCameraIcon = createLucideIcon('movie-camera', [
+  ['circle', { cx: '7', cy: '6', r: '3', key: 'reel-a' }],
+  ['circle', { cx: '14.5', cy: '6', r: '3', key: 'reel-b' }],
+  ['rect', { x: '2', y: '10', width: '15', height: '10', rx: '2', key: 'body' }],
+  ['path', { d: 'm17 13 5-2.5v9L17 17', key: 'lens' }],
+])
 
 /** Glyphs for event types. Keep in sync with `typeIcons` in internal/domain/eventtypes.go. */
 const ICONS: Record<TypeIcon, LucideIcon> = {
@@ -43,7 +51,7 @@ const ICONS: Record<TypeIcon, LucideIcon> = {
   users: UsersIcon,
   bell: BellIcon,
   gamepad: Gamepad2Icon,
-  film: FilmIcon,
+  film: MovieCameraIcon,
 }
 
 /** An event type's icon. Unknown names (from a newer server) fall back to a calendar. */

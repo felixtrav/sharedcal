@@ -805,8 +805,8 @@
       "home": "Home",
       "users": "People",
       "bell": "Bell",
-      "gamepad": "Video games",
-      "film": "Movies"
+      "gamepad": "Gamepad",
+      "film": "Movie camera"
     },
     "defaultRepeat": "Repetition",
     "repeats": {
@@ -895,7 +895,7 @@
     "ownerless": "Events have no owner",
     "ownerlessHint": "Events of this type belong to the calendar instead of the person who adds them, like holidays. Only admins can edit them; everyone else can suggest changes.",
     "hideLocation": "Don't ask for a location",
-    "hideLocationHint": "Leaves the location field out when adding or editing events of this type, like video games.",
+    "hideLocationHint": "Leaves the location field out when adding or editing events of this type, like games.",
     "defaultDuration": "New events last (minutes)",
     "defaultDurationHint": "0 makes an instant, like a deadline. Not used for all-day events."
   }
