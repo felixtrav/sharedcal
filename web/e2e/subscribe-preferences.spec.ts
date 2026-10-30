@@ -64,7 +64,6 @@ test('preferences save immediately and change how the calendar renders', async (
     weekStart: 1,
     clock24h: false,
     defaultView: 'month',
-    density: 'comfortable',
   })
   await context.close()
 })

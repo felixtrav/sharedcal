@@ -1229,8 +1229,6 @@ export interface components {
             colorMode: "light" | "dark" | "system";
             /** @enum {string} */
             defaultView: "month" | "week" | "day" | "agenda";
-            /** @enum {string} */
-            density: "comfortable" | "compact";
             themeId: string;
             timeZone: string;
             /**

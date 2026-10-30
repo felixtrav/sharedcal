@@ -925,7 +925,7 @@ func TestTitleTimesFollowEachSubscribersZoneAndClock(t *testing.T) {
 		t.Errorf("default: %q", got)
 	}
 	// Berlin is six hours ahead of New York in early November.
-	alice.mustJSON("PUT", "/api/me/preferences", map[string]any{"themeId": "default", "colorMode": "light", "timeZone": "Europe/Berlin", "weekStart": 1, "clock24h": true, "defaultView": "week", "density": "comfortable"}, 200, nil)
+	alice.mustJSON("PUT", "/api/me/preferences", map[string]any{"themeId": "default", "colorMode": "light", "timeZone": "Europe/Berlin", "weekStart": 1, "clock24h": true, "defaultView": "week"}, 200, nil)
 	if got := summary(alice); got != "Game X Releases @01:30" {
 		t.Errorf("Berlin, 24-hour: %q", got)
 	}
