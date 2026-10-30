@@ -31,7 +31,7 @@ export function makeEvent(overrides: Partial<CalEvent> = {}): CalEvent {
 }
 
 export function makeDetail(overrides: Partial<EventDetail> = {}): EventDetail {
-  return { ...makeEvent(overrides), overrides: [], attachments: [], ...overrides }
+  return { ...makeEvent(overrides), overrides: [], attachments: [], watching: false, ...overrides }
 }
 
 export function makeComment(overrides: Partial<Comment> = {}): Comment {

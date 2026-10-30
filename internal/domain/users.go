@@ -480,7 +480,7 @@ type Preferences struct {
 }
 
 func defaultPreferences() Preferences {
-	return Preferences{ThemeID: "default", ColorMode: "system", WeekStart: 1, DefaultView: "month", Density: "comfortable"}
+	return Preferences{ThemeID: "default", ColorMode: "system", WeekStart: 0, DefaultView: "month", Density: "comfortable"}
 }
 
 func (s *Service) preferences(db *gorm.DB, userID string) (Preferences, error) {
@@ -723,6 +723,10 @@ func (s *Service) EraseUser(ctx context.Context, actor authz.Actor, id, transfer
 				}
 			}
 			return q
+		}
+
+		if err := tx.db.Where("user_id = ?", id).Delete(&store.EventWatch{}).Error; err != nil {
+			return err
 		}
 
 		// Inbox items addressed to them or about content that is now gone;

@@ -207,6 +207,11 @@ func (s *Service) upload(ctx context.Context, actor authz.Actor, eventID string,
 		if err := tx.record("attachment.added", "attachment", row.ID, &eventID, nil, map[string]any{"filename": row.Filename, "size": row.SizeBytes, "contentType": row.ContentType, "commentId": row.CommentID}); err != nil {
 			return err
 		}
+		if comment == nil {
+			if err := s.notifyWatchers(tx, eventID, kindWatchUpdated); err != nil {
+				return err
+			}
+		}
 		audience := ""
 		if row.ScanStatus == store.ScanPending {
 			audience = actor.ID // pending files are visible only to their uploader

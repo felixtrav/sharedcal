@@ -1,12 +1,22 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { AtSignIcon, CheckCheckIcon, CheckIcon, InboxIcon, MessageSquareDiffIcon, ReplyIcon } from 'lucide-react'
+import {
+  AtSignIcon,
+  CalendarClockIcon,
+  CalendarX2Icon,
+  CheckCheckIcon,
+  CheckIcon,
+  InboxIcon,
+  MessageSquareDiffIcon,
+  MessagesSquareIcon,
+  ReplyIcon,
+} from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
 import { useInbox } from '@/api/queries'
-import type { Notification } from '@/api/types'
+import type { EventFieldValues, Notification } from '@/api/types'
 import { EmptyState, LoadError, Page, PageHeader } from '@/components/layout/PageHeader'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -16,6 +26,7 @@ import { errorMessage } from '@/lib/errors'
 import { formatDateTime, formatRelative } from '@/lib/time'
 import { useFmt } from '@/lib/useFmt'
 import { cn } from '@/lib/utils'
+import { useEventTitle } from '@/components/event/useEventTitle'
 
 type InboxData = { items: Notification[]; unread: number }
 
@@ -24,6 +35,9 @@ const ICONS = {
   'suggestion.resolved': CheckIcon,
   'comment.reply': ReplyIcon,
   'comment.mention': AtSignIcon,
+  'watch.updated': CalendarClockIcon,
+  'watch.comments': MessagesSquareIcon,
+  'watch.deleted': CalendarX2Icon,
 } as const
 
 export function InboxPage() {
@@ -31,6 +45,7 @@ export function InboxPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const fmt = useFmt()
+  const titleOf = useEventTitle(fmt)
   const { data, isPending, isError, refetch } = useInbox()
   const [older, setOlder] = useState<Notification[]>([])
   const [hasMore, setHasMore] = useState(true)
@@ -64,8 +79,9 @@ export function InboxPage() {
 
   const open = (n: Notification) => {
     if (!n.readAt) void markRead([n.id])
-    if (!n.eventId) return
-    void navigate({ to: '/', search: { event: n.eventId, tab: n.subjectType === 'suggestion' ? 'suggestions' : 'comments' } })
+    if (!n.eventId || n.kind === 'watch.deleted') return
+    const tab = n.subjectType === 'suggestion' ? 'suggestions' : n.kind === 'watch.updated' ? 'details' : 'comments'
+    void navigate({ to: '/', search: { event: n.eventId, tab } })
   }
 
   const loadMore = async () => {
@@ -140,7 +156,11 @@ export function InboxPage() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className={cn('block truncate text-sm', unread && 'font-semibold')}>
-                        {t(`inbox.kinds.${n.kind.replace('.', '_')}`, { name: n.actor?.name ?? t('activity.system'), title: n.eventTitle })}
+                        {t(`inbox.kinds.${n.kind.replace('.', '_')}`, {
+                          name: n.actor?.name ?? t('activity.system'),
+                          title: n.event ? titleOf({ title: n.eventTitle, ...n.event, fields: n.event.fields as EventFieldValues }) : n.eventTitle,
+                          count: n.count,
+                        })}
                       </span>
                       <time dateTime={n.createdAt} title={formatDateTime(Date.parse(n.createdAt), fmt)} className="text-xs text-muted-foreground">
                         {formatRelative(n.createdAt)}

@@ -242,6 +242,14 @@ func (s *Server) registerEvents() {
 			}
 			return ok(*e), nil
 		}))
+	register(s, huma.Operation{OperationID: "watchEvent", Method: http.MethodPut, Path: "/api/events/{id}/watch", Tags: tags, Summary: "Get inbox items when the event changes", DefaultStatus: http.StatusNoContent},
+		withActor(func(ctx context.Context, a authz.Actor, in *idPath) (*empty, error) {
+			return &empty{}, d.Watch(ctx, a, in.ID)
+		}))
+	register(s, huma.Operation{OperationID: "unwatchEvent", Method: http.MethodDelete, Path: "/api/events/{id}/watch", Tags: tags, Summary: "Stop getting inbox items for the event", DefaultStatus: http.StatusNoContent},
+		withActor(func(ctx context.Context, a authz.Actor, in *idPath) (*empty, error) {
+			return &empty{}, d.Unwatch(ctx, a, in.ID)
+		}))
 	register(s, huma.Operation{OperationID: "listTrash", Method: http.MethodGet, Path: "/api/trash", Tags: tags, Summary: "Deleted events (admins)"},
 		withActor(func(ctx context.Context, a authz.Actor, _ *empty) (*body[eventsBody], error) {
 			evs, err := d.Trash(ctx, a)
