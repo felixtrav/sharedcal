@@ -6,6 +6,8 @@
     "redirecting": "Redirecting to sign in…"
   },
   "common": {
+    "required": "Required",
+    "optional": "Optional",
     "cancel": "Cancel",
     "close": "Close",
     "create": "Create",

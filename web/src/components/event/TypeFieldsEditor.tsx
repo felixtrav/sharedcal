@@ -6,7 +6,7 @@ import { useDirectory } from '@/api/queries'
 import type { EventType, EventTypeField } from '@/api/types'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/avatar'
-import { describedBy } from '@/components/ui/field'
+import { describedBy, RequirementMark } from '@/components/ui/field'
 import { Input, NativeSelect, Textarea } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -68,7 +68,8 @@ function FieldShell({ def, id, error, children }: { def: EventTypeField; id: str
     <div className="grid gap-1.5">
       <Label htmlFor={id} id={`${id}-label`} className="gap-1.5">
         <KindIcon kind={def.kind} className="size-3.5 text-muted-foreground" />
-        {def.required ? `${def.label} *` : def.label}
+        {def.label}
+        <RequirementMark requirement={def.required ? 'required' : 'optional'} />
       </Label>
       {children}
       {error ? (
@@ -118,7 +119,8 @@ function FieldInput({
         <div className="grid gap-1.5">
           <span id={`${id}-label`} className="flex items-center gap-1.5 text-sm font-medium">
             <KindIcon kind="members" className="size-3.5 text-muted-foreground" />
-            {def.required ? `${def.label} *` : def.label}
+            {def.label}
+            <RequirementMark requirement={def.required ? 'required' : 'optional'} />
           </span>
           <MembersPicker labelledBy={`${id}-label`} multiple={allowsMany(def)} value={Array.isArray(value) ? value : []} onChange={onChange} />
           {error ? (
@@ -149,7 +151,8 @@ function FieldInput({
         <div className="grid gap-1.5">
           <span id={`${id}-label`} className="flex items-center gap-1.5 text-sm font-medium">
             <KindIcon kind="select" className="size-3.5 text-muted-foreground" />
-            {def.required ? `${def.label} *` : def.label}
+            {def.label}
+            <RequirementMark requirement={def.required ? 'required' : 'optional'} />
           </span>
           <div
             role={multiple ? 'group' : 'radiogroup'}
