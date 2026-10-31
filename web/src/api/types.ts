@@ -203,6 +203,7 @@ export const TYPE_ICONS = [
   'bell',
   'gamepad',
   'film',
+  'ball',
 ] as const
 export type TypeIcon = (typeof TYPE_ICONS)[number]
 

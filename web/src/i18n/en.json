@@ -808,7 +808,8 @@
       "users": "People",
       "bell": "Bell",
       "gamepad": "Gamepad",
-      "film": "Movie Reel"
+      "film": "Movie Reel",
+      "ball": "Ball"
     },
     "defaultRepeat": "Repetition",
     "repeats": {

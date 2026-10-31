@@ -31,6 +31,15 @@ const MovieCameraIcon = createLucideIcon('movie-camera', [
   ['path', { d: 'm17 13 5-2.5v9L17 17', key: 'lens' }],
 ])
 
+/** A basketball, which Lucide doesn't ship. */
+const BallIcon = createLucideIcon('ball', [
+  ['circle', { cx: '12', cy: '12', r: '10', key: 'ball' }],
+  ['path', { d: 'M12 2v20', key: 'vertical' }],
+  ['path', { d: 'M2 12h20', key: 'horizontal' }],
+  ['path', { d: 'M5.2 4.6c3 3.6 3 10.2 0 14.8', key: 'seam-start' }],
+  ['path', { d: 'M18.8 4.6c-3 3.6-3 10.2 0 14.8', key: 'seam-end' }],
+])
+
 /** Glyphs for event types. Keep in sync with `typeIcons` in internal/domain/eventtypes.go. */
 const ICONS: Record<TypeIcon, LucideIcon> = {
   calendar: CalendarIcon,
@@ -52,6 +61,7 @@ const ICONS: Record<TypeIcon, LucideIcon> = {
   bell: BellIcon,
   gamepad: Gamepad2Icon,
   film: MovieCameraIcon,
+  ball: BallIcon,
 }
 
 /** An event type's icon. Unknown names (from a newer server) fall back to a calendar. */
