@@ -148,6 +148,13 @@
 /* ------------------------------------------------------------------------ */
 /* Calendar                                                                  */
 
+.sc-calendar,
+.sc-calendar .fc-scroller {
+  /* The time grid scrolls on its own, so containing overscroll on the wrapper alone doesn't stop the
+     browser's swipe-to-go-back gesture over week and day views. */
+  overscroll-behavior-x: contain;
+}
+
 .sc-calendar {
   font-variant-numeric: tabular-nums;
   height: 100%;

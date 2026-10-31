@@ -61,6 +61,8 @@ export function useSwipe(ref: RefObject<HTMLElement | null>, onSwipe: (dir: 1 | 
         return
       }
       if (abs === 0) return
+      // Stop the browser reading the swipe as its history gesture (back/forward).
+      if (e.cancelable) e.preventDefault()
       const now = Date.now()
       const sign = Math.sign(e.deltaX)
       if (spent) {
@@ -90,7 +92,7 @@ export function useSwipe(ref: RefObject<HTMLElement | null>, onSwipe: (dir: 1 | 
     el.addEventListener('touchstart', onTouchStart, { passive: true })
     el.addEventListener('touchend', onTouchEnd, { passive: true })
     el.addEventListener('touchcancel', cancel, { passive: true })
-    el.addEventListener('wheel', onWheel, { passive: true })
+    el.addEventListener('wheel', onWheel, { passive: false })
     return () => {
       el.removeEventListener('touchstart', onTouchStart)
       el.removeEventListener('touchend', onTouchEnd)
