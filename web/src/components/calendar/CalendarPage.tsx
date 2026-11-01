@@ -122,7 +122,8 @@ export function CalendarPage() {
     (info: DatesSetInfo) => {
       setRange({ from: toUtcString(info.view.activeStart), to: toUtcString(info.view.activeEnd) })
       const a = calRef.current?.getApi()
-      const date = a ? dateInZone(a.getDate().getTime(), tz) : undefined
+      // The first report can arrive before the calendar's ref is set; keep a deep-linked date until it is.
+      const date = a ? dateInZone(a.getDate().getTime(), tz) : search.date
       const v = fromFcView(info.view.type)
       if (v !== search.view || date !== search.date) {
         void navigate({ search: (prev) => ({ ...prev, view: v, date }), replace: true })
