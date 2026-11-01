@@ -251,7 +251,11 @@ test('a title template generates event titles with a live preview and no typing'
   await editor.getByLabel('Name of field 1').fill('Couple')
   await editor.getByRole('checkbox', { name: 'Required' }).check()
   await editor.getByRole('button', { name: 'Insert Couple' }).click()
-  await editor.getByLabel('Automatic title').pressSequentially(' Anniversary')
+  // Inserting moves the caret on the next frame; wait for it, then type from the end so keystrokes can't land early.
+  const template = editor.getByLabel('Automatic title')
+  await expect(template).toHaveValue('{{couple}}')
+  await template.press('End')
+  await template.pressSequentially(' Anniversary')
   await expect(editor.getByText('Couple Anniversary')).toBeVisible()
   await editor.getByRole('button', { name: 'Save' }).click()
   await expect(alice.page.getByText(`Event type “${name}” saved`).first()).toBeVisible()
