@@ -8,7 +8,7 @@ import { fieldErrors, isApiError } from '@/api/client'
 import { storeEvent } from '@/api/eventCache'
 import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
-import { useDirectory, useEventTypes, useMe } from '@/api/queries'
+import { useEventTypes, useMe, useMemberName } from '@/api/queries'
 import type { CalEvent, EditScope, EventType, EventWrite } from '@/api/types'
 import { LazyMarkdown } from '@/components/LazyMarkdown'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -101,15 +101,10 @@ export function EventForm({
   // Hide the field for types that don't want one, but never hide a location an event already has.
   const showLocation = !eventType?.hideLocation || !!location
   const fieldValues = useWatch({ control, name: 'fields' })
-  const { data: directory } = useDirectory()
+  const memberName = useMemberName()
   // Types with a title template generate the title from their fields, so it is shown but not typed.
   const autoTitle = eventType?.titleTemplate
-    ? renderTitle(
-        eventType,
-        fieldsToPayload(fieldValues ?? {}, eventType),
-        (id) => directory?.users.find((u) => u.id === id)?.name,
-        (hhmm) => viewerTime(hhmm, { date: startDate, eventTz: timeZone, fmt }),
-      )
+    ? renderTitle(eventType, fieldsToPayload(fieldValues ?? {}, eventType), memberName, (hhmm) => viewerTime(hhmm, { date: startDate, eventTz: timeZone, fmt }))
     : null
   useEffect(() => {
     if (autoTitle !== null) setValue('title', autoTitle)

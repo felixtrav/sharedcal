@@ -197,6 +197,19 @@ export type CatalogRequestWrite = {
   other?: string
 }
 
+/** Someone events can name who has no account, like a child or a relative. Pending ones wait for an admin. */
+export type Person = {
+  id: UUID
+  name: string
+  status: 'pending' | 'active'
+  createdBy: UserRef | null
+  createdAt: Instant
+  permissions: { edit: boolean; manage: boolean }
+}
+
+/** The People page: registered users and people without accounts. */
+export type People = { users: UserRef[]; people: Person[] }
+
 export const FIELD_KINDS = ['text', 'longtext', 'number', 'date', 'time', 'select', 'url', 'checkbox', 'members'] as const
 export type FieldKind = (typeof FIELD_KINDS)[number]
 

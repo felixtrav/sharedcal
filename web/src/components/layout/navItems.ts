@@ -1,4 +1,5 @@
 import {
+  BookUserIcon,
   CalendarDaysIcon,
   FileUpIcon,
   HistoryIcon,
@@ -23,6 +24,7 @@ export type NavItem = {
     | '/subscribe'
     | '/activity'
     | '/catalog'
+    | '/people'
     | '/admin/requests'
     | '/admin/people'
     | '/admin/tags'
@@ -48,7 +50,11 @@ export const MY_ACTIVITY_NAV: NavItem = { to: '/activity', labelKey: 'nav.myActi
 /** Shown to non-admins: browse tags and event types and suggest new ones. */
 export const CATALOG_NAV: NavItem = { to: '/catalog', labelKey: 'nav.catalog', icon: LightbulbIcon }
 
+/** Everyone can see who events can name; writers add people who have no account. */
+export const DIRECTORY_NAV: NavItem = { to: '/people', labelKey: 'nav.directory', icon: BookUserIcon }
+
 export const ADMIN_NAV: NavItem[] = [
+  DIRECTORY_NAV,
   { to: '/admin/people', labelKey: 'nav.people', icon: UsersIcon },
   { to: '/admin/tags', labelKey: 'nav.tags', icon: TagsIcon },
   { to: '/admin/event-types', labelKey: 'nav.eventTypes', icon: ShapesIcon },

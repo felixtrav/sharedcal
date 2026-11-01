@@ -4,6 +4,8 @@ import type {
   AdminUser,
   Attachment,
   CatalogRequest,
+  People,
+  Person,
   CatalogRequestWrite,
   CalEvent,
   Comment,
@@ -138,6 +140,13 @@ export const endpoints = {
   reorderEventTypes: (ids: string[]) => api.post<{ eventTypes: EventType[] }>('/api/event-types/reorder', { ids }),
 
   catalogRequests: (status: 'open' | 'all' = 'open') => api.get<{ requests: CatalogRequest[] }>('/api/catalog-requests', { query: { status } }),
+  people: () => api.get<People>('/api/people'),
+  pendingPeopleCount: () => api.get<{ pending: number }>('/api/people/count'),
+  createPerson: (name: string) => api.post<Person>('/api/people', { name }),
+  renamePerson: (id: string, name: string) => api.patch<Person>(`/api/people/${enc(id)}`, { name }),
+  approvePerson: (id: string) => api.post<Person>(`/api/people/${enc(id)}/approve`),
+  bindPerson: (id: string, userId: string) => api.post<void>(`/api/people/${enc(id)}/bind`, { userId }),
+  deletePerson: (id: string) => api.del(`/api/people/${enc(id)}`),
   catalogRequestCount: () => api.get<{ open: number }>('/api/catalog-requests/count'),
   createCatalogRequest: (body: CatalogRequestWrite) => api.post<CatalogRequest>('/api/catalog-requests', body),
   approveCatalogRequest: (id: string, body: { name?: string; colorSlot?: TagSlot; icon?: TypeIcon } = {}) =>

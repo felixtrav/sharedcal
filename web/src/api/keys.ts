@@ -13,6 +13,8 @@ export const keys = {
   history: (eventId: string) => ['history', eventId] as const,
   tags: ['tags'] as const,
   eventTypes: ['eventTypes'] as const,
+  people: ['people'] as const,
+  peopleCount: ['people', 'count'] as const,
   catalogRequestsAll: ['catalogRequests'] as const,
   catalogRequests: (status: 'open' | 'all') => ['catalogRequests', status] as const,
   catalogCount: ['catalogRequests', 'count'] as const,

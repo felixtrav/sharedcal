@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { useDirectory, useEventTypes } from '@/api/queries'
+import { useEventTypes, useMemberName } from '@/api/queries'
 import type { CalEvent } from '@/api/types'
 import { viewerTime } from '@/lib/fieldTime'
 import type { FormatOptions } from '@/lib/time'
@@ -11,14 +11,13 @@ import { renderTitle } from '@/lib/titleTemplate'
  */
 export function useEventTitle(fmt: FormatOptions): (ev: Pick<CalEvent, 'title' | 'eventTypeId' | 'fields' | 'start' | 'timeZone'>) => string {
   const { data: types } = useEventTypes()
-  const { data: dir } = useDirectory()
+  const nameOf = useMemberName()
   return useCallback(
     (ev) => {
       const type = ev.eventTypeId ? types?.eventTypes.find((et) => et.id === ev.eventTypeId) : undefined
       if (!type?.titleTemplate || !type.fields.some((f) => f.kind === 'time' && typeof ev.fields[f.key] === 'string')) return ev.title
-      const nameOf = (id: string) => dir?.users.find((u) => u.id === id)?.name
       return renderTitle(type, ev.fields, nameOf, (hhmm) => viewerTime(hhmm, { date: ev.start.slice(0, 10), eventTz: ev.timeZone, fmt }))
     },
-    [types, dir, fmt],
+    [types, nameOf, fmt],
   )
 }

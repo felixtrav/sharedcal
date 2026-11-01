@@ -1,6 +1,6 @@
 import { CheckIcon, ExternalLinkIcon, XIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useDirectory, useMeData } from '@/api/queries'
+import { useMeData, useMemberName } from '@/api/queries'
 import type { EventFieldValues, EventTypeField } from '@/api/types'
 import { Badge } from '@/components/ui/badge'
 import { UserAvatar } from '@/components/ui/avatar'
@@ -23,7 +23,7 @@ type Value = string | number | boolean | string[]
 /** One field value, presented the way its kind is meant to be read. */
 function FieldText({ def, value, timeOf }: { def: EventTypeField; value: Value; timeOf?: (hhmm: string) => string }) {
   const { t } = useTranslation()
-  const { data: dir } = useDirectory()
+  const memberName = useMemberName()
   const clock24h = useMeData().preferences.clock24h
   if (Array.isArray(value) && def.kind === 'select') {
     return (
@@ -40,7 +40,7 @@ function FieldText({ def, value, timeOf }: { def: EventTypeField; value: Value; 
     return (
       <ul className="flex flex-wrap gap-1.5">
         {value.map((id) => {
-          const name = dir?.users.find((u) => u.id === id)?.name ?? t('eventTypes.unknownPerson')
+          const name = memberName(id) ?? t('eventTypes.unknownPerson')
           return (
             <li key={id} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background py-0.5 ps-0.5 pe-2.5 text-xs font-medium">
               <UserAvatar name={name} className="size-5" />

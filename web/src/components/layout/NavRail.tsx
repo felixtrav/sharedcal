@@ -8,7 +8,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import { readLocal, STORAGE_KEYS, writeLocal } from '@/lib/storage'
 import { cn } from '@/lib/utils'
 import { InboxBadge, RequestsBadge, useUnreadCount } from './InboxBadge'
-import { ADMIN_NAV, CATALOG_NAV, MAIN_NAV, MY_ACTIVITY_NAV, type NavItem } from './navItems'
+import { ADMIN_NAV, CATALOG_NAV, DIRECTORY_NAV, MAIN_NAV, MY_ACTIVITY_NAV, type NavItem } from './navItems'
 import { signOut } from './signOut'
 
 export function useRailPinned() {
@@ -107,6 +107,7 @@ export function NavRail({ pinned, onTogglePin }: { pinned: boolean; onTogglePin:
             <RailLink key={item.to} item={item} expanded={expanded} />
           ))}
           {!me.permissions.admin ? <RailLink item={CATALOG_NAV} expanded={expanded} /> : null}
+          {!me.permissions.admin ? <RailLink item={DIRECTORY_NAV} expanded={expanded} /> : null}
           {!me.permissions.admin ? <RailLink item={MY_ACTIVITY_NAV} expanded={expanded} /> : null}
         </ul>
         {me.permissions.admin ? (
