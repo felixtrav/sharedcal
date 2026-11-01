@@ -312,8 +312,8 @@ Children, relatives and others who are not users can be named in `members` field
 | --- | --- | --- | --- | --- |
 | GET | `/api/people` | all | | `{ users: UserRef[], people: Person[] }`; bound people are left out |
 | GET | `/api/people/count` | admin | | `{ pending: number }` |
-| POST | `/api/people` | writer+ | `{ name }` (1–64 characters) | 201 `Person`; 422 on a duplicate name or at 20 pending |
-| PATCH | `/api/people/{id}` | writer+ (pending: author or admin) | `{ name }` | `Person`; titles that mention them are regenerated |
+| POST | `/api/people` | writer+ | `{ firstName, lastName }` (each 1–60 characters, both required) | 201 `Person` with `name` ("First Last"), `firstName`, `lastName`; 422 on a duplicate full name or at 20 pending |
+| PATCH | `/api/people/{id}` | writer+ (pending: author or admin) | `{ firstName, lastName }` | `Person`; titles that mention them are regenerated |
 | POST | `/api/people/{id}/approve` | admin | | `Person` |
 | POST | `/api/people/{id}/bind` | admin | `{ userId }` | 204; 404 for an unknown user |
 | DELETE | `/api/people/{id}` | admin | | 204; also rejects a pending person. Removes them from events |

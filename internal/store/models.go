@@ -273,8 +273,11 @@ type CatalogRequest struct {
 // stays as a tombstone pointing at BoundUserID and every event reference is
 // rewritten to the user.
 type Person struct {
-	ID          string  `gorm:"primaryKey;size:36"`
-	Name        string  `gorm:"size:64;not null"`
+	ID string `gorm:"primaryKey;size:36"`
+	// Name is "FirstName LastName", what titles and pickers show.
+	Name        string  `gorm:"size:128;not null"`
+	FirstName   string  `gorm:"size:60;not null;default:''"`
+	LastName    string  `gorm:"size:60;not null;default:''"`
 	Status      string  `gorm:"size:16;not null;index:ix_people_status"`
 	CreatedByID *string `gorm:"size:36"`
 	// BoundUserID is set once an admin has linked the person to a user.

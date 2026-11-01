@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	maxPersonName  = 64
+	maxNamePart    = 60
 	maxPeople      = 2000
 	maxOpenPending = 20
 )
@@ -22,7 +22,9 @@ const (
 // PersonDTO is someone events can mention who has no account.
 type PersonDTO struct {
 	ID          string                  `json:"id"`
-	Name        string                  `json:"name"`
+	Name        string                  `json:"name" doc:"First and last name together"`
+	FirstName   string                  `json:"firstName"`
+	LastName    string                  `json:"lastName" doc:"Empty for people added before last names were asked for"`
 	Status      string                  `json:"status" enum:"pending,active"`
 	CreatedBy   *UserRef                `json:"createdBy"`
 	CreatedAt   time.Time               `json:"createdAt"`
@@ -37,7 +39,8 @@ type PeopleDTO struct {
 
 // PersonInput creates or renames a person.
 type PersonInput struct {
-	Name string `json:"name" maxLength:"64"`
+	FirstName string `json:"firstName" maxLength:"60"`
+	LastName  string `json:"lastName" maxLength:"60"`
 }
 
 func authzPerson(p *store.Person) authz.Person {
@@ -62,7 +65,7 @@ func (s *Service) personDTOs(db *gorm.DB, actor authz.Actor, rows []store.Person
 	out := make([]PersonDTO, len(rows))
 	for i := range rows {
 		p := &rows[i]
-		d := PersonDTO{ID: p.ID, Name: p.Name, Status: p.Status, CreatedAt: p.CreatedAt, Permissions: authz.PersonPerms(actor, authzPerson(p))}
+		d := PersonDTO{ID: p.ID, Name: p.Name, FirstName: p.FirstName, LastName: p.LastName, Status: p.Status, CreatedAt: p.CreatedAt, Permissions: authz.PersonPerms(actor, authzPerson(p))}
 		if p.CreatedByID != nil {
 			if r, ok := refs[*p.CreatedByID]; ok {
 				d.CreatedBy = &r
@@ -112,22 +115,28 @@ func (s *Service) CountPendingPeople(ctx context.Context, actor authz.Actor) (in
 	return n, err
 }
 
-// checkPersonName trims and validates a name, which must not duplicate
-// another person's (ignoring case).
-func checkPersonName(db *gorm.DB, name, exceptID string) (string, error) {
-	n := strings.Join(strings.Fields(name), " ")
-	if n == "" || utf8.RuneCountInString(n) > maxPersonName {
-		return "", invalidField("name", "name must be 1–%d characters", maxPersonName)
+// checkPersonName trims and validates a first and last name and returns
+// them with the combined display name, which must not duplicate another
+// person's (ignoring case).
+func checkPersonName(db *gorm.DB, in PersonInput, exceptID string) (first, last, name string, err error) {
+	first = strings.Join(strings.Fields(in.FirstName), " ")
+	last = strings.Join(strings.Fields(in.LastName), " ")
+	if first == "" || utf8.RuneCountInString(first) > maxNamePart {
+		return "", "", "", invalidField("firstName", "first name must be 1–%d characters", maxNamePart)
 	}
+	if last == "" || utf8.RuneCountInString(last) > maxNamePart {
+		return "", "", "", invalidField("lastName", "last name must be 1–%d characters", maxNamePart)
+	}
+	name = first + " " + last
 	var dup int64
 	if err := db.Model(&store.Person{}).
-		Where("LOWER(name) = ? AND id <> ? AND bound_user_id IS NULL", strings.ToLower(n), exceptID).Count(&dup).Error; err != nil {
-		return "", err
+		Where("LOWER(name) = ? AND id <> ? AND bound_user_id IS NULL", strings.ToLower(name), exceptID).Count(&dup).Error; err != nil {
+		return "", "", "", err
 	}
 	if dup > 0 {
-		return "", invalidField("name", "someone with this name already exists")
+		return "", "", "", invalidField("lastName", "someone with this name already exists")
 	}
-	return n, nil
+	return first, last, name, nil
 }
 
 func (s *Service) onePersonDTO(tx *Tx, p store.Person) (*PersonDTO, error) {
@@ -146,7 +155,7 @@ func (s *Service) CreatePerson(ctx context.Context, actor authz.Actor, in Person
 	}
 	var out *PersonDTO
 	err := s.write(ctx, actor, func(tx *Tx) error {
-		name, err := checkPersonName(tx.db, in.Name, "")
+		first, last, name, err := checkPersonName(tx.db, in, "")
 		if err != nil {
 			return err
 		}
@@ -170,7 +179,7 @@ func (s *Service) CreatePerson(ctx context.Context, actor authz.Actor, in Person
 			return limit("the people list is full")
 		}
 		by := actor.ID
-		p := store.Person{ID: store.NewID(), Name: name, Status: status, CreatedByID: &by, CreatedAt: tx.now, UpdatedAt: tx.now}
+		p := store.Person{ID: store.NewID(), Name: name, FirstName: first, LastName: last, Status: status, CreatedByID: &by, CreatedAt: tx.now, UpdatedAt: tx.now}
 		if err := tx.db.Create(&p).Error; err != nil {
 			return err
 		}
@@ -205,17 +214,18 @@ func (s *Service) UpdatePerson(ctx context.Context, actor authz.Actor, id string
 		if !authz.CanEditPerson(actor, authzPerson(&p)) {
 			return forbidden("not allowed")
 		}
-		name, err := checkPersonName(tx.db, in.Name, p.ID)
+		first, last, name, err := checkPersonName(tx.db, in, p.ID)
 		if err != nil {
 			return err
 		}
-		if name == p.Name {
+		if first == p.FirstName && last == p.LastName {
 			out, err = s.onePersonDTO(tx, p)
 			return err
 		}
 		before := p.Name
-		p.Name, p.UpdatedAt = name, tx.now
-		if err := tx.db.Model(&store.Person{}).Where("id = ?", p.ID).Updates(map[string]any{"name": name, "updated_at": tx.now}).Error; err != nil {
+		p.Name, p.FirstName, p.LastName, p.UpdatedAt = name, first, last, tx.now
+		if err := tx.db.Model(&store.Person{}).Where("id = ?", p.ID).
+			Updates(map[string]any{"name": name, "first_name": first, "last_name": last, "updated_at": tx.now}).Error; err != nil {
 			return err
 		}
 		if err := tx.retitleForPerson(p.ID); err != nil {

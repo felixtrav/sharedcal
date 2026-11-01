@@ -8,6 +8,8 @@ import (
 type personRow struct {
 	ID          string `json:"id"`
 	Name        string `json:"name"`
+	FirstName   string `json:"firstName"`
+	LastName    string `json:"lastName"`
 	Status      string `json:"status"`
 	Permissions struct {
 		Edit, Manage bool
@@ -35,14 +37,26 @@ func TestPeople(t *testing.T) {
 
 	// A writer's submission is pending; viewers can't add people.
 	var kid personRow
-	bob.mustJSON("POST", "/api/people", map[string]any{"name": " Emma  Smith "}, 201, &kid)
+	bob.mustJSON("POST", "/api/people", map[string]any{"firstName": " Emma ", "lastName": " Smith "}, 201, &kid)
 	if kid.Name != "Emma Smith" || kid.Status != "pending" || !kid.Permissions.Edit || kid.Permissions.Manage {
 		t.Fatalf("submitted: %+v", kid)
 	}
-	if st := carol.status("POST", "/api/people", map[string]any{"name": "Nope"}); st != 403 && carol.Role == "viewer" {
+	if kid.FirstName != "Emma" || kid.LastName != "Smith" {
+		t.Fatalf("parts: %+v", kid)
+	}
+	for name, body := range map[string]map[string]any{
+		"no last name":  {"firstName": "Cher"},
+		"blank last":    {"firstName": "Cher", "lastName": "  "},
+		"no first name": {"lastName": "Smith"},
+	} {
+		if st := bob.status("POST", "/api/people", body); st != 400 && st != 422 {
+			t.Errorf("%s: %d", name, st)
+		}
+	}
+	if st := carol.status("POST", "/api/people", map[string]any{"firstName": "No", "lastName": "Pe"}); st != 403 && carol.Role == "viewer" {
 		t.Errorf("viewer create: %d", st)
 	}
-	if st := bob.status("POST", "/api/people", map[string]any{"name": "emma smith"}); st != 400 && st != 422 {
+	if st := bob.status("POST", "/api/people", map[string]any{"firstName": "emma", "lastName": "SMITH"}); st != 400 && st != 422 {
 		t.Errorf("duplicate name: %d", st)
 	}
 
@@ -70,11 +84,11 @@ func TestPeople(t *testing.T) {
 	if ev.Title != "Emma Smith's birthday" {
 		t.Fatalf("title %q", ev.Title)
 	}
-	if st := bob.status("PATCH", "/api/people/"+kid.ID, map[string]any{"name": "Emma"}); st != 200 {
+	if st := bob.status("PATCH", "/api/people/"+kid.ID, map[string]any{"firstName": "Emma", "lastName": "Jones"}); st != 200 {
 		t.Fatalf("rename: %d", st)
 	}
 	bob.mustJSON("GET", "/api/events/"+ev.ID, nil, 200, &ev)
-	if ev.Title != "Emma's birthday" {
+	if ev.Title != "Emma Jones's birthday" {
 		t.Fatalf("renamed title %q", ev.Title)
 	}
 
@@ -115,7 +129,7 @@ func TestPeople(t *testing.T) {
 		Fields map[string][]string
 	}
 	bob.mustJSON("GET", "/api/events/"+ev.ID, nil, 200, &got)
-	if len(got.Fields["who"]) != 1 || got.Fields["who"][0] != carol.ID || got.Title == "Emma's birthday" {
+	if len(got.Fields["who"]) != 1 || got.Fields["who"][0] != carol.ID || got.Title == "Emma Jones's birthday" {
 		t.Fatalf("after bind: %+v", got)
 	}
 
@@ -131,7 +145,7 @@ func TestPeople(t *testing.T) {
 
 	// Deleting a person takes them out of events.
 	var gran personRow
-	alice.mustJSON("POST", "/api/people", map[string]any{"name": "Granny"}, 201, &gran)
+	alice.mustJSON("POST", "/api/people", map[string]any{"firstName": "Granny", "lastName": "Jones"}, 201, &gran)
 	if gran.Status != "active" {
 		t.Fatalf("admin-created: %+v", gran)
 	}

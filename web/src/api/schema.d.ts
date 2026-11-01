@@ -1470,14 +1470,19 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
             createdBy: components["schemas"]["UserRef"];
+            firstName: string;
             id: string;
+            /** @description Empty for people added before last names were asked for */
+            lastName: string;
+            /** @description First and last name together */
             name: string;
             permissions: components["schemas"]["PersonPermissions"];
             /** @enum {string} */
             status: "pending" | "active";
         };
         PersonInput: {
-            name: string;
+            firstName: string;
+            lastName: string;
         };
         PersonPermissions: {
             edit: boolean;

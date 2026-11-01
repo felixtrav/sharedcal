@@ -10,13 +10,17 @@ test('a writer adds a person without an account, an admin approves and later lin
   const carol = await signedInContext(browser, 'carol')
   const me = await api<{ user: { id: string; name: string } }>(carol.page, 'GET', '/api/me')
   const carolName = me.user.name
-  const kid = uniqueTitle('Emma')
+  const first = uniqueTitle('Emma')
+  const kid = `${first} Smith`
   const rowOf = (page: Page) => page.getByRole('list', { name: 'Without an account' }).getByRole('listitem').filter({ hasText: kid })
 
   // Writers submit; the submission waits for approval and is private to its author and the admins.
   await bob.page.goto('/people')
   await expect(bob.page.getByRole('heading', { name: 'Calendar users' })).toBeVisible()
-  await bob.page.getByLabel('Name', { exact: true }).fill(kid)
+  await bob.page.getByLabel('First name').fill(first)
+  // A first name alone isn't enough.
+  await expect(bob.page.getByRole('button', { name: 'Submit for approval' })).toBeDisabled()
+  await bob.page.getByLabel('Last name').fill('Smith')
   await bob.page.getByRole('button', { name: 'Submit for approval' }).click()
   const bobRow = rowOf(bob.page)
   await expect(bobRow).toContainText('Waiting for approval')
@@ -25,7 +29,7 @@ test('a writer adds a person without an account, an admin approves and later lin
   await carol.page.goto('/people')
   await expect(carol.page.getByRole('heading', { name: 'Without an account' })).toBeVisible()
   await expect(carol.page.getByText(kid)).toHaveCount(0)
-  await expect(carol.page.getByLabel('Name', { exact: true })).toHaveCount(0)
+  await expect(carol.page.getByLabel('First name')).toHaveCount(0)
 
   // The author already uses the person in an event.
   const type = await api<ApiType>(alice.page, 'POST', '/api/event-types', {

@@ -200,12 +200,19 @@ export type CatalogRequestWrite = {
 /** Someone events can name who has no account, like a child or a relative. Pending ones wait for an admin. */
 export type Person = {
   id: UUID
+  /** First and last name together. */
   name: string
+  firstName: string
+  /** Empty for people added before last names were asked for. */
+  lastName: string
   status: 'pending' | 'active'
   createdBy: UserRef | null
   createdAt: Instant
   permissions: { edit: boolean; manage: boolean }
 }
+
+/** What a person is created or renamed with. */
+export type PersonName = { firstName: string; lastName: string }
 
 /** The People page: registered users and people without accounts. */
 export type People = { users: UserRef[]; people: Person[] }

@@ -1961,10 +1961,18 @@
           "createdBy": {
             "$ref": "#/components/schemas/UserRef"
           },
+          "firstName": {
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
+          "lastName": {
+            "description": "Empty for people added before last names were asked for",
+            "type": "string"
+          },
           "name": {
+            "description": "First and last name together",
             "type": "string"
           },
           "permissions": {
@@ -1981,6 +1989,8 @@
         "required": [
           "id",
           "name",
+          "firstName",
+          "lastName",
           "status",
           "createdBy",
           "createdAt",
@@ -1991,13 +2001,18 @@
       "PersonInput": {
         "additionalProperties": false,
         "properties": {
-          "name": {
-            "maxLength": 64,
+          "firstName": {
+            "maxLength": 60,
+            "type": "string"
+          },
+          "lastName": {
+            "maxLength": 60,
             "type": "string"
           }
         },
         "required": [
-          "name"
+          "firstName",
+          "lastName"
         ],
         "type": "object"
       },

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
 import { useMeData, usePeople } from '@/api/queries'
-import type { Person, UserRef } from '@/api/types'
+import type { Person, PersonName, UserRef } from '@/api/types'
 import { EmptyState, LoadError, Page, PageHeader } from '@/components/layout/PageHeader'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toast'
 import { errorMessage } from '@/lib/errors'
 
-const MAX_NAME = 64
+const MAX_NAME = 60
 
 /** Registered users, and the people events can name who have no account yet. */
 export function PeoplePage() {
@@ -78,20 +78,40 @@ function useRefresh() {
   }
 }
 
+/** First and last name, both required. */
+function NameFields({ idBase, value, onChange }: { idBase: string; value: PersonName; onChange: (v: PersonName) => void }) {
+  const { t } = useTranslation()
+  return (
+    <>
+      <div className="grid min-w-40 flex-1 gap-1.5">
+        <Label htmlFor={`${idBase}-first`}>{t('directory.firstName')}</Label>
+        <Input id={`${idBase}-first`} value={value.firstName} maxLength={MAX_NAME} onChange={(e) => onChange({ ...value, firstName: e.target.value })} />
+      </div>
+      <div className="grid min-w-40 flex-1 gap-1.5">
+        <Label htmlFor={`${idBase}-last`}>{t('directory.lastName')}</Label>
+        <Input id={`${idBase}-last`} value={value.lastName} maxLength={MAX_NAME} onChange={(e) => onChange({ ...value, lastName: e.target.value })} />
+      </div>
+    </>
+  )
+}
+
+const trimmed = (v: PersonName): PersonName => ({ firstName: v.firstName.trim(), lastName: v.lastName.trim() })
+const complete = (v: PersonName) => !!v.firstName.trim() && !!v.lastName.trim()
+
 function AddPerson({ admin }: { admin: boolean }) {
   const { t } = useTranslation()
   const refresh = useRefresh()
   const uid = useId()
-  const [name, setName] = useState('')
+  const [name, setName] = useState<PersonName>({ firstName: '', lastName: '' })
   const [busy, setBusy] = useState(false)
   const submit = async () => {
-    const n = name.trim()
-    if (!n || busy) return
+    const n = trimmed(name)
+    if (!complete(n) || busy) return
     setBusy(true)
     try {
       await endpoints.createPerson(n)
-      toast.success(t(admin ? 'directory.added' : 'directory.submitted', { name: n }))
-      setName('')
+      toast.success(t(admin ? 'directory.added' : 'directory.submitted', { name: `${n.firstName} ${n.lastName}` }))
+      setName({ firstName: '', lastName: '' })
       refresh()
     } catch (err) {
       toast.error(t('directory.addFailed'), errorMessage(err, t))
@@ -107,11 +127,8 @@ function AddPerson({ admin }: { admin: boolean }) {
         void submit()
       }}
     >
-      <div className="grid min-w-48 flex-1 gap-1.5">
-        <Label htmlFor={uid}>{t('directory.name')}</Label>
-        <Input id={uid} value={name} maxLength={MAX_NAME} onChange={(e) => setName(e.target.value)} />
-      </div>
-      <Button type="submit" disabled={busy || !name.trim()}>
+      <NameFields idBase={uid} value={name} onChange={setName} />
+      <Button type="submit" disabled={busy || !complete(name)}>
         <PlusIcon aria-hidden />
         {t(admin ? 'directory.add' : 'directory.submit')}
       </Button>
@@ -124,7 +141,7 @@ function PersonRow({ person: p, users }: { person: Person; users: UserRef[] }) {
   const refresh = useRefresh()
   const uid = useId()
   const [mode, setMode] = useState<'idle' | 'rename' | 'bind'>('idle')
-  const [name, setName] = useState(p.name)
+  const [name, setName] = useState<PersonName>({ firstName: p.firstName, lastName: p.lastName })
   const [userId, setUserId] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -200,16 +217,14 @@ function PersonRow({ person: p, users }: { person: Person; users: UserRef[] }) {
           className="flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault()
-            const n = name.trim()
-            if (n && n !== p.name) void run(() => endpoints.renamePerson(p.id, n), t('directory.renameFailed'), t('directory.renamed'))
+            const n = trimmed(name)
+            if (complete(n) && (n.firstName !== p.firstName || n.lastName !== p.lastName))
+              void run(() => endpoints.renamePerson(p.id, n), t('directory.renameFailed'), t('directory.renamed'))
             else setMode('idle')
           }}
         >
-          <div className="grid min-w-48 flex-1 gap-1.5">
-            <Label htmlFor={`${uid}-name`}>{t('directory.name')}</Label>
-            <Input id={`${uid}-name`} value={name} maxLength={MAX_NAME} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <Button type="submit" size="sm" disabled={busy || !name.trim()}>
+          <NameFields idBase={`${uid}-name`} value={name} onChange={setName} />
+          <Button type="submit" size="sm" disabled={busy || !complete(name)}>
             {t('common.save')}
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={() => setMode('idle')}>
