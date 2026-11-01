@@ -168,3 +168,50 @@ func TestPeople(t *testing.T) {
 		t.Errorf("deleted person accepted: %d", st)
 	}
 }
+
+func TestFirstNameInTitles(t *testing.T) {
+	t.Parallel()
+	e := newEnv(t, options{})
+	alice, bob := e.login(t, "alice"), e.login(t, "bob")
+
+	fields := []map[string]any{
+		{"key": "who", "label": "Who", "kind": "members", "required": true},
+		{"key": "note", "label": "Note", "kind": "text"},
+	}
+	// first names only make sense for people fields
+	if st := alice.status("POST", "/api/event-types", map[string]any{
+		"name": "Bad", "colorSlot": "tag-1", "titleTemplate": "{{who}} {{note:first}}", "fields": fields,
+	}); st != 400 && st != 422 {
+		t.Fatalf("first on a text field: %d", st)
+	}
+	var typ typeDTO
+	alice.mustJSON("POST", "/api/event-types", map[string]any{
+		"name": "Birthday", "colorSlot": "tag-2", "titleTemplate": "{{ who:first }}'s birthday ({{who}})", "fields": fields,
+	}, 201, &typ)
+
+	var kid personRow
+	alice.mustJSON("POST", "/api/people", map[string]any{"firstName": "Emma", "lastName": "Smith"}, 201, &kid)
+	var ev Event
+	create := func(id string) Event {
+		var out Event
+		bob.mustJSON("POST", "/api/events", map[string]any{
+			"eventTypeId": typ.ID, "fields": map[string]any{"who": []string{id}},
+			"timeZone": "UTC", "allDay": true, "start": "2026-11-05", "end": "2026-11-06",
+		}, 201, &out)
+		return out
+	}
+	ev = create(kid.ID)
+	if ev.Title != "Emma's birthday (Emma Smith)" {
+		t.Fatalf("person title %q", ev.Title)
+	}
+	alice.mustJSON("PATCH", "/api/people/"+kid.ID, map[string]any{"firstName": "Em", "lastName": "Smith"}, 200, nil)
+	bob.mustJSON("GET", "/api/events/"+ev.ID, nil, 200, &ev)
+	if ev.Title != "Em's birthday (Em Smith)" {
+		t.Fatalf("renamed title %q", ev.Title)
+	}
+
+	// A registered user's first name is the first word of their display name.
+	if u := create(alice.ID); u.Title != "Alice's birthday (Alice Admin)" {
+		t.Fatalf("user title %q", u.Title)
+	}
+}

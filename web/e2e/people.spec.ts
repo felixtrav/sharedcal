@@ -35,7 +35,7 @@ test('a writer adds a person without an account, an admin approves and later lin
   const type = await api<ApiType>(alice.page, 'POST', '/api/event-types', {
     name: uniqueTitle('Birthday'),
     colorSlot: 'tag-2',
-    titleTemplate: "{{who}}'s birthday",
+    titleTemplate: "{{who:first}}'s birthday",
     fields: [{ key: 'who', label: 'Who', kind: 'members', multiple: false, required: true }],
   })
   const people = await api<{ people: { id: string; name: string }[] }>(bob.page, 'GET', '/api/people')
@@ -49,7 +49,7 @@ test('a writer adds a person without an account, an admin approves and later lin
     timeZone: 'UTC',
     allDay: true,
   })
-  expect(event.title).toBe(`${kid}'s birthday`)
+  expect(event.title).toBe(`${first}'s birthday`)
 
   // An admin approves, then links the person to the user they became.
   await alice.page.goto('/')
@@ -73,4 +73,21 @@ test('a writer adds a person without an account, an admin approves and later lin
   const after = await api<ApiEvent>(alice.page, 'GET', `/api/events/${event.id}`)
   expect(after.fields.who).toEqual([me.user.id])
   expect(after.title).not.toContain(kid)
+})
+
+test('an admin can build an automatic title that uses first names only', async ({ browser }) => {
+  const alice = await signedInContext(browser, 'alice')
+  const name = uniqueTitle('Birthday')
+  await api(alice.page, 'POST', '/api/event-types', {
+    name,
+    colorSlot: 'tag-2',
+    fields: [{ key: 'who', label: 'Who', kind: 'members', multiple: false, required: true }],
+  })
+  await alice.page.goto('/admin/event-types')
+  await alice.page.getByRole('button', { name: `Expand ${name}` }).click()
+  const editor = alice.page.getByRole('form', { name, exact: true })
+  await editor.getByRole('button', { name: 'Insert Who, first name only' }).click()
+  await expect(editor.getByLabel('Automatic title')).toHaveValue('{{who:first}}')
+  await editor.getByRole('button', { name: 'Save' }).click()
+  await expect(alice.page.getByText(`Event type “${name}” saved`).first()).toBeVisible()
 })

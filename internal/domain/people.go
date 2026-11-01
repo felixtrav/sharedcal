@@ -463,8 +463,24 @@ func resolvePeople(db *gorm.DB, ids []string) (out []string, ok bool, err error)
 	return uniq(out), true, nil
 }
 
-// memberLabels maps user and person ids to display names. A bound person
-// shows as their user.
+// firstNameKey is where memberLabels keeps an id's first name in the names
+// map, next to the full name under the bare id.
+func firstNameKey(id string) string { return "first:" + id }
+
+// firstNameOf is the first word of a user's display name. Names that are
+// really email addresses stay whole.
+func firstNameOf(name string) string {
+	if strings.Contains(name, "@") {
+		return name
+	}
+	if f := strings.Fields(name); len(f) > 0 {
+		return f[0]
+	}
+	return name
+}
+
+// memberLabels maps user and person ids to display names, and
+// firstNameKey(id) to first names. A bound person shows as their user.
 func memberLabels(db *gorm.DB, ids []string) (map[string]string, error) {
 	names := map[string]string{}
 	ids = uniq(ids)
@@ -476,7 +492,8 @@ func memberLabels(db *gorm.DB, ids []string) (map[string]string, error) {
 		return nil, err
 	}
 	for i := range users {
-		names[users[i].ID] = refOf(&users[i]).Name
+		n := refOf(&users[i]).Name
+		names[users[i].ID], names[firstNameKey(users[i].ID)] = n, firstNameOf(n)
 	}
 	var people []store.Person
 	if err := db.Where("id IN ?", ids).Find(&people).Error; err != nil {
@@ -484,7 +501,7 @@ func memberLabels(db *gorm.DB, ids []string) (map[string]string, error) {
 	}
 	var bound []string
 	for _, p := range people {
-		names[p.ID] = p.Name
+		names[p.ID], names[firstNameKey(p.ID)] = p.Name, p.FirstName
 		if p.BoundUserID != nil {
 			bound = append(bound, *p.BoundUserID)
 		}
@@ -500,7 +517,7 @@ func memberLabels(db *gorm.DB, ids []string) (map[string]string, error) {
 		}
 		for _, p := range people {
 			if p.BoundUserID != nil && byID[*p.BoundUserID] != "" {
-				names[p.ID] = byID[*p.BoundUserID]
+				names[p.ID], names[firstNameKey(p.ID)] = byID[*p.BoundUserID], firstNameOf(byID[*p.BoundUserID])
 			}
 		}
 	}

@@ -145,7 +145,7 @@ type EventType = {
   adminOnly: boolean;           // true: only admins can create events of the type or switch events to it (403 otherwise)
   neverRepeats: boolean;        // true: events of the type can't repeat (releases); excludes defaultRrule
   defaultRrule: string;         // non-empty: every event of the type repeats with exactly this rule (422 otherwise)
-  titleTemplate: string;        // {{#field}}…{{/field}} shows its part only when the field has a value; '' = titles are typed; else {{field_key}} placeholders fill the title and a title in event writes is ignored
+  titleTemplate: string;        // {{#field}}…{{/field}} shows its part only when the field has a value; '' = titles are typed; else {{field_key}} placeholders fill the title ({{field_key:first}} shows first names only, for people fields) and a title in event writes is ignored
   fields: EventTypeField[];     // up to 20, in display order
   sortOrder: number;
 };

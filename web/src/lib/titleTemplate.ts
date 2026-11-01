@@ -1,18 +1,25 @@
 import type { EventFieldValues, EventType } from '@/api/types'
 
-const PLACEHOLDER = /\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/g
+/** `{{key}}`, or `{{key:first}}` on a people field to show first names only. */
+const PLACEHOLDER = /\{\{\s*([a-z][a-z0-9_]*)(?::(first))?\s*\}\}/g
 
 /** Kinds whose values read naturally inside a title. Mirrors `titleFieldKind` in internal/domain/titletemplate.go. */
 export const TITLE_FIELD_KINDS = ['text', 'number', 'time', 'select', 'members'] as const
 
-/** A person's current name for their id, or undefined when unknown. */
-export type NameOf = (userId: string) => string | undefined
+/** A person's current name (or first name only) for their id, or undefined when unknown. */
+export type NameOf = (id: string, firstOnly?: boolean) => string | undefined
 
-function valueText(v: EventFieldValues[string] | undefined, kind: string | undefined, nameOf?: NameOf): string {
+/** The first word of a display name; names that are really email addresses stay whole. */
+export function firstNameOf(name: string): string {
+  if (name.includes('@')) return name
+  return name.trim().split(/\s+/)[0] ?? name
+}
+
+function valueText(v: EventFieldValues[string] | undefined, kind: string | undefined, nameOf?: NameOf, firstOnly = false): string {
   if (v === undefined || typeof v === 'boolean') return ''
   if (!Array.isArray(v)) return String(v).trim()
   // People are stored by id and shown by their current name; unknown ids are left out.
-  return (kind === 'members' ? v.map((id) => nameOf?.(id)).filter(Boolean) : v).join(', ')
+  return (kind === 'members' ? v.map((id) => nameOf?.(id, firstOnly)).filter(Boolean) : v).join(', ')
 }
 
 const SECTION_TAG = /\{\{([#/])([a-z][a-z0-9_]*)\}\}/g
@@ -56,13 +63,13 @@ export function renderTitle(
   nameOf?: NameOf,
   timeText?: (hhmm: string) => string,
 ): string {
-  const text = (key: string) => {
+  const text = (key: string, firstOnly = false) => {
     const kind = type.fields.find((f) => f.key === key)?.kind
-    const s = valueText(values[key], kind, nameOf)
+    const s = valueText(values[key], kind, nameOf, firstOnly)
     return s && kind === 'time' && timeText ? timeText(s) : s
   }
   const out = applySections(type.titleTemplate, (key) => text(key) !== '')
-    .replace(PLACEHOLDER, (_, key: string) => text(key))
+    .replace(PLACEHOLDER, (_, key: string, first?: string) => text(key, !!first))
     .split(/\s+/)
     .filter(Boolean)
     .join(' ')

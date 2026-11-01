@@ -3,6 +3,7 @@ import { useCallback } from 'react'
 import { setCsrfToken } from './client'
 import { endpoints, type RangeParams } from './endpoints'
 import { keys } from './keys'
+import { firstNameOf, type NameOf } from '@/lib/titleTemplate'
 import type { Me } from './types'
 
 async function fetchMe(): Promise<Me> {
@@ -80,9 +81,17 @@ export function usePeople() {
 }
 
 /** Looks up the name of a user or person id, as shown in members fields and generated titles. */
-export function useMemberName(): (id: string) => string | undefined {
+export function useMemberName(): NameOf {
   const { data } = usePeople()
-  return useCallback((id) => data?.users.find((u) => u.id === id)?.name ?? data?.people.find((p) => p.id === id)?.name, [data])
+  return useCallback(
+    (id, firstOnly) => {
+      const user = data?.users.find((u) => u.id === id)
+      if (user) return firstOnly ? firstNameOf(user.name) : user.name
+      const person = data?.people.find((p) => p.id === id)
+      return firstOnly ? person?.firstName || person?.name : person?.name
+    },
+    [data],
+  )
 }
 
 export function usePendingPeopleCount(enabled: boolean) {

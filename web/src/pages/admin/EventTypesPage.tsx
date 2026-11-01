@@ -480,12 +480,12 @@ function TypeEditor({
   const titleNeedsRequired = !!titleTemplate.trim() && !fields.some((f) => f.required && f.kind !== 'checkbox')
   const titleFields = keyed.filter((f) => (TITLE_FIELD_KINDS as readonly string[]).includes(f.kind) && f.label.trim())
   const titleRef = useRef<HTMLInputElement>(null)
-  /** Adds `{{key}}` at the caret in the title template. */
-  const insertField = (key: string) => {
+  /** Adds `{{key}}` (or `{{key:first}}`) at the caret in the title template. */
+  const insertField = (key: string, firstOnly = false) => {
     const el = titleRef.current
     const at = el?.selectionStart ?? titleTemplate.length
     const to = el?.selectionEnd ?? at
-    const token = `{{${key}}}`
+    const token = `{{${key}${firstOnly ? ':first' : ''}}}`
     setTitleTemplate(titleTemplate.slice(0, at) + token + titleTemplate.slice(to))
     requestAnimationFrame(() => {
       el?.focus()
@@ -723,6 +723,20 @@ function TypeEditor({
                 {f.label.trim()}
               </Button>
             ))}
+            {titleFields
+              .filter((f) => f.kind === 'members')
+              .map((f) => (
+                <Button
+                  key={`${f.key}:first`}
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  aria-label={t('eventTypes.insertFirstNameN', { name: f.label.trim() })}
+                  onClick={() => insertField(f.key, true)}
+                >
+                  {t('eventTypes.firstNameOnly', { name: f.label.trim() })}
+                </Button>
+              ))}
           </div>
         ) : null}
         {titleFields.length ? (
