@@ -1,4 +1,4 @@
--- People have a first and last name; "name" stays as the combined display name.
+-- People have a first and last name, and name stays as the combined display name.
 
 ALTER TABLE "people" ADD COLUMN "first_name" TEXT NOT NULL DEFAULT '';
 

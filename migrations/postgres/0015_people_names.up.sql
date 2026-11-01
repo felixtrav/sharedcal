@@ -1,4 +1,4 @@
--- People have a first and last name; "name" stays as the combined display name.
+-- People have a first and last name, and name stays as the combined display name.
 
 ALTER TABLE "people" ALTER COLUMN "name" TYPE VARCHAR(128);
 
