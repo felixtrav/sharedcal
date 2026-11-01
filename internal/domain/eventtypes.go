@@ -370,20 +370,24 @@ func normalizeFields(db *gorm.DB, defs []FieldDef, in map[string]any) (map[strin
 			out[d.Key] = nv
 		}
 	}
-	// Members must be existing users (inactive ones stay valid, so old events remain editable).
+	// Members must be existing users or people (inactive users stay valid, so
+	// old events remain editable). People who have since been bound to a user
+	// are stored as that user.
 	for _, d := range defs {
 		ids, _ := out[d.Key].([]string)
 		if d.Kind != FieldMembers || len(ids) == 0 {
 			continue
 		}
-		var n int64
-		if err := db.Model(&store.User{}).Where("id IN ?", ids).Count(&n).Error; err != nil {
+		resolved, ok, err := resolvePeople(db, ids)
+		if err != nil {
 			return nil, nil, err
 		}
-		if int(n) != len(ids) {
+		if !ok {
 			fe.add("fields."+d.Key, "%s includes an unknown person", d.Label)
 			delete(out, d.Key)
+			continue
 		}
+		out[d.Key] = resolved
 	}
 	return out, fe, nil
 }

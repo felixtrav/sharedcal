@@ -304,6 +304,20 @@ Non-admins can't create tags or event types; they ask for them. A request carrie
 | POST | `/api/catalog-requests/{id}/reject` | admin | `{ note? }` | `CatalogRequest` |
 | POST | `/api/catalog-requests/{id}/withdraw` | author | | `CatalogRequest` |
 
+### People without accounts
+
+Children, relatives and others who are not users can be named in `members` fields. Their ids sit in the same lists as user ids. A writer's new person is `pending` until an admin approves it; only the author and admins see it in the meantime. An admin's is `active` at once. When someone later joins, an admin binds the person to their user: every event and occurrence reference is rewritten to the user, generated titles are refreshed, and an old person id sent by a stale client is stored as the user.
+
+| Method | Path | Who | Body | Response |
+| --- | --- | --- | --- | --- |
+| GET | `/api/people` | all | | `{ users: UserRef[], people: Person[] }`; bound people are left out |
+| GET | `/api/people/count` | admin | | `{ pending: number }` |
+| POST | `/api/people` | writer+ | `{ name }` (1–64 characters) | 201 `Person`; 422 on a duplicate name or at 20 pending |
+| PATCH | `/api/people/{id}` | writer+ (pending: author or admin) | `{ name }` | `Person`; titles that mention them are regenerated |
+| POST | `/api/people/{id}/approve` | admin | | `Person` |
+| POST | `/api/people/{id}/bind` | admin | `{ userId }` | 204; 404 for an unknown user |
+| DELETE | `/api/people/{id}` | admin | | 204; also rejects a pending person. Removes them from events |
+
 ### Tags, users, activity, settings, themes
 
 | Method | Path | Who | Body | Response |

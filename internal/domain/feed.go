@@ -153,13 +153,9 @@ func (s *Service) Feed(ctx context.Context, raw string) (*ics.Calendar, error) {
 			}
 		}
 	}
-	refs, err := userRefs(db, memberIDs)
+	names, err := memberLabels(db, memberIDs)
 	if err != nil {
 		return nil, err
-	}
-	names := map[string]string{}
-	for id, r := range refs {
-		names[id] = r.Name
 	}
 	overrides := map[string][]store.EventOverride{}
 	if len(ids) > 0 {

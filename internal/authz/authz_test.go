@@ -393,3 +393,31 @@ func TestCatalogRequestRules(t *testing.T) {
 		}
 	}
 }
+
+func TestPersonRules(t *testing.T) {
+	admin := Actor{ID: "a", Role: Admin, Active: true}
+	author := Actor{ID: "w1", Role: Writer, Active: true}
+	other := Actor{ID: "w2", Role: Writer, Active: true}
+	viewer := Actor{ID: "v", Role: Viewer, Active: true}
+	pending := Person{CreatedByID: "w1", Pending: true}
+	active := Person{CreatedByID: "w1"}
+
+	if !CanCreatePerson(author) || !CanCreatePerson(admin) || CanCreatePerson(viewer) {
+		t.Error("create")
+	}
+	for _, c := range []struct {
+		a    Actor
+		p    Person
+		want bool
+	}{
+		{author, pending, true}, {admin, pending, true}, {other, pending, false},
+		{other, active, true}, {viewer, active, false},
+	} {
+		if got := CanEditPerson(c.a, c.p); got != c.want {
+			t.Errorf("edit %s pending=%v: got %v", c.a.ID, c.p.Pending, got)
+		}
+	}
+	if !CanManagePeople(admin) || CanManagePeople(author) {
+		t.Error("manage")
+	}
+}

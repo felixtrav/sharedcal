@@ -289,6 +289,19 @@
         ],
         "type": "object"
       },
+      "BindInBody": {
+        "additionalProperties": false,
+        "properties": {
+          "userId": {
+            "maxLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId"
+        ],
+        "type": "object"
+      },
       "CatalogApproveInput": {
         "additionalProperties": false,
         "properties": {
@@ -1871,6 +1884,41 @@
         ],
         "type": "object"
       },
+      "PendingPeopleBody": {
+        "additionalProperties": false,
+        "properties": {
+          "pending": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "pending"
+        ],
+        "type": "object"
+      },
+      "PeopleDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "people": {
+            "items": {
+              "$ref": "#/components/schemas/PersonDTO"
+            },
+            "type": "array"
+          },
+          "users": {
+            "items": {
+              "$ref": "#/components/schemas/UserRef"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "users",
+          "people"
+        ],
+        "type": "object"
+      },
       "Permissions": {
         "additionalProperties": false,
         "properties": {
@@ -1900,6 +1948,72 @@
           "comment",
           "attach",
           "review"
+        ],
+        "type": "object"
+      },
+      "PersonDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/PersonPermissions"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "active"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "createdBy",
+          "createdAt",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "PersonInput": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "PersonPermissions": {
+        "additionalProperties": false,
+        "properties": {
+          "edit": {
+            "type": "boolean"
+          },
+          "manage": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "edit",
+          "manage"
         ],
         "type": "object"
       },
@@ -4864,6 +4978,314 @@
         "summary": "Update preferences",
         "tags": [
           "me"
+        ]
+      }
+    },
+    "/api/people": {
+      "get": {
+        "operationId": "listPeople",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PeopleDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Registered users and people without accounts",
+        "tags": [
+          "people"
+        ]
+      },
+      "post": {
+        "operationId": "createPerson",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonDTO"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Add a person without an account (pending approval unless an admin)",
+        "tags": [
+          "people"
+        ]
+      }
+    },
+    "/api/people/count": {
+      "get": {
+        "operationId": "countPendingPeople",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingPeopleBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "People waiting for approval (admins)",
+        "tags": [
+          "people"
+        ]
+      }
+    },
+    "/api/people/{id}": {
+      "delete": {
+        "operationId": "deletePerson",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Delete or reject a person and remove them from events (admins)",
+        "tags": [
+          "people"
+        ]
+      },
+      "patch": {
+        "operationId": "updatePerson",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Rename a person",
+        "tags": [
+          "people"
+        ]
+      }
+    },
+    "/api/people/{id}/approve": {
+      "post": {
+        "operationId": "approvePerson",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Approve a pending person (admins)",
+        "tags": [
+          "people"
+        ]
+      }
+    },
+    "/api/people/{id}/bind": {
+      "post": {
+        "operationId": "bindPerson",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindInBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Point a person's event references at a registered user (admins)",
+        "tags": [
+          "people"
         ]
       }
     },

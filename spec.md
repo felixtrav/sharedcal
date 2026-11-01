@@ -459,6 +459,10 @@ A JSON REST API under `/api`, described by a generated OpenAPI 3.1 document at `
 | GET, POST | `/api/catalog-requests` | Viewer+ (own; Admin sees all) / non-admins | List / suggest a tag or event type. Only `kind`, `name`, `colorSlot`, `icon` (event types) and `other` are accepted. |
 | POST | `/api/catalog-requests/{id}/approve`, `/reject` | Admin | Approve creates the tag or event type (body may adjust name, color, icon); reject takes an optional note. |
 | POST | `/api/catalog-requests/{id}/withdraw` | Author | Withdraw an open request. |
+| GET, POST | `/api/people` | Viewer+ / Writer+ | People without accounts, next to the registered users. A writer's new person is pending until an admin approves it; only the author and admins see it meanwhile. |
+| PATCH | `/api/people/{id}` | Writer+ (pending: author or Admin) | Rename; generated titles follow. |
+| POST | `/api/people/{id}/approve`, `/bind` | Admin | Approve a pending person; bind one to a user, rewriting every event reference to that user. |
+| DELETE | `/api/people/{id}` | Admin | Delete or reject; removes the person from events. |
 | GET, PATCH | `/api/users…` | Admin | List users, change role/role source, deactivate, revoke sessions, transfer ownership. |
 | GET | `/api/activity` | Admin | Audit log with filters. |
 | GET, PUT | `/api/settings` | Admin | Instance settings. |

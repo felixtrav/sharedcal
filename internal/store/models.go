@@ -37,6 +37,9 @@ const (
 	CatalogTag       = "tag"
 	CatalogEventType = "event_type"
 
+	PersonPending = "pending"
+	PersonActive  = "active"
+
 	CatalogOpen      = "open"
 	CatalogApproved  = "approved"
 	CatalogRejected  = "rejected"
@@ -264,6 +267,25 @@ type CatalogRequest struct {
 	UpdatedAt     time.Time `gorm:"not null"`
 }
 
+// Person is someone events can mention who has no account, such as a child
+// or a relative. Writers submit people as pending; an admin approves them.
+// When the person later joins, an admin binds them to their user: the row
+// stays as a tombstone pointing at BoundUserID and every event reference is
+// rewritten to the user.
+type Person struct {
+	ID          string  `gorm:"primaryKey;size:36"`
+	Name        string  `gorm:"size:64;not null"`
+	Status      string  `gorm:"size:16;not null;index:ix_people_status"`
+	CreatedByID *string `gorm:"size:36"`
+	// BoundUserID is set once an admin has linked the person to a user.
+	BoundUserID *string `gorm:"size:36;index:ix_people_bound_user"`
+	BoundAt     *time.Time
+	CreatedAt   time.Time `gorm:"not null"`
+	UpdatedAt   time.Time `gorm:"not null"`
+}
+
+func (Person) TableName() string { return "people" }
+
 type Notification struct {
 	ID          string  `gorm:"primaryKey;size:36"`
 	UserID      string  `gorm:"size:36;not null;index:ix_notifications_user,priority:1"`
@@ -338,7 +360,7 @@ type Setting struct {
 func AllModels() []any {
 	return []any{
 		&User{}, &UserPreference{}, &Session{}, &EventType{}, &Event{}, &EventOverride{},
-		&Tag{}, &EventTag{}, &Comment{}, &Attachment{}, &Suggestion{}, &CatalogRequest{},
+		&Tag{}, &EventTag{}, &Comment{}, &Attachment{}, &Suggestion{}, &CatalogRequest{}, &Person{},
 		&Notification{}, &EventWatch{}, &Activity{}, &ChangeLog{}, &FeedToken{}, &Setting{},
 	}
 }

@@ -169,18 +169,7 @@ func memberNames(db *gorm.DB, t store.EventType, values ...map[string]any) (map[
 			}
 		}
 	}
-	names := map[string]string{}
-	if len(ids) == 0 {
-		return names, nil
-	}
-	var users []store.User
-	if err := db.Where("id IN ?", uniq(ids)).Find(&users).Error; err != nil {
-		return nil, err
-	}
-	for i := range users {
-		names[users[i].ID] = refOf(&users[i]).Name
-	}
-	return names, nil
+	return memberLabels(db, ids)
 }
 
 // renderTitle fills the type's title template from field values. Missing
