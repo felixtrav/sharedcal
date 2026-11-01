@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applySections, renderTitle } from './titleTemplate'
+import { applySections, firstNameOf, renderTitle } from './titleTemplate'
 
 const type = (titleTemplate: string) => ({ name: 'Birthday', titleTemplate, fields: [{ key: 'guests', label: 'Guests', kind: 'members' as const }] })
 
@@ -21,6 +21,19 @@ describe('renderTitle', () => {
   it('shows people by their current name and skips unknown ids', () => {
     const names: Record<string, string> = { u1: 'Alice', u2: 'Bob' }
     expect(renderTitle(type('Party for {{guests}}'), { guests: ['u1', 'gone', 'u2'] }, (id) => names[id])).toBe('Party for Alice, Bob')
+  })
+
+  it('shows first names only with {{field:first}}', () => {
+    const names: Record<string, [string, string]> = { u1: ['Emma Smith', 'Emma'], u2: ['Bob Jones', 'Bob'] }
+    const nameOf = (id: string, first?: boolean) => names[id]?.[first ? 1 : 0]
+    expect(renderTitle(type("{{guests:first}}'s party ({{guests}})"), { guests: ['u1'] }, nameOf)).toBe("Emma's party (Emma Smith)")
+    expect(renderTitle(type('{{ guests:first }} party'), { guests: ['u1', 'u2'] }, nameOf)).toBe('Emma, Bob party')
+  })
+
+  it('takes the first word of a display name, keeping email addresses whole', () => {
+    expect(firstNameOf('Alice Admin')).toBe('Alice')
+    expect(firstNameOf('Cher')).toBe('Cher')
+    expect(firstNameOf('alice@example.com')).toBe('alice@example.com')
   })
 
   it('shows optional parts only when their field has a value', () => {

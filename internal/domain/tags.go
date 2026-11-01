@@ -93,36 +93,43 @@ func (s *Service) CreateTag(ctx context.Context, actor authz.Actor, in TagInput)
 	}
 	var out TagDTO
 	err := s.write(ctx, actor, func(tx *Tx) error {
-		name, err := s.checkTagName(tx.db, *in.Name, "")
-		if err != nil {
-			return err
-		}
-		var n int64
-		if err := tx.db.Model(&store.Tag{}).Count(&n).Error; err != nil {
-			return err
-		}
-		if n >= maxTags {
-			return limit("too many tags")
-		}
-		var maxOrder struct{ M *int }
-		if err := tx.db.Model(&store.Tag{}).Select("MAX(sort_order) AS m").Scan(&maxOrder).Error; err != nil {
-			return err
-		}
-		order := 0
-		if maxOrder.M != nil {
-			order = *maxOrder.M + 1
-		}
-		t := store.Tag{ID: store.NewID(), Name: name, ColorSlot: *in.ColorSlot, SortOrder: order, CreatedAt: tx.now, UpdatedAt: tx.now}
-		if err := tx.db.Create(&t).Error; err != nil {
-			return err
-		}
-		out = tagDTO(t)
-		if err := tx.record("tag.created", "tag", t.ID, nil, nil, out); err != nil {
-			return err
-		}
-		return tx.emitTags()
+		var err error
+		out, err = s.insertTag(tx, *in.Name, *in.ColorSlot)
+		return err
 	})
 	return &out, err
+}
+
+// insertTag validates and appends a tag, then records and broadcasts it.
+func (s *Service) insertTag(tx *Tx, rawName, slot string) (TagDTO, error) {
+	name, err := s.checkTagName(tx.db, rawName, "")
+	if err != nil {
+		return TagDTO{}, err
+	}
+	var n int64
+	if err := tx.db.Model(&store.Tag{}).Count(&n).Error; err != nil {
+		return TagDTO{}, err
+	}
+	if n >= maxTags {
+		return TagDTO{}, limit("too many tags")
+	}
+	var maxOrder struct{ M *int }
+	if err := tx.db.Model(&store.Tag{}).Select("MAX(sort_order) AS m").Scan(&maxOrder).Error; err != nil {
+		return TagDTO{}, err
+	}
+	order := 0
+	if maxOrder.M != nil {
+		order = *maxOrder.M + 1
+	}
+	t := store.Tag{ID: store.NewID(), Name: name, ColorSlot: slot, SortOrder: order, CreatedAt: tx.now, UpdatedAt: tx.now}
+	if err := tx.db.Create(&t).Error; err != nil {
+		return TagDTO{}, err
+	}
+	out := tagDTO(t)
+	if err := tx.record("tag.created", "tag", t.ID, nil, nil, out); err != nil {
+		return TagDTO{}, err
+	}
+	return out, tx.emitTags()
 }
 
 // UpdateTag renames or recolors a tag.

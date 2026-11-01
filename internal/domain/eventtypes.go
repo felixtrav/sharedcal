@@ -47,7 +47,7 @@ const (
 // glyph. Keep in sync with web/src/lib/typeIcons.ts.
 var typeIcons = []string{
 	"calendar", "cake", "gift", "party-popper", "flag", "plane", "heart", "star", "briefcase",
-	"graduation-cap", "utensils", "music", "trophy", "stethoscope", "home", "users", "bell",
+	"graduation-cap", "utensils", "music", "trophy", "stethoscope", "home", "users", "bell", "gamepad", "film", "ball",
 }
 
 // Styles an event type can use on the calendar.
@@ -79,7 +79,7 @@ func (d FieldDef) allowsMany() bool {
 type EventTypeDTO struct {
 	ID                     string     `json:"id"`
 	Name                   string     `json:"name"`
-	Icon                   string     `json:"icon" enum:"calendar,cake,gift,party-popper,flag,plane,heart,star,briefcase,graduation-cap,utensils,music,trophy,stethoscope,home,users,bell"`
+	Icon                   string     `json:"icon" enum:"calendar,cake,gift,party-popper,flag,plane,heart,star,briefcase,graduation-cap,utensils,music,trophy,stethoscope,home,users,bell,gamepad,film,ball"`
 	ColorSlot              string     `json:"colorSlot" enum:"tag-1,tag-2,tag-3,tag-4,tag-5,tag-6,tag-7,tag-8"`
 	Style                  string     `json:"style" enum:"default,banner,outline,badge"`
 	YearCounter            bool       `json:"yearCounter"`
@@ -90,6 +90,7 @@ type EventTypeDTO struct {
 	NeverRepeats           bool       `json:"neverRepeats" doc:"Events of the type never repeat; excludes defaultRrule"`
 	AdminOnly              bool       `json:"adminOnly" doc:"Only admins can create events of this type or switch events to it"`
 	Ownerless              bool       `json:"ownerless" doc:"Events of this type belong to the calendar rather than a person; only admins edit them"`
+	HideLocation           bool       `json:"hideLocation" doc:"Clients leave the location field out when creating or editing events of this type"`
 	TitleTemplate          string     `json:"titleTemplate" doc:"When set, event titles are generated from field values and cannot be set by hand"`
 	Instructions           string     `json:"instructions" doc:"Guidance shown while creating an event of this type"`
 	Fields                 []FieldDef `json:"fields"`
@@ -100,7 +101,7 @@ type EventTypeDTO struct {
 // unchanged (creation requires name and colorSlot).
 type EventTypeInput struct {
 	Name                   *string     `json:"name,omitempty" maxLength:"64"`
-	Icon                   *string     `json:"icon,omitempty" enum:"calendar,cake,gift,party-popper,flag,plane,heart,star,briefcase,graduation-cap,utensils,music,trophy,stethoscope,home,users,bell"`
+	Icon                   *string     `json:"icon,omitempty" enum:"calendar,cake,gift,party-popper,flag,plane,heart,star,briefcase,graduation-cap,utensils,music,trophy,stethoscope,home,users,bell,gamepad,film,ball"`
 	ColorSlot              *string     `json:"colorSlot,omitempty" enum:"tag-1,tag-2,tag-3,tag-4,tag-5,tag-6,tag-7,tag-8"`
 	Style                  *string     `json:"style,omitempty" enum:"default,banner,outline,badge"`
 	YearCounter            *bool       `json:"yearCounter,omitempty" doc:"Show years since the first occurrence of a recurring event"`
@@ -111,6 +112,7 @@ type EventTypeInput struct {
 	NeverRepeats           *bool       `json:"neverRepeats,omitempty" doc:"Events of this type can't repeat; cannot be combined with defaultRrule"`
 	AdminOnly              *bool       `json:"adminOnly,omitempty" doc:"Only admins can create events of this type or switch events to it"`
 	Ownerless              *bool       `json:"ownerless,omitempty" doc:"New events of this type get no personal owner (holidays); only admins edit them"`
+	HideLocation           *bool       `json:"hideLocation,omitempty" doc:"Clients leave the location field out of the event form for this type"`
 	TitleTemplate          *string     `json:"titleTemplate,omitempty" maxLength:"200" doc:"Generates event titles from {{field_key}} placeholders; empty turns it off"`
 	Instructions           *string     `json:"instructions,omitempty" maxLength:"1000" doc:"Guidance shown while creating an event of this type"`
 	Fields                 *[]FieldDef `json:"fields,omitempty" maxItems:"20"`
@@ -147,6 +149,9 @@ func applyLook(t *store.EventType, in EventTypeInput) error {
 	}
 	if in.Ownerless != nil {
 		t.Ownerless = *in.Ownerless
+	}
+	if in.HideLocation != nil {
+		t.HideLocation = *in.HideLocation
 	}
 	if in.DefaultAllDay != nil {
 		t.DefaultAllDay = *in.DefaultAllDay
@@ -247,7 +252,7 @@ func parseFieldDefs(raw string) []FieldDef {
 func eventTypeDTO(t store.EventType) EventTypeDTO {
 	return EventTypeDTO{
 		ID: t.ID, Name: t.Name, Icon: t.Icon, ColorSlot: t.ColorSlot, Style: t.Style, YearCounter: t.YearCounter, TitleTemplate: t.TitleTemplate, Instructions: t.Instructions, DefaultAllDay: t.DefaultAllDay, DefaultDurationMinutes: t.DefaultDurationMinutes,
-		DefaultRRule: t.DefaultRRule, NeverRepeats: t.NeverRepeats, AdminOnly: t.AdminOnly, Ownerless: t.Ownerless, SingleDay: t.SingleDay, Fields: parseFieldDefs(t.FieldsJSON), SortOrder: t.SortOrder,
+		DefaultRRule: t.DefaultRRule, NeverRepeats: t.NeverRepeats, AdminOnly: t.AdminOnly, Ownerless: t.Ownerless, HideLocation: t.HideLocation, SingleDay: t.SingleDay, Fields: parseFieldDefs(t.FieldsJSON), SortOrder: t.SortOrder,
 	}
 }
 
@@ -365,20 +370,24 @@ func normalizeFields(db *gorm.DB, defs []FieldDef, in map[string]any) (map[strin
 			out[d.Key] = nv
 		}
 	}
-	// Members must be existing users (inactive ones stay valid, so old events remain editable).
+	// Members must be existing users or people (inactive users stay valid, so
+	// old events remain editable). People who have since been bound to a user
+	// are stored as that user.
 	for _, d := range defs {
 		ids, _ := out[d.Key].([]string)
 		if d.Kind != FieldMembers || len(ids) == 0 {
 			continue
 		}
-		var n int64
-		if err := db.Model(&store.User{}).Where("id IN ?", ids).Count(&n).Error; err != nil {
+		resolved, ok, err := resolvePeople(db, ids)
+		if err != nil {
 			return nil, nil, err
 		}
-		if int(n) != len(ids) {
+		if !ok {
 			fe.add("fields."+d.Key, "%s includes an unknown person", d.Label)
 			delete(out, d.Key)
+			continue
 		}
+		out[d.Key] = resolved
 	}
 	return out, fe, nil
 }
@@ -636,62 +645,70 @@ func (s *Service) CreateEventType(ctx context.Context, actor authz.Actor, in Eve
 	}
 	var out EventTypeDTO
 	err := s.write(ctx, actor, func(tx *Tx) error {
-		name, err := s.checkTypeName(tx.db, *in.Name, "")
-		if err != nil {
-			return err
-		}
-		t := store.EventType{ID: store.NewID(), Name: name, Icon: icon, ColorSlot: *in.ColorSlot, Style: "default", DefaultDurationMinutes: 60, CreatedAt: tx.now, UpdatedAt: tx.now}
-		if err := applyLook(&t, in); err != nil {
-			return err
-		}
-		if in.DefaultRRule != nil {
-			if t.DefaultRRule, err = checkDefaultRRule(*in.DefaultRRule); err != nil {
-				return err
-			}
-		}
-		if t.NeverRepeats && t.DefaultRRule != "" {
-			return invalidField("neverRepeats", "a type that never repeats can't also have a fixed repeat")
-		}
-		// A single date only means something for events that are always all-day.
-		t.SingleDay = t.SingleDay && t.DefaultAllDay
-		defs := []FieldDef{}
-		if in.Fields != nil {
-			var fe fieldErrors
-			if defs, fe = validateFieldDefs(*in.Fields); len(fe) > 0 {
-				return fe.err()
-			}
-		}
-		b, _ := json.Marshal(defs)
-		t.FieldsJSON = string(b)
-		if in.TitleTemplate != nil {
-			if t.TitleTemplate, err = checkTitleTemplate(*in.TitleTemplate, defs); err != nil {
-				return err
-			}
-		}
-		var n int64
-		if err := tx.db.Model(&store.EventType{}).Count(&n).Error; err != nil {
-			return err
-		}
-		if n >= maxEventTypes {
-			return limit("too many event types")
-		}
-		var maxOrder struct{ M *int }
-		if err := tx.db.Model(&store.EventType{}).Select("MAX(sort_order) AS m").Scan(&maxOrder).Error; err != nil {
-			return err
-		}
-		if maxOrder.M != nil {
-			t.SortOrder = *maxOrder.M + 1
-		}
-		if err := tx.db.Create(&t).Error; err != nil {
-			return err
-		}
-		out = eventTypeDTO(t)
-		if err := tx.record("eventtype.created", "event_type", t.ID, nil, nil, out); err != nil {
-			return err
-		}
-		return tx.emitEventTypes()
+		var err error
+		out, err = s.insertEventType(tx, in, icon)
+		return err
 	})
 	return &out, err
+}
+
+// insertEventType validates and appends an event type, then records and
+// broadcasts it. in.Name and in.ColorSlot are set; icon is already checked.
+func (s *Service) insertEventType(tx *Tx, in EventTypeInput, icon string) (EventTypeDTO, error) {
+	name, err := s.checkTypeName(tx.db, *in.Name, "")
+	if err != nil {
+		return EventTypeDTO{}, err
+	}
+	t := store.EventType{ID: store.NewID(), Name: name, Icon: icon, ColorSlot: *in.ColorSlot, Style: "default", DefaultDurationMinutes: 60, CreatedAt: tx.now, UpdatedAt: tx.now}
+	if err := applyLook(&t, in); err != nil {
+		return EventTypeDTO{}, err
+	}
+	if in.DefaultRRule != nil {
+		if t.DefaultRRule, err = checkDefaultRRule(*in.DefaultRRule); err != nil {
+			return EventTypeDTO{}, err
+		}
+	}
+	if t.NeverRepeats && t.DefaultRRule != "" {
+		return EventTypeDTO{}, invalidField("neverRepeats", "a type that never repeats can't also have a fixed repeat")
+	}
+	// A single date only means something for events that are always all-day.
+	t.SingleDay = t.SingleDay && t.DefaultAllDay
+	defs := []FieldDef{}
+	if in.Fields != nil {
+		var fe fieldErrors
+		if defs, fe = validateFieldDefs(*in.Fields); len(fe) > 0 {
+			return EventTypeDTO{}, fe.err()
+		}
+	}
+	b, _ := json.Marshal(defs)
+	t.FieldsJSON = string(b)
+	if in.TitleTemplate != nil {
+		if t.TitleTemplate, err = checkTitleTemplate(*in.TitleTemplate, defs); err != nil {
+			return EventTypeDTO{}, err
+		}
+	}
+	var n int64
+	if err := tx.db.Model(&store.EventType{}).Count(&n).Error; err != nil {
+		return EventTypeDTO{}, err
+	}
+	if n >= maxEventTypes {
+		return EventTypeDTO{}, limit("too many event types")
+	}
+	var maxOrder struct{ M *int }
+	if err := tx.db.Model(&store.EventType{}).Select("MAX(sort_order) AS m").Scan(&maxOrder).Error; err != nil {
+		return EventTypeDTO{}, err
+	}
+	if maxOrder.M != nil {
+		t.SortOrder = *maxOrder.M + 1
+	}
+	if err := tx.db.Create(&t).Error; err != nil {
+		return EventTypeDTO{}, err
+	}
+	out := eventTypeDTO(t)
+	if err := tx.record("eventtype.created", "event_type", t.ID, nil, nil, out); err != nil {
+		return EventTypeDTO{}, err
+	}
+	return out, tx.emitEventTypes()
 }
 
 // UpdateEventType changes a type's name, look, defaults or fields. Existing

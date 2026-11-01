@@ -43,7 +43,7 @@ type Preset = Pick<
   EventType,
   'name' | 'icon' | 'colorSlot' | 'style' | 'yearCounter' | 'defaultAllDay' | 'defaultDurationMinutes' | 'defaultRrule' | 'fields'
 > &
-  Partial<Pick<EventType, 'titleTemplate' | 'singleDay' | 'adminOnly' | 'ownerless'>>
+  Partial<Pick<EventType, 'titleTemplate' | 'singleDay' | 'adminOnly' | 'ownerless' | 'hideLocation'>>
 
 /** Translations write placeholders as [key] because i18next reads {{key}} itself. */
 const braced = (s: string) => s.replace(/\[([#/]?[a-z][a-z0-9_]*)\]/g, '{{$1}}')
@@ -428,6 +428,7 @@ function TypeEditor({
   const [counter, setCounter] = useState(type.yearCounter)
   const [adminOnly, setAdminOnly] = useState(type.adminOnly)
   const [ownerless, setOwnerless] = useState(type.ownerless)
+  const [hideLocation, setHideLocation] = useState(type.hideLocation)
   const [minutes, setMinutes] = useState(String(type.defaultDurationMinutes))
   const [rrule, setRrule] = useState<string>(type.neverRepeats ? NEVER : type.defaultRrule)
   const [fields, setFields] = useState<EventTypeField[]>(type.fields)
@@ -436,7 +437,23 @@ function TypeEditor({
   const [busy, setBusy] = useState(false)
 
   const dirty =
-    JSON.stringify({ name, icon, slot, style, counter, adminOnly, ownerless, allDay, singleDay, minutes, rrule, fields, titleTemplate, instructions }) !==
+    JSON.stringify({
+      name,
+      icon,
+      slot,
+      style,
+      counter,
+      adminOnly,
+      ownerless,
+      hideLocation,
+      allDay,
+      singleDay,
+      minutes,
+      rrule,
+      fields,
+      titleTemplate,
+      instructions,
+    }) !==
     JSON.stringify({
       name: type.name,
       icon: type.icon,
@@ -445,6 +462,7 @@ function TypeEditor({
       counter: type.yearCounter,
       adminOnly: type.adminOnly,
       ownerless: type.ownerless,
+      hideLocation: type.hideLocation,
       allDay: type.defaultAllDay,
       singleDay: type.singleDay,
       minutes: String(type.defaultDurationMinutes),
@@ -462,12 +480,12 @@ function TypeEditor({
   const titleNeedsRequired = !!titleTemplate.trim() && !fields.some((f) => f.required && f.kind !== 'checkbox')
   const titleFields = keyed.filter((f) => (TITLE_FIELD_KINDS as readonly string[]).includes(f.kind) && f.label.trim())
   const titleRef = useRef<HTMLInputElement>(null)
-  /** Adds `{{key}}` at the caret in the title template. */
-  const insertField = (key: string) => {
+  /** Adds `{{key}}` (or `{{key:first}}`) at the caret in the title template. */
+  const insertField = (key: string, firstOnly = false) => {
     const el = titleRef.current
     const at = el?.selectionStart ?? titleTemplate.length
     const to = el?.selectionEnd ?? at
-    const token = `{{${key}}}`
+    const token = `{{${key}${firstOnly ? ':first' : ''}}}`
     setTitleTemplate(titleTemplate.slice(0, at) + token + titleTemplate.slice(to))
     requestAnimationFrame(() => {
       el?.focus()
@@ -520,6 +538,7 @@ function TypeEditor({
       yearCounter: counter,
       adminOnly,
       ownerless,
+      hideLocation,
       defaultAllDay: allDay,
       singleDay: allDay && singleDay,
       defaultDurationMinutes: Number(minutes),
@@ -645,6 +664,15 @@ function TypeEditor({
             {t('eventTypes.ownerlessHint')}
           </p>
         </div>
+        <div className="grid gap-1 self-start sm:pt-6">
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor={`${uid}-hide-location`}>{t('eventTypes.hideLocation')}</Label>
+            <Switch id={`${uid}-hide-location`} checked={hideLocation} onCheckedChange={setHideLocation} aria-describedby={`${uid}-hide-location-hint`} />
+          </div>
+          <p id={`${uid}-hide-location-hint`} className="text-xs text-muted-foreground">
+            {t('eventTypes.hideLocationHint')}
+          </p>
+        </div>
       </div>
 
       <div className="grid gap-1.5">
@@ -695,6 +723,20 @@ function TypeEditor({
                 {f.label.trim()}
               </Button>
             ))}
+            {titleFields
+              .filter((f) => f.kind === 'members')
+              .map((f) => (
+                <Button
+                  key={`${f.key}:first`}
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  aria-label={t('eventTypes.insertFirstNameN', { name: f.label.trim() })}
+                  onClick={() => insertField(f.key, true)}
+                >
+                  {t('eventTypes.firstNameOnly', { name: f.label.trim() })}
+                </Button>
+              ))}
           </div>
         ) : null}
         {titleFields.length ? (

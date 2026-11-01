@@ -358,3 +358,66 @@ func (d EditDecision) String() string {
 	}
 	return "forbidden"
 }
+
+func TestCatalogRequestRules(t *testing.T) {
+	admin := Actor{ID: "a", Role: Admin, Active: true}
+	writer := Actor{ID: "w", Role: Writer, Active: true}
+	viewer := Actor{ID: "v", Role: Viewer, Active: true}
+	gone := Actor{ID: "x", Role: Writer}
+	open := CatalogRequest{AuthorID: "w", Open: true}
+	closed := CatalogRequest{AuthorID: "w"}
+
+	for a, want := range map[Actor]bool{admin: false, writer: true, viewer: true, gone: false} {
+		if got := CanRequestCatalogItem(a); got != want {
+			t.Errorf("CanRequestCatalogItem(%s): %v", a.Role, got)
+		}
+	}
+	for _, c := range []struct {
+		a      Actor
+		r      CatalogRequest
+		review bool
+		retire bool
+	}{
+		{admin, open, true, false},
+		{admin, closed, false, false},
+		{writer, open, false, true},
+		{writer, closed, false, false},
+		{viewer, open, false, false},
+		{gone, open, false, false},
+	} {
+		if got := CanReviewCatalogRequest(c.a, c.r); got != c.review {
+			t.Errorf("review %s open=%v: %v", c.a.ID, c.r.Open, got)
+		}
+		if got := CanWithdrawCatalogRequest(c.a, c.r); got != c.retire {
+			t.Errorf("withdraw %s open=%v: %v", c.a.ID, c.r.Open, got)
+		}
+	}
+}
+
+func TestPersonRules(t *testing.T) {
+	admin := Actor{ID: "a", Role: Admin, Active: true}
+	author := Actor{ID: "w1", Role: Writer, Active: true}
+	other := Actor{ID: "w2", Role: Writer, Active: true}
+	viewer := Actor{ID: "v", Role: Viewer, Active: true}
+	pending := Person{CreatedByID: "w1", Pending: true}
+	active := Person{CreatedByID: "w1"}
+
+	if !CanCreatePerson(author) || !CanCreatePerson(admin) || CanCreatePerson(viewer) {
+		t.Error("create")
+	}
+	for _, c := range []struct {
+		a    Actor
+		p    Person
+		want bool
+	}{
+		{author, pending, true}, {admin, pending, true}, {other, pending, false},
+		{other, active, true}, {viewer, active, false},
+	} {
+		if got := CanEditPerson(c.a, c.p); got != c.want {
+			t.Errorf("edit %s pending=%v: got %v", c.a.ID, c.p.Pending, got)
+		}
+	}
+	if !CanManagePeople(admin) || CanManagePeople(author) {
+		t.Error("manage")
+	}
+}

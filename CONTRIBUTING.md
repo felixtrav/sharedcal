@@ -143,6 +143,25 @@ or generated with Atlas, and always reviewed.
    Archives from older versions must still import: missing columns get their
    zero value. Bump `archive.FormatVersion` only for incompatible changes.
 
+## Dependency audit
+
+CI fails the Web job on `npm audit --omit=dev`, so only vulnerabilities in what the app ships block a
+merge. A second step audits the dev tooling too but is allowed to fail, so its findings stay visible in
+the job log without blocking anyone.
+
+That split exists because of one open advisory: `minimatch` below 11.0.1 (a denial of service,
+GHSA-g3hv-75wg-m249), pulled in by ESLint, typescript-eslint and openapi-typescript. Only 11.x is fixed,
+and `eslint-plugin-jsx-a11y` (6.10.2 at the time of writing, no newer release) crashes under minimatch 11.
+Forcing it with an npm `overrides` entry breaks lint.
+
+**To revisit** (every few months, or when Renovate proposes a new `eslint-plugin-jsx-a11y`):
+
+1. Check `npm view eslint-plugin-jsx-a11y version` against 6.10.2, and whether its release notes mention minimatch.
+2. If there is a newer release, update it, add `"overrides": { "minimatch": "^11.0.1" }` to `web/package.json`,
+   run `npm install`, then `npm run lint`, `npm run typecheck` and `npm audit`.
+3. If everything passes, change the CI step back to a plain `npm audit --audit-level=moderate`, delete the
+   informational step and the comment above it, and delete this section.
+
 ## Code style
 
 - Go: `gofmt`, staticcheck-clean, errors wrapped with context, `log/slog` for

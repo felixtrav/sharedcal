@@ -34,6 +34,17 @@ const (
 	SuggestionEdit   = "edit"
 	SuggestionDelete = "delete"
 
+	CatalogTag       = "tag"
+	CatalogEventType = "event_type"
+
+	PersonPending = "pending"
+	PersonActive  = "active"
+
+	CatalogOpen      = "open"
+	CatalogApproved  = "approved"
+	CatalogRejected  = "rejected"
+	CatalogWithdrawn = "withdrawn"
+
 	SuggestionOpen              = "open"
 	SuggestionAccepted          = "accepted"
 	SuggestionPartiallyAccepted = "partially_accepted"
@@ -164,6 +175,8 @@ type EventType struct {
 	// Ownerless gives the type's events no personal owner: they belong to the calendar (SystemUserID)
 	// and only admins edit them.
 	Ownerless bool `gorm:"not null"`
+	// HideLocation leaves the location field out of the event form for types where it makes no sense (video games).
+	HideLocation bool `gorm:"not null"`
 	// Instructions are shown to writers while they create an event of this type.
 	Instructions string    `gorm:"size:1000;not null;default:''"`
 	FieldsJSON   string    `gorm:"column:fields_json;type:text;not null"`
@@ -232,6 +245,49 @@ type Suggestion struct {
 	CreatedAt   time.Time `gorm:"not null"`
 	UpdatedAt   time.Time `gorm:"not null"`
 }
+
+// CatalogRequest is a non-admin's request for a new tag or event type. Only a
+// name, color and (for types) icon can be asked for; an admin sets up the rest.
+type CatalogRequest struct {
+	ID        string `gorm:"primaryKey;size:36"`
+	Kind      string `gorm:"size:16;not null"`
+	Name      string `gorm:"size:64;not null"`
+	Icon      string `gorm:"size:32;not null"`
+	ColorSlot string `gorm:"size:16;not null"`
+	// OtherText is the requester's optional free-form note.
+	OtherText  string  `gorm:"type:text;not null"`
+	AuthorID   string  `gorm:"size:36;not null;index:ix_catalog_requests_author"`
+	Status     string  `gorm:"size:16;not null;index:ix_catalog_requests_status"`
+	ReviewerID *string `gorm:"size:36"`
+	ReviewNote string  `gorm:"type:text;not null"`
+	// CreatedItemID is the tag or event type an approval produced.
+	CreatedItemID *string `gorm:"size:36"`
+	ResolvedAt    *time.Time
+	CreatedAt     time.Time `gorm:"not null"`
+	UpdatedAt     time.Time `gorm:"not null"`
+}
+
+// Person is someone events can mention who has no account, such as a child
+// or a relative. Writers submit people as pending; an admin approves them.
+// When the person later joins, an admin binds them to their user: the row
+// stays as a tombstone pointing at BoundUserID and every event reference is
+// rewritten to the user.
+type Person struct {
+	ID string `gorm:"primaryKey;size:36"`
+	// Name is "FirstName LastName", what titles and pickers show.
+	Name        string  `gorm:"size:128;not null"`
+	FirstName   string  `gorm:"size:60;not null;default:''"`
+	LastName    string  `gorm:"size:60;not null;default:''"`
+	Status      string  `gorm:"size:16;not null;index:ix_people_status"`
+	CreatedByID *string `gorm:"size:36"`
+	// BoundUserID is set once an admin has linked the person to a user.
+	BoundUserID *string `gorm:"size:36;index:ix_people_bound_user"`
+	BoundAt     *time.Time
+	CreatedAt   time.Time `gorm:"not null"`
+	UpdatedAt   time.Time `gorm:"not null"`
+}
+
+func (Person) TableName() string { return "people" }
 
 type Notification struct {
 	ID          string  `gorm:"primaryKey;size:36"`
@@ -307,7 +363,7 @@ type Setting struct {
 func AllModels() []any {
 	return []any{
 		&User{}, &UserPreference{}, &Session{}, &EventType{}, &Event{}, &EventOverride{},
-		&Tag{}, &EventTag{}, &Comment{}, &Attachment{}, &Suggestion{},
+		&Tag{}, &EventTag{}, &Comment{}, &Attachment{}, &Suggestion{}, &CatalogRequest{}, &Person{},
 		&Notification{}, &EventWatch{}, &Activity{}, &ChangeLog{}, &FeedToken{}, &Setting{},
 	}
 }

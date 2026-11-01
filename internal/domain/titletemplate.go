@@ -16,8 +16,9 @@ import (
 
 const maxTitleTemplate = 200
 
-// placeholderRE matches {{key}} references to a field of the event type.
-var placeholderRE = regexp.MustCompile(`\{\{\s*([a-z][a-z0-9_]*)\s*\}\}`)
+// placeholderRE matches {{key}} references to a field of the event type. A
+// people field can also be written {{key:first}} to show first names only.
+var placeholderRE = regexp.MustCompile(`\{\{\s*([a-z][a-z0-9_]*)(?::(first))?\s*\}\}`)
 
 // sectionTagRE matches the {{#key}} and {{/key}} tags around an optional part
 // of a template, which is shown only when the field has a value.
@@ -94,6 +95,9 @@ func checkTitleTemplate(tpl string, defs []FieldDef) (string, error) {
 	var refs []string
 	for _, m := range placeholderRE.FindAllStringSubmatch(tpl, -1) {
 		refs = append(refs, m[1])
+		if m[2] != "" && !slices.ContainsFunc(defs, func(d FieldDef) bool { return d.Key == m[1] && d.Kind == FieldMembers }) {
+			return "", invalidField("titleTemplate", "%q:first only works on a people field", m[1])
+		}
 	}
 	for _, m := range sectionTagRE.FindAllStringSubmatch(tpl, -1) {
 		refs = append(refs, m[2])
@@ -115,14 +119,15 @@ func checkTitleTemplate(tpl string, defs []FieldDef) (string, error) {
 
 // fieldTitleText is a field value as it reads inside a title. People are
 // stored by id and shown by their current name; unknown ids are left out.
-func fieldTitleText(kind string, v any, names map[string]string) string {
+// With first set, people show by first name only.
+func fieldTitleText(kind string, v any, names map[string]string, first bool) string {
 	switch x := v.(type) {
 	case string:
 		return strings.TrimSpace(x)
 	case float64:
 		return strconv.FormatFloat(x, 'f', -1, 64)
 	case []string:
-		return joinTitleList(kind, x, names)
+		return joinTitleList(kind, x, names, first)
 	case []any:
 		parts := make([]string, 0, len(x))
 		for _, e := range x {
@@ -130,16 +135,20 @@ func fieldTitleText(kind string, v any, names map[string]string) string {
 				parts = append(parts, s)
 			}
 		}
-		return joinTitleList(kind, parts, names)
+		return joinTitleList(kind, parts, names, first)
 	}
 	return ""
 }
 
-func joinTitleList(kind string, items []string, names map[string]string) string {
+func joinTitleList(kind string, items []string, names map[string]string, first bool) string {
 	if kind == FieldMembers {
 		resolved := make([]string, 0, len(items))
 		for _, id := range items {
-			if n := names[id]; n != "" {
+			key := id
+			if first {
+				key = firstNameKey(id)
+			}
+			if n := names[key]; n != "" {
 				resolved = append(resolved, n)
 			}
 		}
@@ -169,18 +178,7 @@ func memberNames(db *gorm.DB, t store.EventType, values ...map[string]any) (map[
 			}
 		}
 	}
-	names := map[string]string{}
-	if len(ids) == 0 {
-		return names, nil
-	}
-	var users []store.User
-	if err := db.Where("id IN ?", uniq(ids)).Find(&users).Error; err != nil {
-		return nil, err
-	}
-	for i := range users {
-		names[users[i].ID] = refOf(&users[i]).Name
-	}
-	return names, nil
+	return memberLabels(db, ids)
 }
 
 // renderTitle fills the type's title template from field values. Missing
@@ -192,18 +190,21 @@ func renderTitle(t store.EventType, values map[string]any, names map[string]stri
 	for _, d := range parseFieldDefs(t.FieldsJSON) {
 		kinds[d.Key] = d.Kind
 	}
-	text := func(key string) string {
-		s := fieldTitleText(kinds[key], values[key], names)
+	text := func(key string, first bool) string {
+		s := fieldTitleText(kinds[key], values[key], names, first)
 		if s != "" && kinds[key] == FieldTime && timeText != nil {
 			return timeText(s)
 		}
 		return s
 	}
-	out, err := applySections(t.TitleTemplate, func(key string) bool { return text(key) != "" })
+	out, err := applySections(t.TitleTemplate, func(key string) bool { return text(key, false) != "" })
 	if err != nil {
 		out = t.TitleTemplate // saved templates are validated; show it plainly rather than lose the title
 	}
-	out = placeholderRE.ReplaceAllStringFunc(out, func(m string) string { return text(placeholderRE.FindStringSubmatch(m)[1]) })
+	out = placeholderRE.ReplaceAllStringFunc(out, func(m string) string {
+		sub := placeholderRE.FindStringSubmatch(m)
+		return text(sub[1], sub[2] != "")
+	})
 	out = strings.Join(strings.Fields(out), " ")
 	if out == "" {
 		out = t.Name

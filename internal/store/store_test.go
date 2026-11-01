@@ -2,6 +2,8 @@ package store_test
 
 import (
 	"context"
+	"io/fs"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/felixtrav/sharedcal/internal/store"
 	"github.com/felixtrav/sharedcal/internal/store/storetest"
+	"github.com/felixtrav/sharedcal/migrations"
 )
 
 // TestModelsMatchMigrations ensures every GORM model field has a column in
@@ -46,6 +49,30 @@ func TestModelsMatchMigrations(t *testing.T) {
 		for c := range inDB {
 			t.Errorf("%s.%s: column not mapped by model", s.Table, c)
 		}
+	}
+}
+
+// TestMigrationCommentsHaveNoSemicolons: the migration runner splits files on
+// semicolons, so one inside a comment cuts a statement in half. Postgres
+// rejects the result, while SQLite and MySQL happen to cope.
+func TestMigrationCommentsHaveNoSemicolons(t *testing.T) {
+	err := fs.WalkDir(migrations.FS, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".sql") {
+			return err
+		}
+		b, err := fs.ReadFile(migrations.FS, path)
+		if err != nil {
+			return err
+		}
+		for i, line := range strings.Split(string(b), "\n") {
+			if strings.HasPrefix(strings.TrimSpace(line), "--") && strings.Contains(line, ";") {
+				t.Errorf("%s:%d: comment contains a semicolon", path, i+1)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 

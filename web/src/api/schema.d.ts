@@ -89,6 +89,92 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/catalog-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Tag and event type requests (admins see everyone's, others their own) */
+        get: operations["listCatalogRequests"];
+        put?: never;
+        /** Ask for a new tag or event type (non-admins) */
+        post: operations["createCatalogRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalog-requests/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Open requests waiting for review (admins) */
+        get: operations["countCatalogRequests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalog-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create the requested tag or event type (admins) */
+        post: operations["approveCatalogRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalog-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject with an optional note (admins) */
+        post: operations["rejectCatalogRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalog-requests/{id}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retract your own open request */
+        post: operations["withdrawCatalogRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/comments/{id}": {
         parameters: {
             query?: never;
@@ -417,6 +503,93 @@ export interface paths {
         /** Update preferences */
         put: operations["putPreferences"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Registered users and people without accounts */
+        get: operations["listPeople"];
+        put?: never;
+        /** Add a person without an account (pending approval unless an admin) */
+        post: operations["createPerson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/people/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** People waiting for approval (admins) */
+        get: operations["countPendingPeople"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/people/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete or reject a person and remove them from events (admins) */
+        delete: operations["deletePerson"];
+        options?: never;
+        head?: never;
+        /** Rename a person */
+        patch: operations["updatePerson"];
+        trace?: never;
+    };
+    "/api/people/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a pending person (admins) */
+        post: operations["approvePerson"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/people/{id}/bind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Point a person's event references at a registered user (admins) */
+        post: operations["bindPerson"];
         delete?: never;
         options?: never;
         head?: never;
@@ -830,6 +1003,60 @@ export interface components {
         AttachmentTrashBody: {
             attachments: components["schemas"]["TrashedAttachment"][];
         };
+        BindInBody: {
+            userId: string;
+        };
+        CatalogApproveInput: {
+            /** @enum {string} */
+            colorSlot?: "tag-1" | "tag-2" | "tag-3" | "tag-4" | "tag-5" | "tag-6" | "tag-7" | "tag-8";
+            /**
+             * @description Event types only
+             * @enum {string}
+             */
+            icon?: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell" | "gamepad" | "film" | "ball";
+            name?: string;
+        };
+        CatalogRequestDTO: {
+            author: components["schemas"]["UserRef"];
+            /** @enum {string} */
+            colorSlot: "tag-1" | "tag-2" | "tag-3" | "tag-4" | "tag-5" | "tag-6" | "tag-7" | "tag-8";
+            /** Format: date-time */
+            createdAt: string;
+            /** @description The tag or event type an approval created */
+            createdItemId: string | null;
+            icon: string;
+            id: string;
+            /** @enum {string} */
+            kind: "tag" | "event_type";
+            name: string;
+            /** @description The requester's optional note to the admins */
+            other: string;
+            permissions: components["schemas"]["CatalogRequestPermissions"];
+            /** Format: date-time */
+            resolvedAt: string | null;
+            reviewNote: string;
+            reviewer: components["schemas"]["UserRef"];
+            /** @enum {string} */
+            status: "open" | "approved" | "rejected" | "withdrawn";
+        };
+        CatalogRequestInput: {
+            /** @enum {string} */
+            colorSlot: "tag-1" | "tag-2" | "tag-3" | "tag-4" | "tag-5" | "tag-6" | "tag-7" | "tag-8";
+            /**
+             * @description Event types only
+             * @enum {string}
+             */
+            icon?: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell" | "gamepad" | "film" | "ball";
+            /** @enum {string} */
+            kind: "tag" | "event_type";
+            name: string;
+            /** @description Optional note to the admins */
+            other?: string;
+        };
+        CatalogRequestPermissions: {
+            review: boolean;
+            withdraw: boolean;
+        };
         CommentDTO: {
             attachments: components["schemas"]["AttachmentDTO"][];
             author: components["schemas"]["UserRef"];
@@ -857,6 +1084,10 @@ export interface components {
         };
         CommentsBody: {
             comments: components["schemas"]["CommentDTO"][];
+        };
+        CountBody: {
+            /** Format: int64 */
+            open: number;
         };
         DirectoryBody: {
             users: components["schemas"]["UserRef"][];
@@ -1001,8 +1232,10 @@ export interface components {
             /** @description When set, every event of the type repeats with exactly this rule */
             defaultRrule: string;
             fields: components["schemas"]["FieldDef"][];
+            /** @description Clients leave the location field out when creating or editing events of this type */
+            hideLocation: boolean;
             /** @enum {string} */
-            icon: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell";
+            icon: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell" | "gamepad" | "film" | "ball";
             id: string;
             /** @description Guidance shown while creating an event of this type */
             instructions: string;
@@ -1035,8 +1268,10 @@ export interface components {
             /** @description RRULE every event of this type must use */
             defaultRrule?: string;
             fields?: components["schemas"]["FieldDef"][];
+            /** @description Clients leave the location field out of the event form for this type */
+            hideLocation?: boolean;
             /** @enum {string} */
-            icon?: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell";
+            icon?: "calendar" | "cake" | "gift" | "party-popper" | "flag" | "plane" | "heart" | "star" | "briefcase" | "graduation-cap" | "utensils" | "music" | "trophy" | "stethoscope" | "home" | "users" | "bell" | "gamepad" | "film" | "ball";
             /** @description Guidance shown while creating an event of this type */
             instructions?: string;
             name?: string;
@@ -1215,6 +1450,14 @@ export interface components {
             title?: string;
             typeOverridden?: boolean;
         };
+        PendingPeopleBody: {
+            /** Format: int64 */
+            pending: number;
+        };
+        PeopleDTO: {
+            people: components["schemas"]["PersonDTO"][];
+            users: components["schemas"]["UserRef"][];
+        };
         Permissions: {
             attach: boolean;
             comment: boolean;
@@ -1222,6 +1465,28 @@ export interface components {
             edit: boolean;
             review: boolean;
             suggest: boolean;
+        };
+        PersonDTO: {
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: components["schemas"]["UserRef"];
+            firstName: string;
+            id: string;
+            /** @description Empty for people added before last names were asked for */
+            lastName: string;
+            /** @description First and last name together */
+            name: string;
+            permissions: components["schemas"]["PersonPermissions"];
+            /** @enum {string} */
+            status: "pending" | "active";
+        };
+        PersonInput: {
+            firstName: string;
+            lastName: string;
+        };
+        PersonPermissions: {
+            edit: boolean;
+            manage: boolean;
         };
         Preferences: {
             clock24h: boolean;
@@ -1294,6 +1559,9 @@ export interface components {
         };
         ReorderInBody: {
             ids: string[];
+        };
+        RequestsBody: {
+            requests: components["schemas"]["CatalogRequestDTO"][];
         };
         SessionInfo: {
             /** Format: date-time */
@@ -1601,6 +1869,200 @@ export interface operations {
                 };
                 content: {
                     "application/octet-stream": string;
+                };
+            };
+        };
+    };
+    listCatalogRequests: {
+        parameters: {
+            query?: {
+                status?: "open" | "all";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestsBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createCatalogRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogRequestInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogRequestDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    countCatalogRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CountBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approveCatalogRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CatalogApproveInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogRequestDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    rejectCatalogRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectInBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogRequestDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    withdrawCatalogRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogRequestDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
         };
@@ -2599,6 +3061,225 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Preferences"];
                 };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listPeople: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PeopleDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    createPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    countPendingPeople: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingPeopleBody"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deletePerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    updatePerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PersonInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    approvePerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonDTO"];
+                };
+            };
+            /** @description Error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    bindPerson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BindInBody"];
+            };
+        };
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Error */
             default: {

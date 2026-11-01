@@ -15,6 +15,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
 import { XIcon } from 'lucide-react'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSwipe } from '@/lib/useSwipe'
 import { useTranslation } from 'react-i18next'
 import { isApiError } from '@/api/client'
 import { patchEventInCache, restoreSnapshot, snapshotEvent, storeEvent } from '@/api/eventCache'
@@ -73,6 +74,7 @@ export function CalendarPage() {
   const view: CalendarView = search.view ?? (isMobile ? 'agenda' : prefs.defaultView)
 
   const calRef = useRef<CalendarRef>(null)
+  const swipeRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const controller = useCalendarController()
   const scopePrompt = useScopePrompt()
@@ -112,6 +114,7 @@ export function CalendarPage() {
   }, [eventsQ.data, tagsById, typesById, glowing, fmt, t, ghost, titleOf])
 
   const api = () => calRef.current?.getApi()
+  useSwipe(swipeRef, (dir) => (dir > 0 ? api()?.next() : api()?.prev()), document.documentElement.dir === 'rtl')
 
   // --- URL ⇄ calendar --------------------------------------------------------
 
@@ -119,7 +122,8 @@ export function CalendarPage() {
     (info: DatesSetInfo) => {
       setRange({ from: toUtcString(info.view.activeStart), to: toUtcString(info.view.activeEnd) })
       const a = calRef.current?.getApi()
-      const date = a ? dateInZone(a.getDate().getTime(), tz) : undefined
+      // The first report can arrive before the calendar's ref is set; keep a deep-linked date until it is.
+      const date = a ? dateInZone(a.getDate().getTime(), tz) : search.date
       const v = fromFcView(info.view.type)
       if (v !== search.view || date !== search.date) {
         void navigate({ search: (prev) => ({ ...prev, view: v, date }), replace: true })
@@ -402,7 +406,11 @@ export function CalendarPage() {
       ) : null}
 
       <div className="relative min-h-0 flex-1 px-2 pb-2 sm:px-4 sm:pb-4">
-        <div className="sc-calendar relative h-full overflow-hidden rounded-xl border border-border bg-background" aria-busy={showSkeleton}>
+        <div
+          ref={swipeRef}
+          className="sc-calendar relative h-full touch-pan-y overflow-hidden overscroll-x-contain rounded-xl border border-border bg-background"
+          aria-busy={showSkeleton}
+        >
           <EventCalendarViews
             ref={calRef}
             controller={controller}

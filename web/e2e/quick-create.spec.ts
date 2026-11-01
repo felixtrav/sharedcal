@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { eventChip, gotoWeek, login, midWeekDate, slotPoint, uniqueTitle } from './helpers'
 
+// These use a week no other spec touches: they drag over a slot, which needs it empty.
 test('a writer creates an event by dragging across empty slots', async ({ page }) => {
   await login(page, 'bob')
-  const date = midWeekDate()
+  const date = midWeekDate(3)
   await gotoWeek(page, date)
 
   const from = await slotPoint(page, date, '09:00:00')
@@ -29,7 +30,7 @@ test('a writer creates an event by dragging across empty slots', async ({ page }
 
 test('"More options" opens the full form', async ({ page }) => {
   await login(page, 'bob')
-  const date = midWeekDate()
+  const date = midWeekDate(3)
   await gotoWeek(page, date)
   const p = await slotPoint(page, date, '15:00:00')
   await page.mouse.click(p.x, p.y)

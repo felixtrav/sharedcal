@@ -161,6 +161,42 @@ func CanWithdrawSuggestion(a Actor, s Suggestion) bool {
 	return s.Open && a.ok() && owns(a, s.AuthorID)
 }
 
+// CatalogRequest is the subset of a tag or event type request the rules need.
+type CatalogRequest struct {
+	AuthorID string
+	Open     bool
+}
+
+// CanRequestCatalogItem: non-admins ask for new tags and event types; admins
+// create them directly.
+func CanRequestCatalogItem(a Actor) bool { return a.ok() && !a.admin() }
+
+// CanReviewCatalogRequest: admins decide open requests.
+func CanReviewCatalogRequest(a Actor, r CatalogRequest) bool { return r.Open && a.admin() }
+
+// CanWithdrawCatalogRequest: only the author, only while open.
+func CanWithdrawCatalogRequest(a Actor, r CatalogRequest) bool {
+	return r.Open && a.ok() && owns(a, r.AuthorID)
+}
+
+// Person is the subset of a person (someone without an account) the rules need.
+type Person struct {
+	CreatedByID string
+	Pending     bool
+}
+
+// CanCreatePerson: writers add people; theirs wait for an admin unless they are one.
+func CanCreatePerson(a Actor) bool { return a.writer() }
+
+// CanEditPerson: writers rename approved people. A pending person can only be
+// changed by whoever submitted it, or an admin.
+func CanEditPerson(a Actor, p Person) bool {
+	return a.writer() && (!p.Pending || a.admin() || owns(a, p.CreatedByID))
+}
+
+// CanManagePeople: admins approve, reject, delete and bind people.
+func CanManagePeople(a Actor) bool { return a.admin() }
+
 // CanComment: every active user, on any non-deleted event.
 func CanComment(a Actor, e Event) bool { return a.ok() && !e.Deleted }
 
@@ -291,4 +327,29 @@ func SuggestionPerms(a Actor, s Suggestion) SuggestionPermissions {
 		Review:   CanReviewSuggestion(a, s),
 		Withdraw: CanWithdrawSuggestion(a, s),
 	}
+}
+
+// CatalogRequestPermissions is sent with each tag or event type request.
+type CatalogRequestPermissions struct {
+	Review   bool `json:"review"`
+	Withdraw bool `json:"withdraw"`
+}
+
+// CatalogRequestPerms computes CatalogRequestPermissions.
+func CatalogRequestPerms(a Actor, r CatalogRequest) CatalogRequestPermissions {
+	return CatalogRequestPermissions{
+		Review:   CanReviewCatalogRequest(a, r),
+		Withdraw: CanWithdrawCatalogRequest(a, r),
+	}
+}
+
+// PersonPermissions is sent with each person.
+type PersonPermissions struct {
+	Edit   bool `json:"edit"`
+	Manage bool `json:"manage"`
+}
+
+// PersonPerms computes PersonPermissions.
+func PersonPerms(a Actor, p Person) PersonPermissions {
+	return PersonPermissions{Edit: CanEditPerson(a, p), Manage: CanManagePeople(a)}
 }

@@ -89,6 +89,8 @@ Every user has exactly one role; permissions are checked on the server for every
 | Suggest an edit to someone else's event | No | Yes | Yes (rarely needed) |
 | Accept or reject suggestions | No | On own events | On any event |
 | Delete anyone's comment or attachment | No | No | Yes |
+| Suggest a new tag or event type (name, color, icon, optional note) | Yes | Yes | No (creates them directly) |
+| Review those suggestions | No | No | Yes |
 | Manage users, roles, tags, themes, settings | No | No | Yes |
 | View audit log | Own activity | Own activity | Everything |
 
@@ -245,7 +247,9 @@ As described under Roles and permissions: field-level patches with diff review, 
 | Preferences | All | Theme, light/dark/system, time zone, week start day, 12/24-hour clock, default view. |
 | Subscribe | All | Personal ICS feed URL with copy button and reset. |
 | People | Admins | Users, roles, role source, sessions, deactivate. |
+| Tags & types | Non-admins | Browse tags and event types; suggest new ones and follow their review. |
 | Tags | Admins | Create, rename, recolor, reorder tags. |
+| Requests | Admins | Approve (optionally adjusting name, color, icon) or reject suggested tags and event types. |
 | Activity | Admins | Filterable audit log. |
 | Settings | Admins | Calendar name, default time zone, default role, branding (logo, accent), installed themes, attachment limits. |
 
@@ -452,6 +456,13 @@ A JSON REST API under `/api`, described by a generated OpenAPI 3.1 document at `
 | POST | `/api/presence` | Viewer+ | `{event_id, state}` heartbeat. |
 | GET | `/api/stream` | Viewer+ | SSE stream (see Real-time). |
 | GET, POST, PATCH, DELETE | `/api/tags…` | Viewer+ read, Admin write | Tags. |
+| GET, POST | `/api/catalog-requests` | Viewer+ (own; Admin sees all) / non-admins | List / suggest a tag or event type. Only `kind`, `name`, `colorSlot`, `icon` (event types) and `other` are accepted. |
+| POST | `/api/catalog-requests/{id}/approve`, `/reject` | Admin | Approve creates the tag or event type (body may adjust name, color, icon); reject takes an optional note. |
+| POST | `/api/catalog-requests/{id}/withdraw` | Author | Withdraw an open request. |
+| GET, POST | `/api/people` | Viewer+ / Writer+ | People without accounts, next to the registered users. A writer's new person is pending until an admin approves it; only the author and admins see it meanwhile. |
+| PATCH | `/api/people/{id}` | Writer+ (pending: author or Admin) | Rename; generated titles follow. |
+| POST | `/api/people/{id}/approve`, `/bind` | Admin | Approve a pending person; bind one to a user, rewriting every event reference to that user. |
+| DELETE | `/api/people/{id}` | Admin | Delete or reject; removes the person from events. |
 | GET, PATCH | `/api/users…` | Admin | List users, change role/role source, deactivate, revoke sessions, transfer ownership. |
 | GET | `/api/activity` | Admin | Audit log with filters. |
 | GET, PUT | `/api/settings` | Admin | Instance settings. |

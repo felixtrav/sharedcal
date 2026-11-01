@@ -152,7 +152,13 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
-      - run: npm audit --audit-level=moderate
+      # Only what ships in the app blocks the build. Dev tooling is audited below without failing:
+      # a minimatch advisory (GHSA-g3hv-75wg-m249) needs minimatch 11, which eslint-plugin-jsx-a11y
+      # can't load yet. See "Dependency audit" in CONTRIBUTING.md for when to switch this back.
+      - run: npm audit --audit-level=moderate --omit=dev
+      - name: Audit dev dependencies (informational)
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
       - run: npm run lint
       - run: npm run typecheck
       - name: Unit tests (includes theme contrast check)

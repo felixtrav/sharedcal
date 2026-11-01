@@ -248,6 +248,16 @@ export function applyStreamMessage(qc: QueryClient, type: string, payload: unkno
       }
       return
     }
+    case 'catalogrequest.changed':
+      // The message names no request: people only fetch the ones they may see.
+      void qc.invalidateQueries({ queryKey: keys.catalogRequestsAll })
+      return
+    case 'person.changed':
+      // Renames, bindings and deletions rewrite event values and generated titles.
+      void qc.invalidateQueries({ queryKey: keys.people })
+      void qc.invalidateQueries({ queryKey: keys.eventsAll })
+      void qc.invalidateQueries({ queryKey: keys.eventAll })
+      return
     case 'user.role_changed': {
       const p = payload as { userId: string }
       if (p.userId === ctx.meId) {
@@ -296,6 +306,8 @@ export const STREAM_TYPES = [
   'suggestion.resolved',
   'tag.changed',
   'eventtype.changed',
+  'catalogrequest.changed',
+  'person.changed',
   'user.role_changed',
   'inbox.item',
   'presence',

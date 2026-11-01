@@ -165,6 +165,58 @@ export type Tag = {
   sortOrder: number
 }
 
+export type CatalogKind = 'tag' | 'event_type'
+export type CatalogRequestStatus = 'open' | 'approved' | 'rejected' | 'withdrawn'
+
+/** A non-admin's request for a new tag or event type. `icon` is empty for tags. */
+export type CatalogRequest = {
+  id: UUID
+  kind: CatalogKind
+  name: string
+  icon: TypeIcon | ''
+  colorSlot: TagSlot
+  /** The requester's optional note to the admins. */
+  other: string
+  author: UserRef
+  status: CatalogRequestStatus
+  reviewer: UserRef | null
+  reviewNote: string
+  /** The tag or event type an approval created. */
+  createdItemId: UUID | null
+  createdAt: Instant
+  resolvedAt: Instant | null
+  permissions: { review: boolean; withdraw: boolean }
+}
+
+/** What a request may carry: a name, a color, an icon (event types) and a note. */
+export type CatalogRequestWrite = {
+  kind: CatalogKind
+  name: string
+  colorSlot: TagSlot
+  icon?: TypeIcon
+  other?: string
+}
+
+/** Someone events can name who has no account, like a child or a relative. Pending ones wait for an admin. */
+export type Person = {
+  id: UUID
+  /** First and last name together. */
+  name: string
+  firstName: string
+  /** Empty for people added before last names were asked for. */
+  lastName: string
+  status: 'pending' | 'active'
+  createdBy: UserRef | null
+  createdAt: Instant
+  permissions: { edit: boolean; manage: boolean }
+}
+
+/** What a person is created or renamed with. */
+export type PersonName = { firstName: string; lastName: string }
+
+/** The People page: registered users and people without accounts. */
+export type People = { users: UserRef[]; people: Person[] }
+
 export const FIELD_KINDS = ['text', 'longtext', 'number', 'date', 'time', 'select', 'url', 'checkbox', 'members'] as const
 export type FieldKind = (typeof FIELD_KINDS)[number]
 
@@ -201,6 +253,9 @@ export const TYPE_ICONS = [
   'home',
   'users',
   'bell',
+  'gamepad',
+  'film',
+  'ball',
 ] as const
 export type TypeIcon = (typeof TYPE_ICONS)[number]
 
@@ -227,6 +282,8 @@ export type EventType = {
   adminOnly: boolean
   /** Events of this type belong to the calendar, not a person; only admins edit them. */
   ownerless: boolean
+  /** The event form leaves out the location field for this type. */
+  hideLocation: boolean
   /** Generates event titles from `{{field_key}}` placeholders; empty means titles are typed by hand. */
   titleTemplate: string
   /** Guidance shown while creating an event of this type. */
@@ -250,6 +307,7 @@ export type EventTypeWrite = Partial<
     | 'neverRepeats'
     | 'adminOnly'
     | 'ownerless'
+    | 'hideLocation'
     | 'titleTemplate'
     | 'instructions'
     | 'fields'

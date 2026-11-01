@@ -1,6 +1,21 @@
 import type * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Label } from './label'
+
+/** Says whether a field must be filled in: a red asterisk when required, quiet "Optional" text when not. */
+export function RequirementMark({ requirement }: { requirement?: 'required' | 'optional' }) {
+  const { t } = useTranslation()
+  if (requirement === 'required') {
+    return (
+      <span aria-hidden className="text-sm leading-none font-semibold text-destructive" title={t('common.required')}>
+        *
+      </span>
+    )
+  }
+  if (requirement === 'optional') return <span className="text-xs leading-none font-normal text-muted-foreground">{t('common.optional')}</span>
+  return null
+}
 
 /** Label + control + hint/error, wired with ids for accessibility. */
 export function Field({
@@ -11,6 +26,7 @@ export function Field({
   children,
   className,
   labelHidden,
+  requirement,
 }: {
   id: string
   label: string
@@ -19,12 +35,14 @@ export function Field({
   children: React.ReactNode
   className?: string
   labelHidden?: boolean
+  requirement?: 'required' | 'optional'
 }) {
   return (
     <div className={cn('grid gap-1.5', className)}>
-      <Label htmlFor={id} className={cn(labelHidden && 'sr-only')}>
-        {label}
-      </Label>
+      <div className={cn('flex items-baseline gap-1.5', labelHidden && 'sr-only')}>
+        <Label htmlFor={id}>{label}</Label>
+        <RequirementMark requirement={requirement} />
+      </div>
       {children}
       {hint && !error ? (
         <p id={`${id}-hint`} className="text-xs text-muted-foreground">

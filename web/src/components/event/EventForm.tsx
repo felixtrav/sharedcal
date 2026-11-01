@@ -8,12 +8,12 @@ import { fieldErrors, isApiError } from '@/api/client'
 import { storeEvent } from '@/api/eventCache'
 import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
-import { useDirectory, useEventTypes, useMe } from '@/api/queries'
+import { useEventTypes, useMe, useMemberName } from '@/api/queries'
 import type { CalEvent, EditScope, EventType, EventWrite } from '@/api/types'
 import { LazyMarkdown } from '@/components/LazyMarkdown'
 import { UserAvatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { describedBy, Field } from '@/components/ui/field'
+import { describedBy, Field, RequirementMark } from '@/components/ui/field'
 import { Input, NativeSelect, Textarea } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Segmented } from '@/components/ui/segmented'
@@ -97,16 +97,14 @@ export function EventForm({
   const typeId = useWatch({ control, name: 'eventTypeId' })
   const timeZone = useWatch({ control, name: 'timeZone' })
   const eventType = typeById(typeId)
+  const location = useWatch({ control, name: 'location' })
+  // Hide the field for types that don't want one, but never hide a location an event already has.
+  const showLocation = !eventType?.hideLocation || !!location
   const fieldValues = useWatch({ control, name: 'fields' })
-  const { data: directory } = useDirectory()
+  const memberName = useMemberName()
   // Types with a title template generate the title from their fields, so it is shown but not typed.
   const autoTitle = eventType?.titleTemplate
-    ? renderTitle(
-        eventType,
-        fieldsToPayload(fieldValues ?? {}, eventType),
-        (id) => directory?.users.find((u) => u.id === id)?.name,
-        (hhmm) => viewerTime(hhmm, { date: startDate, eventTz: timeZone, fmt }),
-      )
+    ? renderTitle(eventType, fieldsToPayload(fieldValues ?? {}, eventType), memberName, (hhmm) => viewerTime(hhmm, { date: startDate, eventTz: timeZone, fmt }))
     : null
   useEffect(() => {
     if (autoTitle !== null) setValue('title', autoTitle)
@@ -237,9 +235,17 @@ export function EventForm({
         </p>
       ) : null}
 
+      <p className="-mb-2 text-xs text-muted-foreground">
+        <span aria-hidden className="font-semibold text-destructive">
+          *
+        </span>{' '}
+        {t('common.required')}
+      </p>
+
       <Field
         id="ev-title"
         label={t('event.fields.title')}
+        requirement={autoTitle === null ? 'required' : undefined}
         error={autoTitle === null ? msg(errors.title?.message) : undefined}
         hint={autoTitle !== null ? t('eventTypes.titleAuto', { name: eventType?.name }) : undefined}
       >
@@ -262,7 +268,7 @@ export function EventForm({
       </Field>
 
       {types.length || typeId ? (
-        <Field id="ev-type" label={t('event.fields.eventTypeId')}>
+        <Field id="ev-type" label={t('event.fields.eventTypeId')} requirement="optional">
           <NativeSelect id="ev-type" value={typeId} onChange={(e) => chooseType(e.target.value)}>
             <option value="">{t('eventTypes.generic')}</option>
             {types
@@ -308,7 +314,12 @@ export function EventForm({
       <fieldset className="grid gap-3">
         <legend className="sr-only">{t('event.fields.when')}</legend>
         <div className="grid grid-cols-[1fr_auto] gap-2">
-          <Field id="ev-start-date" label={fixed.singleDay ? t('eventTypes.date') : t('event.fields.start')} error={msg(errors.startDate?.message)}>
+          <Field
+            id="ev-start-date"
+            label={fixed.singleDay ? t('eventTypes.date') : t('event.fields.start')}
+            requirement="required"
+            error={msg(errors.startDate?.message)}
+          >
             <Input id="ev-start-date" type="date" aria-invalid={!!errors.startDate} {...register('startDate')} />
           </Field>
           {!allDay ? (
@@ -319,7 +330,12 @@ export function EventForm({
         </div>
         {fixed.singleDay ? null : (
           <div className="grid grid-cols-[1fr_auto] gap-2">
-            <Field id="ev-end-date" label={allDay ? t('event.fields.endDateInclusive') : t('event.fields.end')} error={msg(errors.endDate?.message)}>
+            <Field
+              id="ev-end-date"
+              label={allDay ? t('event.fields.endDateInclusive') : t('event.fields.end')}
+              requirement="required"
+              error={msg(errors.endDate?.message)}
+            >
               <Input id="ev-end-date" type="date" min={startDate} aria-invalid={!!errors.endDate} {...register('endDate')} />
             </Field>
             {!allDay ? (
@@ -330,7 +346,7 @@ export function EventForm({
           </div>
         )}
         {!allDay || hasTimeField ? (
-          <Field id="ev-tz" label={t('event.fields.timeZone')} error={msg(errors.timeZone?.message)}>
+          <Field id="ev-tz" label={t('event.fields.timeZone')} requirement="optional" error={msg(errors.timeZone?.message)}>
             <Controller
               control={control}
               name="timeZone"
@@ -357,7 +373,7 @@ export function EventForm({
           </p>
         </div>
       ) : (
-        <Field id="ev-rrule" label={t('event.fields.recurrence')}>
+        <Field id="ev-rrule" label={t('event.fields.recurrence')} requirement="optional">
           <Controller
             control={control}
             name="rrule"
@@ -375,22 +391,27 @@ export function EventForm({
         </Field>
       )}
 
-      <Field id="ev-location" label={t('event.fields.location')} error={msg(errors.location?.message)} hint={t('event.locationHint')}>
-        <Input
-          id="ev-location"
-          maxLength={1000}
-          autoComplete="off"
-          aria-describedby={describedBy('ev-location', errors.location?.message, true)}
-          {...register('location')}
-        />
-      </Field>
+      {showLocation ? (
+        <Field id="ev-location" label={t('event.fields.location')} requirement="optional" error={msg(errors.location?.message)} hint={t('event.locationHint')}>
+          <Input
+            id="ev-location"
+            maxLength={1000}
+            autoComplete="off"
+            aria-describedby={describedBy('ev-location', errors.location?.message, true)}
+            {...register('location')}
+          />
+        </Field>
+      ) : null}
 
       {eventType ? (
         <TypeFieldsEditor type={eventType} control={control} errors={errors} timeZone={timeZone} />
       ) : (
         <div className="grid gap-1.5">
           <div className="flex items-center justify-between">
-            <Label htmlFor="ev-description">{t('event.fields.description')}</Label>
+            <div className="flex items-baseline gap-1.5">
+              <Label htmlFor="ev-description">{t('event.fields.description')}</Label>
+              <RequirementMark requirement="optional" />
+            </div>
             <Button type="button" variant="ghost" size="xs" onClick={() => setPreview((p) => !p)} aria-pressed={preview}>
               {preview ? <PencilLineIcon aria-hidden /> : <EyeIcon aria-hidden />}
               {preview ? t('common.write') : t('common.preview')}
