@@ -25,7 +25,7 @@ const STATUS_VARIANT: Record<CatalogRequestStatus, 'default' | 'secondary' | 'de
 }
 
 /** Status is always spelled out; color is only a hint. */
-export function RequestStatus({ status }: { status: CatalogRequestStatus }) {
+function RequestStatus({ status }: { status: CatalogRequestStatus }) {
   const { t } = useTranslation()
   return <Badge variant={STATUS_VARIANT[status]}>{t(`catalog.status.${status}`)}</Badge>
 }

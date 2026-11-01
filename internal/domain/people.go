@@ -253,20 +253,21 @@ func (s *Service) ApprovePerson(ctx context.Context, actor authz.Actor, id strin
 		if err != nil {
 			return err
 		}
-		if p.Status == store.PersonPending {
-			p.Status, p.UpdatedAt = store.PersonActive, tx.now
-			if err := tx.db.Model(&store.Person{}).Where("id = ?", p.ID).Updates(map[string]any{"status": p.Status, "updated_at": tx.now}).Error; err != nil {
-				return err
-			}
-			if err := tx.record("person.approved", "person", p.ID, nil, nil, map[string]string{"name": p.Name}); err != nil {
-				return err
-			}
-			if err := tx.emitPeople(p.ID); err != nil {
-				return err
-			}
+		if p.Status != store.PersonPending {
+			out, err = s.onePersonDTO(tx, p)
+			return err
 		}
-		out, err = s.onePersonDTO(tx, p)
-		return err
+		p.Status, p.UpdatedAt = store.PersonActive, tx.now
+		if err := tx.db.Model(&store.Person{}).Where("id = ?", p.ID).Updates(map[string]any{"status": p.Status, "updated_at": tx.now}).Error; err != nil {
+			return err
+		}
+		if out, err = s.onePersonDTO(tx, p); err != nil {
+			return err
+		}
+		if err := tx.record("person.approved", "person", p.ID, nil, nil, map[string]string{"name": p.Name}); err != nil {
+			return err
+		}
+		return tx.emitPeople(p.ID)
 	})
 	return out, err
 }
@@ -335,6 +336,11 @@ func (s *Service) BindPerson(ctx context.Context, actor authz.Actor, id, userID 
 func (tx *Tx) rewritePersonRefs(personID, userID string) error {
 	like := "%" + personID + "%"
 	touched := map[string]bool{}
+	touch := func(typeID *string) {
+		if typeID != nil {
+			touched[*typeID] = true
+		}
+	}
 	var evs []store.Event
 	err := tx.db.Where("fields_json LIKE ?", like).FindInBatches(&evs, 200, func(db *gorm.DB, _ int) error {
 		for _, e := range evs {
@@ -342,9 +348,7 @@ func (tx *Tx) rewritePersonRefs(personID, userID string) error {
 			if !changed {
 				continue
 			}
-			if e.EventTypeID != nil {
-				touched[*e.EventTypeID] = true
-			}
+			touch(e.EventTypeID)
 			if err := db.Model(&store.Event{}).Where("id = ?", e.ID).Updates(map[string]any{"fields_json": fields, "version": e.Version + 1, "updated_at": tx.now}).Error; err != nil {
 				return err
 			}
@@ -363,9 +367,7 @@ func (tx *Tx) rewritePersonRefs(personID, userID string) error {
 		if !changed {
 			continue
 		}
-		if ov.EventTypeID != nil {
-			touched[*ov.EventTypeID] = true
-		}
+		touch(ov.EventTypeID)
 		if err := tx.db.Model(&store.EventOverride{}).Where("id = ?", ov.ID).Updates(map[string]any{"fields_json": fields, "updated_at": tx.now}).Error; err != nil {
 			return err
 		}

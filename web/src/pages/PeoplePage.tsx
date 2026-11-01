@@ -36,13 +36,16 @@ export function PeoplePage() {
   const canAdd = me.permissions.createEvent
   const [query, setQuery] = useState('')
   const terms = useMemo(() => fold(query).split(/\s+/).filter(Boolean), [query])
-  const searching = terms.length > 0
   const users = useMemo(() => (data?.users ?? []).filter((u) => matches(u.name, terms)), [data, terms])
   // Waiting people first, so an admin sees what needs approving at the top.
   const people = useMemo(
     () => (data?.people ?? []).filter((p) => matches(p.name, terms)).sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending')),
     [data, terms],
   )
+  // While searching, a section with no matches is left out; with nothing to search, both stay.
+  const searching = terms.length > 0
+  const showUsers = users.length > 0 || !searching
+  const showPeople = people.length > 0 || !searching
   return (
     <Page wide>
       <PageHeader title={t('directory.title')} description={t('directory.description')} />
@@ -53,10 +56,8 @@ export function PeoplePage() {
       ) : (
         <div className="grid gap-6">
           <SearchField value={query} onChange={setQuery} />
-          {searching && users.length === 0 && people.length === 0 ? (
-            <EmptyState icon={<SearchIcon />} title={t('directory.noMatches', { query: query.trim() })} />
-          ) : null}
-          {!searching || users.length > 0 ? (
+          {!showUsers && !showPeople ? <EmptyState icon={<SearchIcon />} title={t('directory.noMatches', { query: query.trim() })} /> : null}
+          {showUsers ? (
             <section aria-labelledby="directory-users">
               <h2 id="directory-users" className="mb-2 text-sm font-semibold">
                 {t('directory.users')}
@@ -71,7 +72,7 @@ export function PeoplePage() {
               </ul>
             </section>
           ) : null}
-          {!searching || people.length > 0 ? (
+          {showPeople ? (
             <section aria-labelledby="directory-people">
               <h2 id="directory-people" className="text-sm font-semibold">
                 {t('directory.people')}
