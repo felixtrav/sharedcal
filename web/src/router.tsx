@@ -57,6 +57,18 @@ const activityRoute = createRoute({
   component: lazyRouteComponent(() => import('@/pages/ActivityPage'), 'ActivityPage'),
 })
 
+const catalogRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/catalog',
+  component: lazyRouteComponent(() => import('@/pages/CatalogPage'), 'CatalogPage'),
+})
+
+const requestsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/admin/requests',
+  component: adminOnly(lazyRouteComponent(() => import('@/pages/admin/RequestsPage'), 'RequestsPage')),
+})
+
 const peopleRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/admin/people',
@@ -99,9 +111,11 @@ const routeTree = rootRoute.addChildren([
   preferencesRoute,
   subscribeRoute,
   activityRoute,
+  catalogRoute,
   peopleRoute,
   tagsRoute,
   eventTypesRoute,
+  requestsRoute,
   importRoute,
   settingsRoute,
   trashRoute,

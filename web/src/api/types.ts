@@ -165,6 +165,38 @@ export type Tag = {
   sortOrder: number
 }
 
+export type CatalogKind = 'tag' | 'event_type'
+export type CatalogRequestStatus = 'open' | 'approved' | 'rejected' | 'withdrawn'
+
+/** A non-admin's request for a new tag or event type. `icon` is empty for tags. */
+export type CatalogRequest = {
+  id: UUID
+  kind: CatalogKind
+  name: string
+  icon: TypeIcon | ''
+  colorSlot: TagSlot
+  /** The requester's optional note to the admins. */
+  other: string
+  author: UserRef
+  status: CatalogRequestStatus
+  reviewer: UserRef | null
+  reviewNote: string
+  /** The tag or event type an approval created. */
+  createdItemId: UUID | null
+  createdAt: Instant
+  resolvedAt: Instant | null
+  permissions: { review: boolean; withdraw: boolean }
+}
+
+/** What a request may carry: a name, a color, an icon (event types) and a note. */
+export type CatalogRequestWrite = {
+  kind: CatalogKind
+  name: string
+  colorSlot: TagSlot
+  icon?: TypeIcon
+  other?: string
+}
+
 export const FIELD_KINDS = ['text', 'longtext', 'number', 'date', 'time', 'select', 'url', 'checkbox', 'members'] as const
 export type FieldKind = (typeof FIELD_KINDS)[number]
 

@@ -12,7 +12,7 @@ import { Input, NativeSelect } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useFmt } from '@/lib/useFmt'
 
-const SUBJECT_TYPES = ['event', 'comment', 'suggestion', 'attachment', 'tag', 'user', 'settings', 'theme'] as const
+const SUBJECT_TYPES = ['event', 'comment', 'suggestion', 'attachment', 'tag', 'catalog_request', 'user', 'settings', 'theme'] as const
 const PAGE = 50
 
 /** Filterable audit log. Admins see everything; others get their own activity (the API decides). */

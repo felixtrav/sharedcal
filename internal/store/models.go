@@ -34,6 +34,14 @@ const (
 	SuggestionEdit   = "edit"
 	SuggestionDelete = "delete"
 
+	CatalogTag       = "tag"
+	CatalogEventType = "event_type"
+
+	CatalogOpen      = "open"
+	CatalogApproved  = "approved"
+	CatalogRejected  = "rejected"
+	CatalogWithdrawn = "withdrawn"
+
 	SuggestionOpen              = "open"
 	SuggestionAccepted          = "accepted"
 	SuggestionPartiallyAccepted = "partially_accepted"
@@ -235,6 +243,27 @@ type Suggestion struct {
 	UpdatedAt   time.Time `gorm:"not null"`
 }
 
+// CatalogRequest is a non-admin's request for a new tag or event type. Only a
+// name, color and (for types) icon can be asked for; an admin sets up the rest.
+type CatalogRequest struct {
+	ID        string `gorm:"primaryKey;size:36"`
+	Kind      string `gorm:"size:16;not null"`
+	Name      string `gorm:"size:64;not null"`
+	Icon      string `gorm:"size:32;not null"`
+	ColorSlot string `gorm:"size:16;not null"`
+	// OtherText is the requester's optional free-form note.
+	OtherText  string  `gorm:"type:text;not null"`
+	AuthorID   string  `gorm:"size:36;not null;index:ix_catalog_requests_author"`
+	Status     string  `gorm:"size:16;not null;index:ix_catalog_requests_status"`
+	ReviewerID *string `gorm:"size:36"`
+	ReviewNote string  `gorm:"type:text;not null"`
+	// CreatedItemID is the tag or event type an approval produced.
+	CreatedItemID *string `gorm:"size:36"`
+	ResolvedAt    *time.Time
+	CreatedAt     time.Time `gorm:"not null"`
+	UpdatedAt     time.Time `gorm:"not null"`
+}
+
 type Notification struct {
 	ID          string  `gorm:"primaryKey;size:36"`
 	UserID      string  `gorm:"size:36;not null;index:ix_notifications_user,priority:1"`
@@ -309,7 +338,7 @@ type Setting struct {
 func AllModels() []any {
 	return []any{
 		&User{}, &UserPreference{}, &Session{}, &EventType{}, &Event{}, &EventOverride{},
-		&Tag{}, &EventTag{}, &Comment{}, &Attachment{}, &Suggestion{},
+		&Tag{}, &EventTag{}, &Comment{}, &Attachment{}, &Suggestion{}, &CatalogRequest{},
 		&Notification{}, &EventWatch{}, &Activity{}, &ChangeLog{}, &FeedToken{}, &Setting{},
 	}
 }

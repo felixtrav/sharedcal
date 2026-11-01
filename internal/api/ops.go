@@ -130,6 +130,7 @@ func (s *Server) registerOperations() {
 	s.registerEvents()
 	s.registerCollaboration()
 	s.registerAdmin()
+	s.registerCatalog()
 }
 
 func (s *Server) registerMe() {
@@ -668,5 +669,71 @@ func (s *Server) registerAdmin() {
 	register(s, huma.Operation{OperationID: "removeTheme", Method: http.MethodDelete, Path: "/api/themes/{id}", Tags: tht, Summary: "Remove an uploaded theme", DefaultStatus: http.StatusNoContent},
 		withActor(func(ctx context.Context, a authz.Actor, in *themeIDIn) (*empty, error) {
 			return &empty{}, d.RemoveTheme(ctx, a, in.ID)
+		}))
+}
+
+func (s *Server) registerCatalog() {
+	d := s.Domain
+	ct := []string{"catalog requests"}
+	type requestsBody struct {
+		Requests []domain.CatalogRequestDTO `json:"requests"`
+	}
+	type listIn struct {
+		Status string `query:"status" enum:"open,all" default:"open"`
+	}
+	register(s, huma.Operation{OperationID: "listCatalogRequests", Method: http.MethodGet, Path: "/api/catalog-requests", Tags: ct, Summary: "Tag and event type requests (admins see everyone's, others their own)"},
+		withActor(func(ctx context.Context, a authz.Actor, in *listIn) (*body[requestsBody], error) {
+			list, err := d.ListCatalogRequests(ctx, a, in.Status == "all")
+			return ok(requestsBody{Requests: list}), err
+		}))
+	type countBody struct {
+		Open int64 `json:"open"`
+	}
+	register(s, huma.Operation{OperationID: "countCatalogRequests", Method: http.MethodGet, Path: "/api/catalog-requests/count", Tags: ct, Summary: "Open requests waiting for review (admins)"},
+		withActor(func(ctx context.Context, a authz.Actor, _ *empty) (*body[countBody], error) {
+			n, err := d.CountOpenCatalogRequests(ctx, a)
+			return ok(countBody{Open: n}), err
+		}))
+	register(s, huma.Operation{OperationID: "createCatalogRequest", Method: http.MethodPost, Path: "/api/catalog-requests", Tags: ct, Summary: "Ask for a new tag or event type (non-admins)", DefaultStatus: http.StatusCreated},
+		withActor(func(ctx context.Context, a authz.Actor, in *body[domain.CatalogRequestInput]) (*body[domain.CatalogRequestDTO], error) {
+			r, err := d.CreateCatalogRequest(ctx, a, in.Body)
+			if err != nil {
+				return nil, err
+			}
+			return ok(*r), nil
+		}))
+	type approveIn struct {
+		ID   string `path:"id" maxLength:"36"`
+		Body domain.CatalogApproveInput
+	}
+	register(s, huma.Operation{OperationID: "approveCatalogRequest", Method: http.MethodPost, Path: "/api/catalog-requests/{id}/approve", Tags: ct, Summary: "Create the requested tag or event type (admins)"},
+		withActor(func(ctx context.Context, a authz.Actor, in *approveIn) (*body[domain.CatalogRequestDTO], error) {
+			r, err := d.ApproveCatalogRequest(ctx, a, in.ID, in.Body)
+			if err != nil {
+				return nil, err
+			}
+			return ok(*r), nil
+		}))
+	type rejectIn struct {
+		ID   string `path:"id" maxLength:"36"`
+		Body struct {
+			Note string `json:"note,omitempty" maxLength:"2000"`
+		}
+	}
+	register(s, huma.Operation{OperationID: "rejectCatalogRequest", Method: http.MethodPost, Path: "/api/catalog-requests/{id}/reject", Tags: ct, Summary: "Reject with an optional note (admins)"},
+		withActor(func(ctx context.Context, a authz.Actor, in *rejectIn) (*body[domain.CatalogRequestDTO], error) {
+			r, err := d.RejectCatalogRequest(ctx, a, in.ID, in.Body.Note)
+			if err != nil {
+				return nil, err
+			}
+			return ok(*r), nil
+		}))
+	register(s, huma.Operation{OperationID: "withdrawCatalogRequest", Method: http.MethodPost, Path: "/api/catalog-requests/{id}/withdraw", Tags: ct, Summary: "Retract your own open request"},
+		withActor(func(ctx context.Context, a authz.Actor, in *idPath) (*body[domain.CatalogRequestDTO], error) {
+			r, err := d.WithdrawCatalogRequest(ctx, a, in.ID)
+			if err != nil {
+				return nil, err
+			}
+			return ok(*r), nil
 		}))
 }

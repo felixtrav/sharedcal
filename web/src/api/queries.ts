@@ -64,6 +64,15 @@ export function useEventTypes() {
   return useQuery({ queryKey: keys.eventTypes, queryFn: endpoints.eventTypes, staleTime: 5 * 60_000 })
 }
 
+export function useCatalogRequests(status: 'open' | 'all') {
+  return useQuery({ queryKey: keys.catalogRequests(status), queryFn: () => endpoints.catalogRequests(status), staleTime: 60_000 })
+}
+
+/** How many requests wait for review. Admins only. */
+export function useOpenCatalogCount(enabled: boolean) {
+  return useQuery({ queryKey: keys.catalogCount, queryFn: endpoints.catalogRequestCount, enabled, staleTime: 60_000 })
+}
+
 export function useDirectory() {
   return useQuery({ queryKey: keys.directory, queryFn: endpoints.directory, staleTime: 5 * 60_000 })
 }

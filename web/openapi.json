@@ -289,6 +289,231 @@
         ],
         "type": "object"
       },
+      "CatalogApproveInput": {
+        "additionalProperties": false,
+        "properties": {
+          "colorSlot": {
+            "enum": [
+              "tag-1",
+              "tag-2",
+              "tag-3",
+              "tag-4",
+              "tag-5",
+              "tag-6",
+              "tag-7",
+              "tag-8"
+            ],
+            "type": "string"
+          },
+          "icon": {
+            "description": "Event types only",
+            "enum": [
+              "calendar",
+              "cake",
+              "gift",
+              "party-popper",
+              "flag",
+              "plane",
+              "heart",
+              "star",
+              "briefcase",
+              "graduation-cap",
+              "utensils",
+              "music",
+              "trophy",
+              "stethoscope",
+              "home",
+              "users",
+              "bell",
+              "gamepad",
+              "film",
+              "ball"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CatalogRequestDTO": {
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "colorSlot": {
+            "enum": [
+              "tag-1",
+              "tag-2",
+              "tag-3",
+              "tag-4",
+              "tag-5",
+              "tag-6",
+              "tag-7",
+              "tag-8"
+            ],
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "createdItemId": {
+            "description": "The tag or event type an approval created",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "tag",
+              "event_type"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "other": {
+            "description": "The requester's optional note to the admins",
+            "type": "string"
+          },
+          "permissions": {
+            "$ref": "#/components/schemas/CatalogRequestPermissions"
+          },
+          "resolvedAt": {
+            "format": "date-time",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewNote": {
+            "type": "string"
+          },
+          "reviewer": {
+            "$ref": "#/components/schemas/UserRef"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "approved",
+              "rejected",
+              "withdrawn"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "icon",
+          "colorSlot",
+          "other",
+          "author",
+          "status",
+          "reviewer",
+          "reviewNote",
+          "createdItemId",
+          "createdAt",
+          "resolvedAt",
+          "permissions"
+        ],
+        "type": "object"
+      },
+      "CatalogRequestInput": {
+        "additionalProperties": false,
+        "properties": {
+          "colorSlot": {
+            "enum": [
+              "tag-1",
+              "tag-2",
+              "tag-3",
+              "tag-4",
+              "tag-5",
+              "tag-6",
+              "tag-7",
+              "tag-8"
+            ],
+            "type": "string"
+          },
+          "icon": {
+            "description": "Event types only",
+            "enum": [
+              "calendar",
+              "cake",
+              "gift",
+              "party-popper",
+              "flag",
+              "plane",
+              "heart",
+              "star",
+              "briefcase",
+              "graduation-cap",
+              "utensils",
+              "music",
+              "trophy",
+              "stethoscope",
+              "home",
+              "users",
+              "bell",
+              "gamepad",
+              "film",
+              "ball"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "tag",
+              "event_type"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 64,
+            "type": "string"
+          },
+          "other": {
+            "description": "Optional note to the admins",
+            "maxLength": 500,
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "colorSlot"
+        ],
+        "type": "object"
+      },
+      "CatalogRequestPermissions": {
+        "additionalProperties": false,
+        "properties": {
+          "review": {
+            "type": "boolean"
+          },
+          "withdraw": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "review",
+          "withdraw"
+        ],
+        "type": "object"
+      },
       "CommentDTO": {
         "additionalProperties": false,
         "properties": {
@@ -411,6 +636,19 @@
         },
         "required": [
           "comments"
+        ],
+        "type": "object"
+      },
+      "CountBody": {
+        "additionalProperties": false,
+        "properties": {
+          "open": {
+            "format": "int64",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "open"
         ],
         "type": "object"
       },
@@ -881,6 +1119,10 @@
             },
             "type": "array"
           },
+          "hideLocation": {
+            "description": "Clients leave the location field out when creating or editing events of this type",
+            "type": "boolean"
+          },
           "icon": {
             "enum": [
               "calendar",
@@ -918,10 +1160,6 @@
           },
           "neverRepeats": {
             "description": "Events of the type never repeat; excludes defaultRrule",
-            "type": "boolean"
-          },
-          "hideLocation": {
-            "description": "Clients leave the location field out when creating or editing events of this type",
             "type": "boolean"
           },
           "ownerless": {
@@ -966,8 +1204,8 @@
           "singleDay",
           "neverRepeats",
           "adminOnly",
-          "hideLocation",
           "ownerless",
+          "hideLocation",
           "titleTemplate",
           "instructions",
           "fields",
@@ -1017,6 +1255,10 @@
             "maxItems": 20,
             "type": "array"
           },
+          "hideLocation": {
+            "description": "Clients leave the location field out of the event form for this type",
+            "type": "boolean"
+          },
           "icon": {
             "enum": [
               "calendar",
@@ -1053,10 +1295,6 @@
           },
           "neverRepeats": {
             "description": "Events of this type can't repeat; cannot be combined with defaultRrule",
-            "type": "boolean"
-          },
-          "hideLocation": {
-            "description": "Clients leave the location field out of the event form for this type",
             "type": "boolean"
           },
           "ownerless": {
@@ -1869,6 +2107,21 @@
         },
         "required": [
           "ids"
+        ],
+        "type": "object"
+      },
+      "RequestsBody": {
+        "additionalProperties": false,
+        "properties": {
+          "requests": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogRequestDTO"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "requests"
         ],
         "type": "object"
       },
@@ -2781,6 +3034,298 @@
         "summary": "Image thumbnail",
         "tags": [
           "attachments"
+        ]
+      }
+    },
+    "/api/catalog-requests": {
+      "get": {
+        "operationId": "listCatalogRequests",
+        "parameters": [
+          {
+            "explode": false,
+            "in": "query",
+            "name": "status",
+            "schema": {
+              "default": "open",
+              "enum": [
+                "open",
+                "all"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestsBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Tag and event type requests (admins see everyone's, others their own)",
+        "tags": [
+          "catalog requests"
+        ]
+      },
+      "post": {
+        "operationId": "createCatalogRequest",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogRequestInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogRequestDTO"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Ask for a new tag or event type (non-admins)",
+        "tags": [
+          "catalog requests"
+        ]
+      }
+    },
+    "/api/catalog-requests/count": {
+      "get": {
+        "operationId": "countCatalogRequests",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CountBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Open requests waiting for review (admins)",
+        "tags": [
+          "catalog requests"
+        ]
+      }
+    },
+    "/api/catalog-requests/{id}/approve": {
+      "post": {
+        "operationId": "approveCatalogRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogApproveInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogRequestDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Create the requested tag or event type (admins)",
+        "tags": [
+          "catalog requests"
+        ]
+      }
+    },
+    "/api/catalog-requests/{id}/reject": {
+      "post": {
+        "operationId": "rejectCatalogRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectInBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogRequestDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Reject with an optional note (admins)",
+        "tags": [
+          "catalog requests"
+        ]
+      }
+    },
+    "/api/catalog-requests/{id}/withdraw": {
+      "post": {
+        "operationId": "withdrawCatalogRequest",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "maxLength": 36,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogRequestDTO"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "default": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "Error"
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ],
+        "summary": "Retract your own open request",
+        "tags": [
+          "catalog requests"
         ]
       }
     },

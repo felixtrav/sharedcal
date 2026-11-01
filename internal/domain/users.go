@@ -708,6 +708,11 @@ func (s *Service) EraseUser(ctx context.Context, actor authz.Actor, id, transfer
 			}
 		}
 
+		// Their tag and event type requests.
+		if err := tx.db.Where("author_id = ?", id).Delete(&store.CatalogRequest{}).Error; err != nil {
+			return err
+		}
+
 		// orSubjects widens q to rows about any of their erased content.
 		orSubjects := func(q *gorm.DB) *gorm.DB {
 			for _, sub := range []struct {

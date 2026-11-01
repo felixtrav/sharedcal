@@ -107,6 +107,18 @@ type Suggestion = {
 
 type Tag = { id: string; name: string; colorSlot: "tag-1" | "tag-2" | "tag-3" | "tag-4" | "tag-5" | "tag-6" | "tag-7" | "tag-8"; sortOrder: number };
 
+type CatalogRequest = {
+  id: string; kind: "tag" | "event_type"; name: string;
+  icon: string;                 // an event type icon; "" for tags
+  colorSlot: Tag["colorSlot"];
+  other: string;                // the requester's optional note
+  author: UserRef; status: "open" | "approved" | "rejected" | "withdrawn";
+  reviewer: UserRef | null; reviewNote: string;
+  createdItemId: string | null; // the tag or event type an approval created
+  createdAt: string; resolvedAt: string | null;
+  permissions: { review: boolean; withdraw: boolean };
+};
+
 type FieldKind = "text" | "longtext" | "number" | "date" | "time" | "select" | "url" | "checkbox" | "members";
 
 type EventTypeField = {
@@ -279,6 +291,19 @@ Reading is open to every signed-in user; changes are admin-only. See *Event type
 | DELETE | `/api/event-types/{id}` | admin | | 204; 409 while any event or occurrence (trashed events too) uses the type |
 | POST | `/api/event-types/reorder` | admin | `{ ids: string[] }` | `{ eventTypes: EventType[] }` |
 
+### Tag and event type requests
+
+Non-admins can't create tags or event types; they ask for them. A request carries only a name, a color slot, an icon (event types) and an optional note. Any other property is a 422. Admins create items directly, so they get 403 on `POST /api/catalog-requests`.
+
+| Method | Path | Who | Body | Response |
+| --- | --- | --- | --- | --- |
+| GET | `/api/catalog-requests` | all (own) / admin (everyone's) | `?status=open` (default, oldest first) or `all` (newest first) | `{ requests: CatalogRequest[] }` |
+| GET | `/api/catalog-requests/count` | admin | | `{ open: number }` |
+| POST | `/api/catalog-requests` | non-admins | `{ kind, name, colorSlot, icon?, other? }` (`icon` only for `event_type`; `other` up to 500 characters) | 201 `CatalogRequest`; 422 when the name exists already, is already requested, or `icon` is sent for a tag; 422 at 20 open requests |
+| POST | `/api/catalog-requests/{id}/approve` | admin | `{ name?, colorSlot?, icon? }` adjusts the request first | `CatalogRequest` with `createdItemId`; the new item has default settings. 422 when the request isn't open or the name was taken since |
+| POST | `/api/catalog-requests/{id}/reject` | admin | `{ note? }` | `CatalogRequest` |
+| POST | `/api/catalog-requests/{id}/withdraw` | author | | `CatalogRequest` |
+
 ### Tags, users, activity, settings, themes
 
 | Method | Path | Who | Body | Response |
@@ -346,6 +371,7 @@ data: {"seq":1042,"type":"event.updated","id":"<subject id>","version":5,"payloa
 | `attachment.removed` | `{ id, eventId, commentId }` | remove |
 | `suggestion.created`, `suggestion.resolved` | `Suggestion` | invalidate suggestions for `eventId` and that event's counts |
 | `tag.changed` | `{ tags: Tag[] }` | replace the tags cache |
+| `catalogrequest.changed` | `{ id }` (no request data; requests are private) | refetch the request lists |
 | `eventtype.changed` | `{ eventTypes: EventType[] }` | replace the event types cache |
 | `user.role_changed` | `{ userId, role, active }` | if it is me, refetch `/api/me` (and event ranges, since permissions change) |
 | `inbox.item` | `{ item: Notification, unread: number, replaces?: string }` | prepend to the inbox (dropping `replaces`, the folded watch item it supersedes), update the badge |

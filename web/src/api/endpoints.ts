@@ -3,6 +3,8 @@ import type {
   ActivityItem,
   AdminUser,
   Attachment,
+  CatalogRequest,
+  CatalogRequestWrite,
   CalEvent,
   Comment,
   EditScope,
@@ -26,6 +28,7 @@ import type {
   TrashedAttachment,
   TagSlot,
   Theme,
+  TypeIcon,
   UserRef,
 } from './types'
 
@@ -133,6 +136,14 @@ export const endpoints = {
   updateEventType: (id: string, body: EventTypeWrite) => api.patch<EventType>(`/api/event-types/${enc(id)}`, body),
   deleteEventType: (id: string) => api.del(`/api/event-types/${enc(id)}`),
   reorderEventTypes: (ids: string[]) => api.post<{ eventTypes: EventType[] }>('/api/event-types/reorder', { ids }),
+
+  catalogRequests: (status: 'open' | 'all' = 'open') => api.get<{ requests: CatalogRequest[] }>('/api/catalog-requests', { query: { status } }),
+  catalogRequestCount: () => api.get<{ open: number }>('/api/catalog-requests/count'),
+  createCatalogRequest: (body: CatalogRequestWrite) => api.post<CatalogRequest>('/api/catalog-requests', body),
+  approveCatalogRequest: (id: string, body: { name?: string; colorSlot?: TagSlot; icon?: TypeIcon } = {}) =>
+    api.post<CatalogRequest>(`/api/catalog-requests/${enc(id)}/approve`, body),
+  rejectCatalogRequest: (id: string, note?: string) => api.post<CatalogRequest>(`/api/catalog-requests/${enc(id)}/reject`, note ? { note } : {}),
+  withdrawCatalogRequest: (id: string) => api.post<CatalogRequest>(`/api/catalog-requests/${enc(id)}/withdraw`),
 
   directory: () => api.get<{ users: UserRef[] }>('/api/users/directory'),
   users: () => api.get<{ users: AdminUser[] }>('/api/users'),

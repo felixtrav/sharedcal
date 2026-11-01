@@ -161,6 +161,24 @@ func CanWithdrawSuggestion(a Actor, s Suggestion) bool {
 	return s.Open && a.ok() && owns(a, s.AuthorID)
 }
 
+// CatalogRequest is the subset of a tag or event type request the rules need.
+type CatalogRequest struct {
+	AuthorID string
+	Open     bool
+}
+
+// CanRequestCatalogItem: non-admins ask for new tags and event types; admins
+// create them directly.
+func CanRequestCatalogItem(a Actor) bool { return a.ok() && !a.admin() }
+
+// CanReviewCatalogRequest: admins decide open requests.
+func CanReviewCatalogRequest(a Actor, r CatalogRequest) bool { return r.Open && a.admin() }
+
+// CanWithdrawCatalogRequest: only the author, only while open.
+func CanWithdrawCatalogRequest(a Actor, r CatalogRequest) bool {
+	return r.Open && a.ok() && owns(a, r.AuthorID)
+}
+
 // CanComment: every active user, on any non-deleted event.
 func CanComment(a Actor, e Event) bool { return a.ok() && !e.Deleted }
 
@@ -290,5 +308,19 @@ func SuggestionPerms(a Actor, s Suggestion) SuggestionPermissions {
 	return SuggestionPermissions{
 		Review:   CanReviewSuggestion(a, s),
 		Withdraw: CanWithdrawSuggestion(a, s),
+	}
+}
+
+// CatalogRequestPermissions is sent with each tag or event type request.
+type CatalogRequestPermissions struct {
+	Review   bool `json:"review"`
+	Withdraw bool `json:"withdraw"`
+}
+
+// CatalogRequestPerms computes CatalogRequestPermissions.
+func CatalogRequestPerms(a Actor, r CatalogRequest) CatalogRequestPermissions {
+	return CatalogRequestPermissions{
+		Review:   CanReviewCatalogRequest(a, r),
+		Withdraw: CanWithdrawCatalogRequest(a, r),
 	}
 }

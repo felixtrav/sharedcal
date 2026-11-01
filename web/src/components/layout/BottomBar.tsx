@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { InboxBadge } from './InboxBadge'
-import { ADMIN_NAV, MAIN_NAV, MY_ACTIVITY_NAV } from './navItems'
+import { ADMIN_NAV, CATALOG_NAV, MAIN_NAV, MY_ACTIVITY_NAV } from './navItems'
 import { signOut } from './signOut'
 
 const itemClass =
@@ -23,7 +23,7 @@ export function BottomBar() {
   const { t } = useTranslation()
   const me = useMeData()
   const navigate = useNavigate()
-  const more = me.permissions.admin ? ADMIN_NAV : [MY_ACTIVITY_NAV]
+  const more = me.permissions.admin ? ADMIN_NAV : [CATALOG_NAV, MY_ACTIVITY_NAV]
 
   return (
     <nav

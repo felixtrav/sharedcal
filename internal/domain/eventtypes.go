@@ -641,62 +641,70 @@ func (s *Service) CreateEventType(ctx context.Context, actor authz.Actor, in Eve
 	}
 	var out EventTypeDTO
 	err := s.write(ctx, actor, func(tx *Tx) error {
-		name, err := s.checkTypeName(tx.db, *in.Name, "")
-		if err != nil {
-			return err
-		}
-		t := store.EventType{ID: store.NewID(), Name: name, Icon: icon, ColorSlot: *in.ColorSlot, Style: "default", DefaultDurationMinutes: 60, CreatedAt: tx.now, UpdatedAt: tx.now}
-		if err := applyLook(&t, in); err != nil {
-			return err
-		}
-		if in.DefaultRRule != nil {
-			if t.DefaultRRule, err = checkDefaultRRule(*in.DefaultRRule); err != nil {
-				return err
-			}
-		}
-		if t.NeverRepeats && t.DefaultRRule != "" {
-			return invalidField("neverRepeats", "a type that never repeats can't also have a fixed repeat")
-		}
-		// A single date only means something for events that are always all-day.
-		t.SingleDay = t.SingleDay && t.DefaultAllDay
-		defs := []FieldDef{}
-		if in.Fields != nil {
-			var fe fieldErrors
-			if defs, fe = validateFieldDefs(*in.Fields); len(fe) > 0 {
-				return fe.err()
-			}
-		}
-		b, _ := json.Marshal(defs)
-		t.FieldsJSON = string(b)
-		if in.TitleTemplate != nil {
-			if t.TitleTemplate, err = checkTitleTemplate(*in.TitleTemplate, defs); err != nil {
-				return err
-			}
-		}
-		var n int64
-		if err := tx.db.Model(&store.EventType{}).Count(&n).Error; err != nil {
-			return err
-		}
-		if n >= maxEventTypes {
-			return limit("too many event types")
-		}
-		var maxOrder struct{ M *int }
-		if err := tx.db.Model(&store.EventType{}).Select("MAX(sort_order) AS m").Scan(&maxOrder).Error; err != nil {
-			return err
-		}
-		if maxOrder.M != nil {
-			t.SortOrder = *maxOrder.M + 1
-		}
-		if err := tx.db.Create(&t).Error; err != nil {
-			return err
-		}
-		out = eventTypeDTO(t)
-		if err := tx.record("eventtype.created", "event_type", t.ID, nil, nil, out); err != nil {
-			return err
-		}
-		return tx.emitEventTypes()
+		var err error
+		out, err = s.insertEventType(tx, in, icon)
+		return err
 	})
 	return &out, err
+}
+
+// insertEventType validates and appends an event type, then records and
+// broadcasts it. in.Name and in.ColorSlot are set; icon is already checked.
+func (s *Service) insertEventType(tx *Tx, in EventTypeInput, icon string) (EventTypeDTO, error) {
+	name, err := s.checkTypeName(tx.db, *in.Name, "")
+	if err != nil {
+		return EventTypeDTO{}, err
+	}
+	t := store.EventType{ID: store.NewID(), Name: name, Icon: icon, ColorSlot: *in.ColorSlot, Style: "default", DefaultDurationMinutes: 60, CreatedAt: tx.now, UpdatedAt: tx.now}
+	if err := applyLook(&t, in); err != nil {
+		return EventTypeDTO{}, err
+	}
+	if in.DefaultRRule != nil {
+		if t.DefaultRRule, err = checkDefaultRRule(*in.DefaultRRule); err != nil {
+			return EventTypeDTO{}, err
+		}
+	}
+	if t.NeverRepeats && t.DefaultRRule != "" {
+		return EventTypeDTO{}, invalidField("neverRepeats", "a type that never repeats can't also have a fixed repeat")
+	}
+	// A single date only means something for events that are always all-day.
+	t.SingleDay = t.SingleDay && t.DefaultAllDay
+	defs := []FieldDef{}
+	if in.Fields != nil {
+		var fe fieldErrors
+		if defs, fe = validateFieldDefs(*in.Fields); len(fe) > 0 {
+			return EventTypeDTO{}, fe.err()
+		}
+	}
+	b, _ := json.Marshal(defs)
+	t.FieldsJSON = string(b)
+	if in.TitleTemplate != nil {
+		if t.TitleTemplate, err = checkTitleTemplate(*in.TitleTemplate, defs); err != nil {
+			return EventTypeDTO{}, err
+		}
+	}
+	var n int64
+	if err := tx.db.Model(&store.EventType{}).Count(&n).Error; err != nil {
+		return EventTypeDTO{}, err
+	}
+	if n >= maxEventTypes {
+		return EventTypeDTO{}, limit("too many event types")
+	}
+	var maxOrder struct{ M *int }
+	if err := tx.db.Model(&store.EventType{}).Select("MAX(sort_order) AS m").Scan(&maxOrder).Error; err != nil {
+		return EventTypeDTO{}, err
+	}
+	if maxOrder.M != nil {
+		t.SortOrder = *maxOrder.M + 1
+	}
+	if err := tx.db.Create(&t).Error; err != nil {
+		return EventTypeDTO{}, err
+	}
+	out := eventTypeDTO(t)
+	if err := tx.record("eventtype.created", "event_type", t.ID, nil, nil, out); err != nil {
+		return EventTypeDTO{}, err
+	}
+	return out, tx.emitEventTypes()
 }
 
 // UpdateEventType changes a type's name, look, defaults or fields. Existing
