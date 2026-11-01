@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { useInbox, useMeData, useOpenCatalogCount } from '@/api/queries'
+import { useInbox, useMeData, useOpenCatalogCount, usePendingPeopleCount } from '@/api/queries'
 import { cn } from '@/lib/utils'
 
 export function useUnreadCount() {
@@ -23,12 +23,7 @@ export function InboxBadge({ className }: { className?: string }) {
   )
 }
 
-/** How many tag and event type requests wait for an admin. */
-export function RequestsBadge({ className }: { className?: string }) {
-  const { t } = useTranslation()
-  const isAdmin = useMeData().permissions.admin
-  const waiting = useOpenCatalogCount(isAdmin).data?.open ?? 0
-  if (!waiting) return null
+function CountBadge({ count, label, className }: { count: number; label: string; className?: string }) {
   return (
     <span
       className={cn(
@@ -36,8 +31,26 @@ export function RequestsBadge({ className }: { className?: string }) {
         className,
       )}
     >
-      <span aria-hidden>{waiting > 99 ? '99+' : waiting}</span>
-      <span className="sr-only">{t('nav.requestsWaiting', { count: waiting })}</span>
+      <span aria-hidden>{count > 99 ? '99+' : count}</span>
+      <span className="sr-only">{label}</span>
     </span>
   )
+}
+
+/** How many tag and event type requests wait for an admin. */
+export function RequestsBadge({ className }: { className?: string }) {
+  const { t } = useTranslation()
+  const isAdmin = useMeData().permissions.admin
+  const waiting = useOpenCatalogCount(isAdmin).data?.open ?? 0
+  if (!waiting) return null
+  return <CountBadge count={waiting} label={t('nav.requestsWaiting', { count: waiting })} className={className} />
+}
+
+/** How many people without an account wait for an admin to approve them. */
+export function PeopleBadge({ className }: { className?: string }) {
+  const { t } = useTranslation()
+  const isAdmin = useMeData().permissions.admin
+  const waiting = usePendingPeopleCount(isAdmin).data?.pending ?? 0
+  if (!waiting) return null
+  return <CountBadge count={waiting} label={t('nav.peopleWaiting', { count: waiting })} className={className} />
 }

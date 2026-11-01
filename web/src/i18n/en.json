@@ -45,6 +45,8 @@
     "requests": "Requests",
     "requestsWaiting_one": "{{count}} request waiting for review",
     "requestsWaiting_other": "{{count}} requests waiting for review",
+    "peopleWaiting_one": "{{count}} person waiting for approval",
+    "peopleWaiting_other": "{{count}} people waiting for approval",
     "settings": "Settings",
     "trash": "Trash",
     "admin": "Admin",

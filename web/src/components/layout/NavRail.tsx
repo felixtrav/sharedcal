@@ -7,7 +7,7 @@ import { UserAvatar } from '@/components/ui/avatar'
 import { Tooltip } from '@/components/ui/tooltip'
 import { readLocal, STORAGE_KEYS, writeLocal } from '@/lib/storage'
 import { cn } from '@/lib/utils'
-import { InboxBadge, RequestsBadge, useUnreadCount } from './InboxBadge'
+import { InboxBadge, PeopleBadge, RequestsBadge, useUnreadCount } from './InboxBadge'
 import { ADMIN_NAV, CATALOG_NAV, DIRECTORY_NAV, MAIN_NAV, MY_ACTIVITY_NAV, type NavItem } from './navItems'
 import { signOut } from './signOut'
 
@@ -41,6 +41,7 @@ function RailLink({ item, expanded }: { item: NavItem; expanded: boolean }) {
           <Icon className="size-5 shrink-0" aria-hidden />
           <span className={cn('truncate transition-opacity duration-150', expanded ? 'opacity-100' : 'pointer-events-none w-0 opacity-0')}>{label}</span>
           {item.badge === 'inbox' && unread > 0 ? <InboxBadge className={cn('absolute', expanded ? 'end-2' : 'end-0.5 top-0.5')} /> : null}
+          {item.badge === 'people' ? <PeopleBadge className={cn('absolute', expanded ? 'end-2' : 'end-0.5 top-0.5')} /> : null}
           {item.badge === 'requests' ? <RequestsBadge className={cn('absolute', expanded ? 'end-2' : 'end-0.5 top-0.5')} /> : null}
         </Link>
       </Tooltip>

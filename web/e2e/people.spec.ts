@@ -48,6 +48,13 @@ test('a writer adds a person without an account, an admin approves and later lin
   expect(event.title).toBe(`${kid}'s birthday`)
 
   // An admin approves, then links the person to the user they became.
+  await alice.page.goto('/')
+  await expect(
+    alice.page
+      .getByRole('navigation', { name: 'Main navigation' })
+      .first()
+      .getByText(/\d+ (person|people) waiting for approval/),
+  ).toBeAttached()
   await alice.page.goto('/people')
   const row = rowOf(alice.page)
   await row.getByRole('button', { name: `Approve ${kid}` }).click()

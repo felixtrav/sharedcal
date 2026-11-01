@@ -34,7 +34,7 @@ export type NavItem = {
     | '/admin/trash'
   labelKey: string
   icon: LucideIcon
-  badge?: 'inbox' | 'requests'
+  badge?: 'inbox' | 'requests' | 'people'
 }
 
 export const MAIN_NAV: NavItem[] = [
@@ -51,7 +51,7 @@ export const MY_ACTIVITY_NAV: NavItem = { to: '/activity', labelKey: 'nav.myActi
 export const CATALOG_NAV: NavItem = { to: '/catalog', labelKey: 'nav.catalog', icon: LightbulbIcon }
 
 /** Everyone can see who events can name; writers add people who have no account. */
-export const DIRECTORY_NAV: NavItem = { to: '/people', labelKey: 'nav.directory', icon: BookUserIcon }
+export const DIRECTORY_NAV: NavItem = { to: '/people', labelKey: 'nav.directory', icon: BookUserIcon, badge: 'people' }
 
 export const ADMIN_NAV: NavItem[] = [
   DIRECTORY_NAV,
