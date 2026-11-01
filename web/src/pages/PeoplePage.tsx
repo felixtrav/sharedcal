@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { CheckIcon, LinkIcon, PencilIcon, PlusIcon, Trash2Icon, UsersIcon } from 'lucide-react'
-import { useId, useState } from 'react'
+import { CheckIcon, LinkIcon, PencilIcon, PlusIcon, SearchIcon, Trash2Icon, UsersIcon, XIcon } from 'lucide-react'
+import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { endpoints } from '@/api/endpoints'
 import { keys } from '@/api/keys'
@@ -19,12 +19,30 @@ import { errorMessage } from '@/lib/errors'
 
 const MAX_NAME = 60
 
+/** Lowercase and accent-free, so "jose" finds "José". */
+const fold = (s: string) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()
+
+/** Every word typed must appear somewhere in the name. */
+const matches = (name: string, terms: string[]) => {
+  const n = fold(name)
+  return terms.every((w) => n.includes(w))
+}
+
 /** Registered users, and the people events can name who have no account yet. */
 export function PeoplePage() {
   const { t } = useTranslation()
   const me = useMeData()
   const { data, isPending, isError, refetch } = usePeople()
   const canAdd = me.permissions.createEvent
+  const [query, setQuery] = useState('')
+  const terms = useMemo(() => fold(query).split(/\s+/).filter(Boolean), [query])
+  const searching = terms.length > 0
+  const users = useMemo(() => (data?.users ?? []).filter((u) => matches(u.name, terms)), [data, terms])
+  // Waiting people first, so an admin sees what needs approving at the top.
+  const people = useMemo(
+    () => (data?.people ?? []).filter((p) => matches(p.name, terms)).sort((a, b) => Number(b.status === 'pending') - Number(a.status === 'pending')),
+    [data, terms],
+  )
   return (
     <Page wide>
       <PageHeader title={t('directory.title')} description={t('directory.description')} />
@@ -33,39 +51,76 @@ export function PeoplePage() {
       ) : isError ? (
         <LoadError onRetry={() => void refetch()} />
       ) : (
-        <div className="grid gap-8">
-          <section aria-labelledby="directory-users">
-            <h2 id="directory-users" className="mb-2 text-sm font-semibold">
-              {t('directory.users')}
-            </h2>
-            <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {data.users.map((u) => (
-                <li key={u.id} className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2">
-                  <UserAvatar name={u.name} className="size-7" />
-                  <span className="truncate text-sm font-medium">{u.name}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section aria-labelledby="directory-people">
-            <h2 id="directory-people" className="text-sm font-semibold">
-              {t('directory.people')}
-            </h2>
-            <p className="mt-1 mb-3 text-sm text-muted-foreground">{t(me.permissions.admin ? 'directory.peopleHintAdmin' : 'directory.peopleHint')}</p>
-            {canAdd ? <AddPerson admin={me.permissions.admin} /> : null}
-            {data.people.length === 0 ? (
-              <EmptyState icon={<UsersIcon />} title={t('directory.empty')} body={t('directory.emptyBody')} />
-            ) : (
-              <ul className="divide-y divide-border rounded-xl border border-border bg-card" aria-label={t('directory.people')}>
-                {data.people.map((p) => (
-                  <PersonRow key={p.id} person={p} users={data.users} />
+        <div className="grid gap-6">
+          <SearchField value={query} onChange={setQuery} />
+          {searching && users.length === 0 && people.length === 0 ? (
+            <EmptyState icon={<SearchIcon />} title={t('directory.noMatches', { query: query.trim() })} />
+          ) : null}
+          {!searching || users.length > 0 ? (
+            <section aria-labelledby="directory-users">
+              <h2 id="directory-users" className="mb-2 text-sm font-semibold">
+                {t('directory.users')}
+              </h2>
+              <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" aria-labelledby="directory-users">
+                {users.map((u) => (
+                  <li key={u.id} className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-3 py-2">
+                    <UserAvatar name={u.name} className="size-7" />
+                    <span className="truncate text-sm font-medium">{u.name}</span>
+                  </li>
                 ))}
               </ul>
-            )}
-          </section>
+            </section>
+          ) : null}
+          {!searching || people.length > 0 ? (
+            <section aria-labelledby="directory-people">
+              <h2 id="directory-people" className="text-sm font-semibold">
+                {t('directory.people')}
+              </h2>
+              <p className="mt-1 mb-3 text-sm text-muted-foreground">{t(me.permissions.admin ? 'directory.peopleHintAdmin' : 'directory.peopleHint')}</p>
+              {canAdd ? <AddPerson admin={me.permissions.admin} /> : null}
+              {people.length === 0 ? (
+                <EmptyState icon={<UsersIcon />} title={t('directory.empty')} body={t('directory.emptyBody')} />
+              ) : (
+                <ul className="divide-y divide-border rounded-xl border border-border bg-card" aria-labelledby="directory-people">
+                  {people.map((p) => (
+                    <PersonRow key={p.id} person={p} users={data.users} />
+                  ))}
+                </ul>
+              )}
+            </section>
+          ) : null}
         </div>
       )}
     </Page>
+  )
+}
+
+function SearchField({ value, onChange }: { value: string; onChange: (q: string) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div role="search" className="relative">
+      <SearchIcon className="pointer-events-none absolute start-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+      <Input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={t('directory.search')}
+        aria-label={t('directory.search')}
+        className="ps-8 pe-8 [&::-webkit-search-cancel-button]:hidden"
+      />
+      {value ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className="absolute end-1 top-1/2 -translate-y-1/2"
+          aria-label={t('directory.clearSearch')}
+          onClick={() => onChange('')}
+        >
+          <XIcon aria-hidden />
+        </Button>
+      ) : null}
+    </div>
   )
 }
 

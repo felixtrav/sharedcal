@@ -91,3 +91,33 @@ test('an admin can build an automatic title that uses first names only', async (
   await editor.getByRole('button', { name: 'Save' }).click()
   await expect(alice.page.getByText(`Event type “${name}” saved`).first()).toBeVisible()
 })
+
+test('the directory can be searched', async ({ browser }) => {
+  const alice = await signedInContext(browser, 'alice')
+  const last = uniqueTitle('Zeta').replace(' ', '')
+  await api(alice.page, 'POST', '/api/people', { firstName: 'Mílena', lastName: last })
+
+  await alice.page.goto('/people')
+  const users = alice.page.getByRole('list', { name: 'Calendar users' })
+  const people = alice.page.getByRole('list', { name: 'Without an account' })
+  await expect(users.getByRole('listitem').filter({ hasText: 'Carol' })).toBeVisible()
+  await expect(people.getByRole('listitem').filter({ hasText: last })).toBeVisible()
+
+  // Words may come in any order, and accents don't matter.
+  const search = alice.page.getByRole('searchbox', { name: 'Search people' })
+  await search.fill(`${last} milena`)
+  await expect(people.getByRole('listitem').filter({ hasText: last })).toBeVisible()
+  await expect(alice.page.getByRole('heading', { name: 'Calendar users' })).toHaveCount(0)
+
+  // Users are searched too.
+  await search.fill('carol')
+  await expect(users.getByRole('listitem')).toHaveCount(1)
+  await expect(alice.page.getByRole('heading', { name: 'Without an account' })).toHaveCount(0)
+
+  await search.fill('nobody-called-this')
+  await expect(alice.page.getByText('No one matches “nobody-called-this”')).toBeVisible()
+
+  await alice.page.getByRole('button', { name: 'Clear search' }).click()
+  await expect(search).toHaveValue('')
+  await expect(users.getByRole('listitem').filter({ hasText: 'Carol' })).toBeVisible()
+})
